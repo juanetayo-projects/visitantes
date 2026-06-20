@@ -12,6 +12,8 @@ import Responsables from './pages/admin/Responsables'
 import Ubicaciones from './pages/admin/Ubicaciones'
 import ServiciosCargos from './pages/admin/ServiciosCargos'
 import Tarjetas from './pages/admin/Tarjetas'
+import VisitantesAdmin from './pages/admin/VisitantesAdmin'
+import Festivos from './pages/admin/Festivos'
 
 function Protegido({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth()
@@ -37,6 +39,8 @@ export default function App() {
               <Route path="admin/ubicaciones" element={<Ubicaciones />} />
               <Route path="admin/servicios" element={<ServiciosCargos />} />
               <Route path="admin/tarjetas" element={<Tarjetas />} />
+              <Route path="admin/visitantes" element={<VisitantesAdmin />} />
+              <Route path="admin/festivos" element={<Festivos />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
           </Routes>

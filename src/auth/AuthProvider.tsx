@@ -21,20 +21,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function cargarPerfil(uid: string) {
     if (uidCargado.current === uid) return // evita recargas redundantes (token refresh, etc.)
     uidCargado.current = uid
-    const { data } = await supabase.from('perfiles').select('*').eq('id', uid).maybeSingle()
-    setPerfil((data as Perfil) ?? null)
+    try {
+      const { data } = await supabase.from('perfiles').select('*').eq('id', uid).maybeSingle()
+      setPerfil((data as Perfil) ?? null)
+    } catch {
+      setPerfil(null)
+    }
   }
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data }) => {
-      setSession(data.session)
-      if (data.session) await cargarPerfil(data.session.user.id)
-      setLoading(false)
-    })
-    const { data: sub } = supabase.auth.onAuthStateChange(async (_e, s) => {
+    // Resuelve el estado de sesión sin bloquearse en la carga del perfil
+    // (el perfil se carga en segundo plano para evitar quedar atascado en "Cargando").
+    supabase.auth.getSession()
+      .then(({ data }) => {
+        setSession(data.session)
+        if (data.session) cargarPerfil(data.session.user.id)
+      })
+      .finally(() => setLoading(false))
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
       setSession(s)
-      if (s) await cargarPerfil(s.user.id)
+      if (s) cargarPerfil(s.user.id)
       else { uidCargado.current = null; setPerfil(null) }
+      setLoading(false)
     })
     return () => sub.subscription.unsubscribe()
   }, [])

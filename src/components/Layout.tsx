@@ -21,6 +21,8 @@ const ADMIN: Item[] = [
   { to: '/admin/ubicaciones', label: 'Sedes y ubicaciones', icon: '', roles: ['admin'] },
   { to: '/admin/servicios', label: 'Servicios y cargos', icon: '', roles: ['admin'] },
   { to: '/admin/tarjetas', label: 'Tarjetas de acceso', icon: '', roles: ['admin'] },
+  { to: '/admin/visitantes', label: 'Visitantes', icon: '', roles: ['admin'] },
+  { to: '/admin/festivos', label: 'Festivos', icon: '', roles: ['admin'] },
 ]
 
 const linkCls = (isActive: boolean, sub = false) =>
