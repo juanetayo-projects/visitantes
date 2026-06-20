@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  height: 100%;
+}
+body {
+  margin: 0;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: #F4F6FB;
+  color: #1f2937;
+}
+
+/* Tooltip estilo Odoo para el mapa de habitaciones */
+.hab-tip {
+  box-shadow: 0 8px 24px rgba(13, 45, 107, 0.18);
+}
