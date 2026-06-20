@@ -14,7 +14,7 @@ const TOP: Item[] = [
   { to: '/historico', label: 'Histórico', icon: 'M3 12a9 9 0 109-9 9 9 0 00-9 9zm9-5v5l3 2M3 12H1m2-4l-1.5-1', roles: ['admin', 'orientador', 'coordinador'] },
   { to: '/mapa', label: 'Mapa de habitaciones', icon: 'M9 20l-5-2V6l5 2m0 12l6-2m-6 2V8m6 10l5-2V4l-5 2m0 12V6', roles: ['admin', 'orientador', 'coordinador'] },
   { to: '/tarjetas', label: 'Tarjetas de acceso', icon: 'M3 10h18M3 7a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2z', roles: ['admin', 'orientador', 'coordinador'] },
-  { to: '/estadisticas', label: 'Estadísticas', icon: 'M3 3v18h18M7 14l3-3 3 3 5-5', roles: ['admin', 'coordinador'] },
+  { to: '/estadisticas', label: 'Mapa de calor', icon: 'M3 3v18h18M7 14l3-3 3 3 5-5', roles: ['admin', 'coordinador'] },
 ]
 
 const ADMIN: Item[] = [

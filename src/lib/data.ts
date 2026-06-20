@@ -64,6 +64,9 @@ export interface TarjetaEnUso {
   id: string
   codigo: string
   sede: string | null
+  sede_id: string | null
+  piso_id: string | null
+  ubicacion_id: string | null
   visita_id: string | null
   visitante_nombre: string | null
   cedula: string | null
@@ -73,15 +76,28 @@ export interface TarjetaEnUso {
   hora_ingreso: string | null
 }
 
+export interface FiltrosTarjeta {
+  sedeId?: string
+  pisoId?: string
+  ubicacionId?: string
+  tipo?: string
+  desde?: string
+  hasta?: string
+  texto?: string
+}
+
 // ¿Quién tiene cada tarjeta en su poder? (tarjetas en uso + titular)
-export async function tarjetasEnUso(busca?: string): Promise<TarjetaEnUso[]> {
+export async function tarjetasEnUso(f: FiltrosTarjeta = {}): Promise<TarjetaEnUso[]> {
   const { data } = await supabase.from('tarjetas')
-    .select('id, codigo, sede:sedes(nombre), visita:visitas!tarjetas_visita_fk(id, paciente_nombre, ubicacion_etiqueta, created_at, tipo_visitante, visitante:visitantes(nombres_completos, cedula))')
+    .select('id, codigo, sede_id, sede:sedes(nombre), visita:visitas!tarjetas_visita_fk(id, paciente_nombre, ubicacion_etiqueta, ubicacion_id, piso_id, created_at, tipo_visitante, visitante:visitantes(nombres_completos, cedula))')
     .eq('estado', 'en_uso').order('codigo')
   let rows = (data ?? []).map((t: any) => ({
     id: t.id,
     codigo: t.codigo,
     sede: t.sede?.nombre ?? null,
+    sede_id: t.sede_id ?? null,
+    piso_id: t.visita?.piso_id ?? null,
+    ubicacion_id: t.visita?.ubicacion_id ?? null,
     visita_id: t.visita?.id ?? null,
     visitante_nombre: t.visita?.visitante?.nombres_completos ?? null,
     cedula: t.visita?.visitante?.cedula ?? null,
@@ -90,8 +106,15 @@ export async function tarjetasEnUso(busca?: string): Promise<TarjetaEnUso[]> {
     ubicacion_etiqueta: t.visita?.ubicacion_etiqueta ?? null,
     hora_ingreso: t.visita?.created_at ?? null,
   })) as TarjetaEnUso[]
-  if (busca) {
-    const b = busca.toLowerCase()
+
+  if (f.sedeId) rows = rows.filter((r) => r.sede_id === f.sedeId)
+  if (f.pisoId) rows = rows.filter((r) => r.piso_id === f.pisoId)
+  if (f.ubicacionId) rows = rows.filter((r) => r.ubicacion_id === f.ubicacionId)
+  if (f.tipo) rows = rows.filter((r) => r.tipo_visitante === f.tipo)
+  if (f.desde) rows = rows.filter((r) => (r.hora_ingreso ?? '') >= f.desde + 'T00:00:00-05:00')
+  if (f.hasta) rows = rows.filter((r) => (r.hora_ingreso ?? '') <= f.hasta + 'T23:59:59-05:00')
+  if (f.texto) {
+    const b = f.texto.toLowerCase()
     rows = rows.filter((r) =>
       r.codigo.toLowerCase().includes(b) ||
       r.visitante_nombre?.toLowerCase().includes(b) ||
@@ -180,6 +203,7 @@ export interface VisitaListado {
   permiso_alimentos: boolean
   estado: string
   created_at: string
+  salida_at: string | null
   visitante: { nombres_completos: string; cedula: string; celular: string | null } | null
   tarjeta: { codigo: string } | null
   responsable: { nombre_completo: string } | null
@@ -200,7 +224,7 @@ export interface FiltrosVisita {
 
 export async function listVisitas(f: FiltrosVisita = {}): Promise<VisitaListado[]> {
   let q = supabase.from('visitas')
-    .select('id, tipo_visitante, tipo_acompanante, paciente_nombre, num_ingreso, ubicacion_etiqueta, aislamiento, permiso_alimentos, estado, created_at, sede_id, visitante:visitantes(nombres_completos, cedula, celular), tarjeta:tarjetas!visitas_tarjeta_id_fkey(codigo), responsable:responsables(nombre_completo), sede:sedes(nombre)')
+    .select('id, tipo_visitante, tipo_acompanante, paciente_nombre, num_ingreso, ubicacion_etiqueta, aislamiento, permiso_alimentos, estado, created_at, sede_id, visitante:visitantes(nombres_completos, cedula, celular), tarjeta:tarjetas!visitas_tarjeta_id_fkey(codigo), responsable:responsables(nombre_completo), sede:sedes(nombre), eventos:visita_eventos(tipo, hora)')
     .order('created_at', { ascending: false }).limit(500)
   if (f.estado) q = q.eq('estado', f.estado)
   if (f.tipo) q = q.eq('tipo_visitante', f.tipo)
@@ -211,7 +235,10 @@ export async function listVisitas(f: FiltrosVisita = {}): Promise<VisitaListado[
   if (f.desde) q = q.gte('created_at', f.desde + 'T00:00:00-05:00')
   if (f.hasta) q = q.lte('created_at', f.hasta + 'T23:59:59-05:00')
   const { data } = await q
-  let rows = (data ?? []) as unknown as VisitaListado[]
+  let rows = (data ?? []).map((r: any) => ({
+    ...r,
+    salida_at: (r.eventos ?? []).filter((e: any) => e.tipo === 'salida').map((e: any) => e.hora).sort().pop() ?? null,
+  })) as unknown as VisitaListado[]
   if (f.texto) {
     const t = f.texto.toLowerCase()
     rows = rows.filter((r) =>

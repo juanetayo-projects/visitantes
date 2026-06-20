@@ -79,7 +79,7 @@ borde rojo para aislamiento. Puntos de cupo. Tooltip con paciente destacado + vi
 Listado con **todos los filtros**: estado, tipo, sede, **piso, ubicación** (AJUSTE), fechas y
 texto. Registro de salida + exportación Excel/PDF.
 
-## Módulo Estadísticas (AJUSTES)
+## Módulo Mapa de calor (antes "Estadísticas")
 - **Todos los filtros posibles** (tipo, estado, sede, piso, rango de fechas).
 - Mapa de calor de visitas por día×hora (GMT-5; festivos/domingos).
 - **Clic en una celda → modal con vista profesional de las personas** contabilizadas en ese
@@ -87,13 +87,14 @@ texto. Registro de salida + exportación Excel/PDF.
 
 ## Módulo Histórico
 Consulta de visitas (activas y finalizadas) **por habitación/ubicación** (sede→piso→ubicación)
-y **por paciente** (nombre, # ingreso, cédula). Exportable. El snapshot del paciente conserva
-el histórico aunque la habitación se reasigne.
+y **por paciente** (nombre, # ingreso, cédula). Incluye **fecha/hora de ingreso y de salida**
+(devolución de la tarjeta). Exportable. El snapshot del paciente conserva el histórico aunque
+la habitación se reasigne.
 
 ## Módulo Tarjetas (operativo)
 - **Inventario:** total, disponibles, en uso, inactivas; desglose por sede.
 - **Tenencia:** "¿quién tiene cada tarjeta?" — tarjetas en uso con titular, paciente/ubicación
-  y hora de ingreso; búsqueda.
+  y hora de ingreso; **filtros completos** (sede, piso, ubicación, tipo, fechas, búsqueda).
 - **Registro de salida y devolución:** libera la tarjeta (disponible) y el cupo.
 (El catálogo de tarjetas — alta/baja/edición — vive en Administración → Tarjetas (catálogo).)
 

@@ -46,16 +46,17 @@ Dos caminos:
 
 ## Histórico
 Consulta todas las visitas (activas y finalizadas) filtrando por **habitación/ubicación**
-(sede → piso → ubicación) y/o por **paciente** (nombre, # de ingreso o cédula). Exportable a
-Excel/PDF. Como el dato del paciente queda congelado en cada visita, el histórico se mantiene
-aunque la habitación se reasigne a otro paciente.
+(sede → piso → ubicación) y/o por **paciente** (nombre, # de ingreso o cédula). Muestra la
+**fecha/hora de ingreso y de salida** (devolución de la tarjeta). Exportable a Excel/PDF.
+Como el dato del paciente queda congelado en cada visita, el histórico se mantiene aunque la
+habitación se reasigne a otro paciente.
 
 ## Consultas y reportes
 - **Visitas:** filtra por estado, tipo, sede, piso, ubicación, fechas y texto.
   Exporta a **Excel** o **PDF**.
-- **Estadísticas:** mapa de calor de visitas por día y hora (con festivos/domingos).
-  Aplica filtros (tipo, estado, sede, piso, fechas) y haz **clic en una celda** para ver
-  el detalle de las personas de ese día/horario (exportable).
+- **Mapa de calor:** visitas por día y hora (con festivos/domingos). Aplica filtros (tipo,
+  estado, sede, piso, fechas) y haz **clic en una celda** para ver el detalle de las personas
+  de ese día/horario (exportable).
 
 ## Administración (solo Administrador)
 CRUD completo de: Usuarios, Responsables, Sedes y ubicaciones, Servicios y cargos,

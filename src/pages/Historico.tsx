@@ -9,6 +9,7 @@ function horaCO(iso: string) { return new Date(new Date(iso).getTime() - 5 * 3_6
 
 const COLS: Columna<VisitaListado>[] = [
   { header: 'Fecha/hora ingreso', get: (r) => horaCO(r.created_at) },
+  { header: 'Fecha/hora salida', get: (r) => (r.salida_at ? horaCO(r.salida_at) : '') },
   { header: 'Visitante', get: (r) => r.visitante?.nombres_completos ?? '' },
   { header: 'Cédula', get: (r) => r.visitante?.cedula ?? '' },
   { header: 'Tipo', get: (r) => TIPO_LABEL[r.tipo_visitante] ?? r.tipo_visitante },
@@ -77,14 +78,15 @@ export default function Historico() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-brand text-white"><tr>
-              {['Ingreso', 'Visitante', 'Tipo', 'Paciente', '# Ingreso', 'Ubicación', 'Tarjeta', 'Estado'].map((h) => <th key={h} className="px-3 py-2.5 text-left font-medium whitespace-nowrap">{h}</th>)}
+              {['Ingreso', 'Salida / devolución', 'Visitante', 'Tipo', 'Paciente', '# Ingreso', 'Ubicación', 'Tarjeta', 'Estado'].map((h) => <th key={h} className="px-3 py-2.5 text-left font-medium whitespace-nowrap">{h}</th>)}
             </tr></thead>
             <tbody className="divide-y divide-gray-100">
-              {loading ? <tr><td colSpan={8} className="py-10 text-center text-gray-400">Cargando…</td></tr>
-                : filtrados.length === 0 ? <tr><td colSpan={8} className="py-10 text-center text-gray-400">Sin registros — ajusta los filtros</td></tr>
+              {loading ? <tr><td colSpan={9} className="py-10 text-center text-gray-400">Cargando…</td></tr>
+                : filtrados.length === 0 ? <tr><td colSpan={9} className="py-10 text-center text-gray-400">Sin registros — ajusta los filtros</td></tr>
                 : filtrados.map((r) => (
                   <tr key={r.id} className="hover:bg-brand-50/40">
                     <td className="px-3 py-2 whitespace-nowrap text-gray-600">{horaCO(r.created_at)}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-gray-600">{r.salida_at ? horaCO(r.salida_at) : <span className="text-gray-300">— dentro —</span>}</td>
                     <td className="px-3 py-2">
                       <div className="font-medium text-gray-800">{r.visitante?.nombres_completos}</div>
                       <div className="text-xs text-gray-500">{r.visitante?.cedula}</div>

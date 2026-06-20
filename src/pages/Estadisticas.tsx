@@ -76,7 +76,7 @@ export default function Estadisticas() {
 
   return (
     <div>
-      <PageHeader title="Estadísticas" subtitle="Flujo de visitantes por día y hora — zona horaria Colombia (GMT-5)" />
+      <PageHeader title="Mapa de calor" subtitle="Flujo de visitantes por día y hora — zona horaria Colombia (GMT-5)" />
 
       <div className="grid gap-4 sm:grid-cols-3 mb-5">
         <MetricCard label="Total de visitas" value={total} color="blue" />

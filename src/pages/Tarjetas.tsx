@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { PageHeader, Card, MetricCard, Badge, Btn, inputCls, Modal } from '../components/ui'
+import { PageHeader, Card, MetricCard, Badge, Btn, FilterBar, selectCls, Modal } from '../components/ui'
 import { useAuth } from '../auth/AuthProvider'
-import { inventarioTarjetas, tarjetasEnUso, finalizarVisita, type InventarioTarjetas, type TarjetaEnUso } from '../lib/data'
+import { inventarioTarjetas, tarjetasEnUso, listSedes, listPisos, listUbicaciones, finalizarVisita, type InventarioTarjetas, type TarjetaEnUso, type FiltrosTarjeta } from '../lib/data'
 import { exportarExcel, exportarPDF, type Columna } from '../lib/exportar'
+import type { Sede, Piso, Ubicacion } from '../lib/types'
 
 const TIPO_LABEL: Record<string, string> = { familiar: 'Familiar', proveedor: 'Proveedor', colaborador: 'Colaborador' }
 function horaCO(iso: string | null) {
@@ -25,17 +26,23 @@ export default function Tarjetas() {
   const esStaff = perfil?.rol === 'admin' || perfil?.rol === 'orientador'
   const [inv, setInv] = useState<InventarioTarjetas | null>(null)
   const [enUso, setEnUso] = useState<TarjetaEnUso[]>([])
-  const [busca, setBusca] = useState('')
   const [loading, setLoading] = useState(true)
   const [confirmar, setConfirmar] = useState<TarjetaEnUso | null>(null)
+  const [f, setF] = useState<FiltrosTarjeta>({})
+  const [sedes, setSedes] = useState<Sede[]>([])
+  const [pisos, setPisos] = useState<Piso[]>([])
+  const [ubicaciones, setUbicaciones] = useState<Ubicacion[]>([])
 
   async function cargar() {
     setLoading(true)
-    const [i, u] = await Promise.all([inventarioTarjetas(), tarjetasEnUso(busca)])
+    const [i, u] = await Promise.all([inventarioTarjetas(), tarjetasEnUso(f)])
     setInv(i); setEnUso(u); setLoading(false)
   }
   useEffect(() => { cargar() }, [])
-  useEffect(() => { tarjetasEnUso(busca).then(setEnUso) }, [busca])
+  useEffect(() => { listSedes().then(setSedes) }, [])
+  useEffect(() => { if (f.sedeId) listPisos(f.sedeId).then(setPisos); else setPisos([]) }, [f.sedeId])
+  useEffect(() => { if (f.pisoId) listUbicaciones(f.pisoId).then(setUbicaciones); else setUbicaciones([]) }, [f.pisoId])
+  useEffect(() => { tarjetasEnUso(f).then(setEnUso) }, [f.sedeId, f.pisoId, f.ubicacionId, f.tipo, f.desde, f.hasta, f.texto])
 
   async function devolver() {
     if (!confirmar?.visita_id) { setConfirmar(null); return }
@@ -90,11 +97,29 @@ export default function Tarjetas() {
         </div>
       )}
 
+      {/* Filtros completos */}
+      <FilterBar onClear={() => setF({})}>
+        <select className={selectCls} value={f.sedeId ?? ''} onChange={(e) => setF({ ...f, sedeId: e.target.value, pisoId: '', ubicacionId: '' })}>
+          <option value="">Todas las sedes</option>{sedes.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+        </select>
+        <select className={selectCls} value={f.pisoId ?? ''} disabled={!f.sedeId} onChange={(e) => setF({ ...f, pisoId: e.target.value, ubicacionId: '' })}>
+          <option value="">{f.sedeId ? 'Todos los pisos' : 'Elige sede'}</option>{pisos.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+        </select>
+        <select className={selectCls} value={f.ubicacionId ?? ''} disabled={!f.pisoId} onChange={(e) => setF({ ...f, ubicacionId: e.target.value })}>
+          <option value="">{f.pisoId ? 'Todas las ubicaciones' : 'Elige piso'}</option>{ubicaciones.map((u) => <option key={u.id} value={u.id}>{u.etiqueta}{u.area ? ` (${u.area})` : ''}</option>)}
+        </select>
+        <select className={selectCls} value={f.tipo ?? ''} onChange={(e) => setF({ ...f, tipo: e.target.value })}>
+          <option value="">Todos los tipos</option><option value="familiar">Familiar</option><option value="proveedor">Proveedor</option><option value="colaborador">Colaborador</option>
+        </select>
+        <input type="date" className={selectCls} value={f.desde ?? ''} onChange={(e) => setF({ ...f, desde: e.target.value })} />
+        <input type="date" className={selectCls} value={f.hasta ?? ''} onChange={(e) => setF({ ...f, hasta: e.target.value })} />
+        <input className={selectCls} placeholder="Buscar tarjeta, titular, cédula, paciente…" value={f.texto ?? ''} onChange={(e) => setF({ ...f, texto: e.target.value })} />
+      </FilterBar>
+
       {/* Tarjetas en uso — quién las tiene */}
       <Card className="overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-2 p-4 border-b border-gray-100">
           <div className="font-semibold text-brand">¿Quién tiene cada tarjeta? <span className="text-gray-400 text-sm">({enUso.length} en uso)</span></div>
-          <input className={inputCls} style={{ width: 240 }} placeholder="Buscar tarjeta, titular, cédula, paciente…" value={busca} onChange={(e) => setBusca(e.target.value)} />
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
