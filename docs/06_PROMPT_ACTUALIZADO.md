@@ -85,6 +85,18 @@ texto. Registro de salida + exportación Excel/PDF.
 - **Clic en una celda → modal con vista profesional de las personas** contabilizadas en ese
   día/horario (tabla con visitante, tipo, paciente/ubicación), exportable a Excel/PDF.
 
+## Módulo Histórico
+Consulta de visitas (activas y finalizadas) **por habitación/ubicación** (sede→piso→ubicación)
+y **por paciente** (nombre, # ingreso, cédula). Exportable. El snapshot del paciente conserva
+el histórico aunque la habitación se reasigne.
+
+## Módulo Tarjetas (operativo)
+- **Inventario:** total, disponibles, en uso, inactivas; desglose por sede.
+- **Tenencia:** "¿quién tiene cada tarjeta?" — tarjetas en uso con titular, paciente/ubicación
+  y hora de ingreso; búsqueda.
+- **Registro de salida y devolución:** libera la tarjeta (disponible) y el cupo.
+(El catálogo de tarjetas — alta/baja/edición — vive en Administración → Tarjetas (catálogo).)
+
 ## Integraciones (pendientes de scripts SQL del usuario)
 - **GoMedisys (Azure SQL):** ubicación de pacientes → `pacientes_ubicacion` (mismas
   credenciales del proyecto Mapa de Calor de Urgencias; sync horario por GitHub Actions).

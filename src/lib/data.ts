@@ -40,6 +40,68 @@ export async function tarjetasDisponibles(sedeId?: string): Promise<Tarjeta[]> {
   return (await q).data ?? []
 }
 
+// ─── Inventario y tenencia de tarjetas ──────────────────────
+export interface InventarioTarjetas {
+  total: number; disponible: number; en_uso: number; inactiva: number
+  porSede: { sede: string; total: number; disponible: number; en_uso: number; inactiva: number }[]
+}
+export async function inventarioTarjetas(): Promise<InventarioTarjetas> {
+  const { data } = await supabase.from('tarjetas').select('estado, sede:sedes(nombre)')
+  const rows = (data ?? []) as any[]
+  const inv: InventarioTarjetas = { total: rows.length, disponible: 0, en_uso: 0, inactiva: 0, porSede: [] }
+  const mapa = new Map<string, any>()
+  rows.forEach((r) => {
+    inv[r.estado as 'disponible' | 'en_uso' | 'inactiva']++
+    const s = r.sede?.nombre ?? 'Sin sede'
+    const m = mapa.get(s) ?? { sede: s, total: 0, disponible: 0, en_uso: 0, inactiva: 0 }
+    m.total++; m[r.estado]++; mapa.set(s, m)
+  })
+  inv.porSede = Array.from(mapa.values()).sort((a, b) => a.sede.localeCompare(b.sede))
+  return inv
+}
+
+export interface TarjetaEnUso {
+  id: string
+  codigo: string
+  sede: string | null
+  visita_id: string | null
+  visitante_nombre: string | null
+  cedula: string | null
+  tipo_visitante: string | null
+  paciente_nombre: string | null
+  ubicacion_etiqueta: string | null
+  hora_ingreso: string | null
+}
+
+// ¿Quién tiene cada tarjeta en su poder? (tarjetas en uso + titular)
+export async function tarjetasEnUso(busca?: string): Promise<TarjetaEnUso[]> {
+  const { data } = await supabase.from('tarjetas')
+    .select('id, codigo, sede:sedes(nombre), visita:visitas!tarjetas_visita_fk(id, paciente_nombre, ubicacion_etiqueta, created_at, tipo_visitante, visitante:visitantes(nombres_completos, cedula))')
+    .eq('estado', 'en_uso').order('codigo')
+  let rows = (data ?? []).map((t: any) => ({
+    id: t.id,
+    codigo: t.codigo,
+    sede: t.sede?.nombre ?? null,
+    visita_id: t.visita?.id ?? null,
+    visitante_nombre: t.visita?.visitante?.nombres_completos ?? null,
+    cedula: t.visita?.visitante?.cedula ?? null,
+    tipo_visitante: t.visita?.tipo_visitante ?? null,
+    paciente_nombre: t.visita?.paciente_nombre ?? null,
+    ubicacion_etiqueta: t.visita?.ubicacion_etiqueta ?? null,
+    hora_ingreso: t.visita?.created_at ?? null,
+  })) as TarjetaEnUso[]
+  if (busca) {
+    const b = busca.toLowerCase()
+    rows = rows.filter((r) =>
+      r.codigo.toLowerCase().includes(b) ||
+      r.visitante_nombre?.toLowerCase().includes(b) ||
+      r.cedula?.includes(b) ||
+      r.paciente_nombre?.toLowerCase().includes(b) ||
+      r.ubicacion_etiqueta?.toLowerCase().includes(b))
+  }
+  return rows
+}
+
 interface VisitaRow {
   id: string
   ubicacion_id: string | null
@@ -130,6 +192,7 @@ export interface FiltrosVisita {
   sedeId?: string
   pisoId?: string
   ubicacionId?: string
+  numIngreso?: string
   desde?: string
   hasta?: string
   texto?: string
@@ -144,6 +207,7 @@ export async function listVisitas(f: FiltrosVisita = {}): Promise<VisitaListado[
   if (f.sedeId) q = q.eq('sede_id', f.sedeId)
   if (f.pisoId) q = q.eq('piso_id', f.pisoId)
   if (f.ubicacionId) q = q.eq('ubicacion_id', f.ubicacionId)
+  if (f.numIngreso) q = q.eq('num_ingreso', f.numIngreso)
   if (f.desde) q = q.gte('created_at', f.desde + 'T00:00:00-05:00')
   if (f.hasta) q = q.lte('created_at', f.hasta + 'T23:59:59-05:00')
   const { data } = await q

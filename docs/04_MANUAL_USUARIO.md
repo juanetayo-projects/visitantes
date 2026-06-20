@@ -33,9 +33,22 @@ Vista global por piso. Colores: 🟢 acompañante permanente · 🟡 visita en c
 habitación para ver el **tooltip**: paciente destacado y la lista de visitantes con su
 tipo, hora y tarjeta.
 
-## Registrar salida
-En **Visitas**, filtra por *Activas* y usa **Registrar salida**: cierra la visita y libera
-la tarjeta (queda disponible y se libera el cupo).
+## Registrar salida y devolver tarjeta
+Dos caminos:
+- **Tarjetas de acceso:** busca la tarjeta por su código (o por titular/paciente), pulsa
+  **Registrar salida** y confirma. La tarjeta vuelve a *disponible* y se libera el cupo.
+- **Visitas:** filtra por *Activas* y usa **Registrar salida** en la fila correspondiente.
+
+## Tarjetas de acceso
+- **Inventario:** total, disponibles, en uso e inactivas, con desglose por sede.
+- **¿Quién tiene cada tarjeta?:** lista de tarjetas en uso con el titular, el paciente/ubicación
+  y la hora de ingreso. Útil para saber en poder de quién está una tarjeta. Exportable.
+
+## Histórico
+Consulta todas las visitas (activas y finalizadas) filtrando por **habitación/ubicación**
+(sede → piso → ubicación) y/o por **paciente** (nombre, # de ingreso o cédula). Exportable a
+Excel/PDF. Como el dato del paciente queda congelado en cada visita, el histórico se mantiene
+aunque la habitación se reasigne a otro paciente.
 
 ## Consultas y reportes
 - **Visitas:** filtra por estado, tipo, sede, piso, ubicación, fechas y texto.

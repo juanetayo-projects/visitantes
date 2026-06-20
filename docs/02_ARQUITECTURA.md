@@ -25,9 +25,10 @@ visitantes/
 │  │  ├─ exportar.ts            Excel/PDF
 │  │  └─ festivosColombia.ts    festivos (Computus + Ley Emiliani) + utilidades GMT-5
 │  ├─ pages/
-│  │  ├─ Dashboard / Registrar / Visitas / Mapa / Estadisticas / Login
+│  │  ├─ Dashboard / Registrar / Visitas / Historico / Mapa / Tarjetas /
+│  │  │  Estadisticas / Login
 │  │  └─ admin/  (Usuarios, Responsables, Ubicaciones, ServiciosCargos,
-│  │             Tarjetas, VisitantesAdmin, Festivos)
+│  │             Tarjetas[catálogo], VisitantesAdmin, Festivos)
 │  └─ App.tsx                   rutas protegidas
 ├─ supabase/
 │  ├─ migrations/               esquema + RLS + seeds

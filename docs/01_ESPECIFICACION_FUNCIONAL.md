@@ -44,10 +44,17 @@ asignar y liberar tarjetas de acceso, y consultar el flujo histórico con estad�
   y tooltips estilo Odoo (paciente destacado + visitantes diferenciados).
 - **Visitas:** listado con filtros (estado, tipo, sede, piso, ubicación, fechas, texto),
   registro de salida y exportación Excel/PDF.
+- **Histórico:** consulta de visitas (activas y finalizadas) por sede/piso/ubicación
+  (habitación) y por paciente (nombre, # ingreso, cédula); exportable a Excel/PDF.
+- **Tarjetas de acceso (operativo):**
+  - **Inventario** de tarjetas: total, disponibles, en uso, inactivas; desglose por sede.
+  - **Tenencia** ("¿quién tiene cada tarjeta?"): listado de tarjetas en uso con su titular,
+    tipo, paciente/ubicación y hora de ingreso; búsqueda por código/titular/paciente.
+  - **Registro de salida y devolución:** libera la tarjeta (queda disponible) y el cupo.
 - **Estadísticas:** mapa de calor día×hora con filtros completos; clic en celda abre el
   detalle de las personas contabilizadas, exportable.
 - **Administración (CRUD):** usuarios, responsables, sedes/puertas/pisos/ubicaciones,
-  servicios/cargos, tarjetas, visitantes, festivos.
+  servicios/cargos, tarjetas (catálogo), visitantes, festivos.
 
 ## 6. Integraciones externas (pendientes de scripts SQL)
 - **GoMedisys** (Azure SQL): ubicación de pacientes → tabla espejo `pacientes_ubicacion`.
