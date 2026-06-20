@@ -82,6 +82,25 @@ export function Card({ children, className = '' }: { children: ReactNode; classN
   return <div className={`rounded-2xl bg-white shadow-card ring-1 ring-black/5 ${className}`}>{children}</div>
 }
 
+export function Modal({ open, onClose, title, children, maxWidth = 'max-w-md' }: {
+  open: boolean; onClose: () => void; title: ReactNode; children: ReactNode; maxWidth?: string
+}) {
+  if (!open) return null
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onClick={onClose}>
+      <div className={`w-full ${maxWidth} rounded-2xl bg-white shadow-2xl`} onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3">
+          <div className="text-lg font-semibold text-brand">{title}</div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700" aria-label="Cerrar">
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" /></svg>
+          </button>
+        </div>
+        <div className="p-5">{children}</div>
+      </div>
+    </div>
+  )
+}
+
 export function Badge({ children, color = 'gray' }: { children: ReactNode; color?: 'gray' | 'blue' | 'green' | 'amber' | 'red' }) {
   const c = {
     gray: 'bg-gray-100 text-gray-700',

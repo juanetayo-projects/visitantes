@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { PageHeader, Card, FilterBar, selectCls, Btn, Badge } from '../components/ui'
 import { useAuth } from '../auth/AuthProvider'
-import { listVisitas, listSedes, finalizarVisita, type VisitaListado, type FiltrosVisita } from '../lib/data'
+import { listVisitas, listSedes, listPisos, listUbicaciones, finalizarVisita, type VisitaListado, type FiltrosVisita } from '../lib/data'
 import { exportarExcel, exportarPDF, type Columna } from '../lib/exportar'
-import type { Sede } from '../lib/types'
+import type { Sede, Piso, Ubicacion } from '../lib/types'
 
 function horaCO(iso: string) {
   return new Date(new Date(iso).getTime() - 5 * 3_600_000).toISOString().replace('T', ' ').substring(0, 16)
@@ -29,12 +29,20 @@ export default function Visitas() {
   const esStaff = perfil?.rol === 'admin' || perfil?.rol === 'orientador'
   const [rows, setRows] = useState<VisitaListado[]>([])
   const [sedes, setSedes] = useState<Sede[]>([])
+  const [pisos, setPisos] = useState<Piso[]>([])
+  const [ubicaciones, setUbicaciones] = useState<Ubicacion[]>([])
   const [loading, setLoading] = useState(true)
   const [f, setF] = useState<FiltrosVisita>({ estado: 'activa' })
 
   async function cargar() { setLoading(true); setRows(await listVisitas(f)); setLoading(false) }
   useEffect(() => { listSedes().then(setSedes) }, [])
-  useEffect(() => { cargar() }, [f.estado, f.tipo, f.sedeId, f.desde, f.hasta])
+  useEffect(() => {
+    if (f.sedeId) listPisos(f.sedeId).then(setPisos); else setPisos([])
+  }, [f.sedeId])
+  useEffect(() => {
+    if (f.pisoId) listUbicaciones(f.pisoId).then(setUbicaciones); else setUbicaciones([])
+  }, [f.pisoId])
+  useEffect(() => { cargar() }, [f.estado, f.tipo, f.sedeId, f.pisoId, f.ubicacionId, f.desde, f.hasta])
 
   async function salida(r: VisitaListado) {
     if (!confirm(`Registrar salida y liberar la tarjeta ${r.tarjeta?.codigo ?? ''} de ${r.visitante?.nombres_completos}?`)) return
@@ -68,9 +76,17 @@ export default function Visitas() {
           <option value="proveedor">Proveedor</option>
           <option value="colaborador">Colaborador</option>
         </select>
-        <select className={selectCls} value={f.sedeId ?? ''} onChange={(e) => setF({ ...f, sedeId: e.target.value })}>
+        <select className={selectCls} value={f.sedeId ?? ''} onChange={(e) => setF({ ...f, sedeId: e.target.value, pisoId: '', ubicacionId: '' })}>
           <option value="">Todas las sedes</option>
           {sedes.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+        </select>
+        <select className={selectCls} value={f.pisoId ?? ''} disabled={!f.sedeId} onChange={(e) => setF({ ...f, pisoId: e.target.value, ubicacionId: '' })}>
+          <option value="">{f.sedeId ? 'Todos los pisos' : 'Elige sede'}</option>
+          {pisos.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+        </select>
+        <select className={selectCls} value={f.ubicacionId ?? ''} disabled={!f.pisoId} onChange={(e) => setF({ ...f, ubicacionId: e.target.value })}>
+          <option value="">{f.pisoId ? 'Todas las ubicaciones' : 'Elige piso'}</option>
+          {ubicaciones.map((u) => <option key={u.id} value={u.id}>{u.etiqueta}{u.area ? ` (${u.area})` : ''}</option>)}
         </select>
         <input type="date" className={selectCls} value={f.desde ?? ''} onChange={(e) => setF({ ...f, desde: e.target.value })} />
         <input type="date" className={selectCls} value={f.hasta ?? ''} onChange={(e) => setF({ ...f, hasta: e.target.value })} />

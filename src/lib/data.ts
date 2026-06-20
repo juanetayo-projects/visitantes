@@ -128,6 +128,8 @@ export interface FiltrosVisita {
   estado?: 'activa' | 'finalizada' | ''
   tipo?: string
   sedeId?: string
+  pisoId?: string
+  ubicacionId?: string
   desde?: string
   hasta?: string
   texto?: string
@@ -140,6 +142,8 @@ export async function listVisitas(f: FiltrosVisita = {}): Promise<VisitaListado[
   if (f.estado) q = q.eq('estado', f.estado)
   if (f.tipo) q = q.eq('tipo_visitante', f.tipo)
   if (f.sedeId) q = q.eq('sede_id', f.sedeId)
+  if (f.pisoId) q = q.eq('piso_id', f.pisoId)
+  if (f.ubicacionId) q = q.eq('ubicacion_id', f.ubicacionId)
   if (f.desde) q = q.gte('created_at', f.desde + 'T00:00:00-05:00')
   if (f.hasta) q = q.lte('created_at', f.hasta + 'T23:59:59-05:00')
   const { data } = await q

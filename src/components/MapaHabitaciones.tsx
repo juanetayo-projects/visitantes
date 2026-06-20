@@ -129,22 +129,30 @@ export default function MapaHabitaciones({ pisoId, onSelect, refreshKey = 0 }: {
               </span>
             )}
           </div>
-          <div className="mt-1 text-[12px] font-medium text-gray-800">{tip.o.paciente_nombre}{tip.o.edad ? ` · ${tip.o.edad} a.` : ''}</div>
-          <div className="text-[11px] text-gray-500"># ingreso {tip.o.num_ingreso}</div>
-          <div className="mt-2 space-y-1.5">
-            {tip.o.visitas.length === 0
-              ? <div className="border-t border-gray-100 pt-1.5 text-[12px] text-gray-500">Sin visitantes · cupo libre</div>
-              : tip.o.visitas.map((v) => (
-                <div key={v.visita_id} className="flex items-center justify-between gap-2 border-t border-gray-100 pt-1.5">
-                  <div className="min-w-0">
-                    <div className="text-[12px] font-medium text-gray-800 truncate">{v.visitante_nombre}</div>
-                    <div className="text-[11px] text-gray-500">{horaCorta(v.hora_ingreso)} · {v.tarjeta_codigo ?? 'sin tarjeta'}</div>
+          {/* Paciente — destacado */}
+          <div className="mt-2 rounded-lg bg-brand-50 px-2.5 py-1.5">
+            <div className="text-[10px] font-semibold uppercase tracking-wide text-brand-light">Paciente</div>
+            <div className="text-[14px] font-bold leading-tight text-brand">{tip.o.paciente_nombre}{tip.o.edad ? ` · ${tip.o.edad} a.` : ''}</div>
+            <div className="text-[11px] text-gray-500"># ingreso {tip.o.num_ingreso}</div>
+          </div>
+          {/* Visitantes — bloque diferenciado */}
+          <div className="mt-2">
+            <div className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Visitantes ({tip.o.visitas.length}/{tip.o.cupo})</div>
+            <div className="mt-1 space-y-1.5">
+              {tip.o.visitas.length === 0
+                ? <div className="text-[12px] text-gray-500">Sin visitantes · cupo libre</div>
+                : tip.o.visitas.map((v) => (
+                  <div key={v.visita_id} className="flex items-center justify-between gap-2 rounded-md border border-gray-100 bg-gray-50 px-2 py-1">
+                    <div className="min-w-0">
+                      <div className="text-[12px] font-medium text-gray-800 truncate">{v.visitante_nombre}</div>
+                      <div className="text-[11px] text-gray-500">{horaCorta(v.hora_ingreso)} · {v.tarjeta_codigo ?? 'sin tarjeta'}</div>
+                    </div>
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${v.tipo_acompanante === 'permanente' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {v.tipo_acompanante === 'permanente' ? 'Permanente' : 'Visita'}
+                    </span>
                   </div>
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${v.tipo_acompanante === 'permanente' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
-                    {v.tipo_acompanante === 'permanente' ? 'Permanente' : 'Visita'}
-                  </span>
-                </div>
-              ))}
+                ))}
+            </div>
           </div>
           <div className="mt-2 flex items-center justify-between text-[11px] text-gray-500">
             <span>Cupo {tip.o.visitas.length}/{tip.o.cupo}</span>
