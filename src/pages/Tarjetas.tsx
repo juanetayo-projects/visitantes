@@ -81,6 +81,15 @@ export default function Tarjetas() {
         </Card>
       )}
 
+      {esStaff && (
+        <div className="mb-4 flex items-start gap-2 rounded-xl bg-brand-50 px-4 py-3 text-sm text-brand">
+          <svg className="mt-0.5 h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          <span><b>Salida y devolución de tarjeta:</b> busca la tarjeta por su código (o por el titular/paciente)
+            en la tabla de abajo y pulsa <b>«Registrar salida y devolver»</b>. La tarjeta vuelve a estar disponible
+            y la habitación queda libre para asignar a otro visitante.</span>
+        </div>
+      )}
+
       {/* Tarjetas en uso — quién las tiene */}
       <Card className="overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-2 p-4 border-b border-gray-100">
@@ -108,7 +117,10 @@ export default function Tarjetas() {
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-gray-600">{horaCO(r.hora_ingreso)}</td>
                     {esStaff && <td className="px-3 py-2">
-                      <button onClick={() => setConfirmar(r)} className="rounded-lg bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700 hover:bg-rose-100 whitespace-nowrap">Registrar salida</button>
+                      <button onClick={() => setConfirmar(r)} className="inline-flex items-center gap-1 rounded-lg bg-rose-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-rose-700 whitespace-nowrap">
+                        <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7M13 16v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                        Registrar salida y devolver
+                      </button>
                     </td>}
                   </tr>
                 ))}

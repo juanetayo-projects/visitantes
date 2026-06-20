@@ -57,12 +57,12 @@ export function FilterBar({ children, onClear }: { children: ReactNode; onClear?
           </button>
         )}
       </div>
-      <div className="flex flex-wrap gap-2">{children}</div>
+      <div className="flex flex-nowrap items-end gap-2 overflow-x-auto pb-1">{children}</div>
     </div>
   )
 }
 
-export const selectCls = 'rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-brand-light focus:ring-1 focus:ring-brand-light outline-none min-w-40'
+export const selectCls = 'rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-brand-light focus:ring-1 focus:ring-brand-light outline-none min-w-[140px] shrink-0'
 export const inputCls = 'rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-brand-light focus:ring-1 focus:ring-brand-light outline-none w-full'
 
 export function Btn({ children, onClick, type = 'button', variant = 'primary', disabled, className = '' }: {
