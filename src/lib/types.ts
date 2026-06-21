@@ -169,6 +169,7 @@ export interface OcupacionUbicacion {
 export interface VisitaResumen {
   visita_id: string
   visitante_nombre: string
+  celular: string | null
   tipo_acompanante: TipoAcompanante | null
   tipo_visitante: TipoVisitante
   tarjeta_codigo: string | null

@@ -62,7 +62,12 @@ login y componentes de los proyectos previos del usuario.)
 4. **Visitante/proveedor/colaborador existente:** al digitar la cédula, si ya está en la base
    de datos, **traer sus datos y permitir actualizarlos** al registrar.
 5. **Snapshot del paciente:** congelar datos en la visita (la habitación se reasigna).
-6. **Tarjeta:** se asigna al ingreso y se libera con la salida (libera el cupo).
+6. **Tarjeta (OBLIGATORIA):** se asigna al ingreso y se libera con la salida (libera el cupo).
+7. **Teléfono del visitante:** se captura y se muestra en tooltip, modal de cupo y módulo de
+   tarjetas (con enlace de llamada) para localizar y gestionar la salida.
+8. **Inicio/Dashboard:** con todos los filtros (estado, tipo, sede, piso, fechas, texto).
+9. **Tooltip del mapa:** encabezado azul, paciente destacado y visitantes diferenciados con
+   teléfono, claramente elevado sobre el fondo.
 
 ## Vista de registro (super profesional)
 Mostrar la distribución de los pisos del servicio seleccionado con las habitaciones

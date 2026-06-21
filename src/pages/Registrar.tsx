@@ -84,6 +84,7 @@ export default function Registrar() {
     if (!cedula.trim() || !nombres.trim()) { setMsg({ ok: false, texto: 'Cédula y nombres son obligatorios.' }); return }
     if (tipo === 'familiar' && !sel?.num_ingreso) { setMsg({ ok: false, texto: 'Selecciona la habitación del paciente en el mapa.' }); return }
     if (tipo === 'proveedor' && !responsableId) { setMsg({ ok: false, texto: 'Selecciona la persona responsable que acompaña.' }); return }
+    if (!tarjetaId) { setMsg({ ok: false, texto: 'La tarjeta de acceso es obligatoria. Selecciona una tarjeta disponible.' }); return }
     setGuardando(true)
     try {
       const visitanteId = await upsertVisitante({ cedula, nombres_completos: nombres, celular: celular || null, email: email || null })
@@ -263,11 +264,12 @@ export default function Registrar() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Tarjeta de acceso</label>
-                  <select className={inputCls} value={tarjetaId} onChange={(e) => setTarjetaId(e.target.value)}>
-                    <option value="">— Sin tarjeta —</option>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Tarjeta de acceso *</label>
+                  <select className={`${inputCls} ${!tarjetaId ? 'border-rose-300' : ''}`} value={tarjetaId} onChange={(e) => setTarjetaId(e.target.value)}>
+                    <option value="">— Selecciona tarjeta —</option>
                     {tarjetas.map((t) => <option key={t.id} value={t.id}>{t.codigo}</option>)}
                   </select>
+                  {tarjetas.length === 0 && <p className="text-xs text-amber-600 mt-1">No hay tarjetas disponibles en esta sede.</p>}
                 </div>
               </div>
 
@@ -308,7 +310,10 @@ export default function Registrar() {
                 <div key={v.visita_id} className="flex items-center justify-between gap-2 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
                   <div>
                     <div className="text-sm font-medium text-gray-800">{v.visitante_nombre}</div>
-                    <div className="text-xs text-gray-500">Tarjeta {v.tarjeta_codigo ?? '—'}</div>
+                    <div className="text-xs text-gray-500">
+                      Tarjeta {v.tarjeta_codigo ?? '—'}
+                      {v.celular && <> · <a href={`tel:${v.celular}`} className="text-brand-light hover:underline">{v.celular}</a></>}
+                    </div>
                   </div>
                   <Badge color={v.tipo_acompanante === 'permanente' ? 'green' : 'amber'}>
                     {v.tipo_acompanante === 'permanente' ? 'Permanente' : 'Visita'}

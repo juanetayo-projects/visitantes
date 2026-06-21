@@ -15,6 +15,7 @@ const COLS: Columna<TarjetaEnUso>[] = [
   { header: 'Tarjeta', get: (r) => r.codigo },
   { header: 'Titular', get: (r) => r.visitante_nombre ?? '' },
   { header: 'Cédula', get: (r) => r.cedula ?? '' },
+  { header: 'Teléfono', get: (r) => r.celular ?? '' },
   { header: 'Tipo', get: (r) => TIPO_LABEL[r.tipo_visitante ?? ''] ?? '' },
   { header: 'Paciente', get: (r) => r.paciente_nombre ?? '' },
   { header: 'Ubicación', get: (r) => r.ubicacion_etiqueta ?? '' },
@@ -124,7 +125,7 @@ export default function Tarjetas() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-brand text-white"><tr>
-              {['Tarjeta', 'Titular', 'Tipo', 'Paciente / ubicación', 'Desde', esStaff ? 'Devolución' : ''].map((h) => <th key={h} className="px-3 py-2.5 text-left font-medium whitespace-nowrap">{h}</th>)}
+              {['Tarjeta', 'Titular', 'Teléfono', 'Tipo', 'Paciente / ubicación', 'Desde', esStaff ? 'Devolución' : ''].map((h) => <th key={h} className="px-3 py-2.5 text-left font-medium whitespace-nowrap">{h}</th>)}
             </tr></thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? <tr><td colSpan={6} className="py-10 text-center text-gray-400">Cargando…</td></tr>
@@ -135,6 +136,14 @@ export default function Tarjetas() {
                     <td className="px-3 py-2">
                       <div className="font-medium text-gray-800">{r.visitante_nombre ?? '—'}</div>
                       <div className="text-xs text-gray-500">{r.cedula}</div>
+                    </td>
+                    <td className="px-3 py-2">
+                      {r.celular
+                        ? <a href={`tel:${r.celular}`} className="inline-flex items-center gap-1 text-brand-light hover:underline">
+                            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h2.3a1 1 0 01.95.68l1 3a1 1 0 01-.27 1.05l-1.2 1.2a14 14 0 006.3 6.3l1.2-1.2a1 1 0 011.05-.27l3 1a1 1 0 01.68.95V19a2 2 0 01-2 2A16 16 0 013 5z" /></svg>
+                            {r.celular}
+                          </a>
+                        : <span className="text-gray-300">—</span>}
                     </td>
                     <td className="px-3 py-2 text-gray-600">{TIPO_LABEL[r.tipo_visitante ?? ''] ?? '—'}</td>
                     <td className="px-3 py-2">

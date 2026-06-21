@@ -14,5 +14,5 @@ body {
 
 /* Tooltip estilo Odoo para el mapa de habitaciones */
 .hab-tip {
-  box-shadow: 0 8px 24px rgba(13, 45, 107, 0.18);
+  box-shadow: 0 12px 32px rgba(13, 45, 107, 0.28), 0 2px 8px rgba(13, 45, 107, 0.18);
 }

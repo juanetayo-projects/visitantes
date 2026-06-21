@@ -70,6 +70,7 @@ export interface TarjetaEnUso {
   visita_id: string | null
   visitante_nombre: string | null
   cedula: string | null
+  celular: string | null
   tipo_visitante: string | null
   paciente_nombre: string | null
   ubicacion_etiqueta: string | null
@@ -89,7 +90,7 @@ export interface FiltrosTarjeta {
 // ¿Quién tiene cada tarjeta en su poder? (tarjetas en uso + titular)
 export async function tarjetasEnUso(f: FiltrosTarjeta = {}): Promise<TarjetaEnUso[]> {
   const { data } = await supabase.from('tarjetas')
-    .select('id, codigo, sede_id, sede:sedes(nombre), visita:visitas!tarjetas_visita_fk(id, paciente_nombre, ubicacion_etiqueta, ubicacion_id, piso_id, created_at, tipo_visitante, visitante:visitantes(nombres_completos, cedula))')
+    .select('id, codigo, sede_id, sede:sedes(nombre), visita:visitas!tarjetas_visita_fk(id, paciente_nombre, ubicacion_etiqueta, ubicacion_id, piso_id, created_at, tipo_visitante, visitante:visitantes(nombres_completos, cedula, celular))')
     .eq('estado', 'en_uso').order('codigo')
   let rows = (data ?? []).map((t: any) => ({
     id: t.id,
@@ -101,6 +102,7 @@ export async function tarjetasEnUso(f: FiltrosTarjeta = {}): Promise<TarjetaEnUs
     visita_id: t.visita?.id ?? null,
     visitante_nombre: t.visita?.visitante?.nombres_completos ?? null,
     cedula: t.visita?.visitante?.cedula ?? null,
+    celular: t.visita?.visitante?.celular ?? null,
     tipo_visitante: t.visita?.tipo_visitante ?? null,
     paciente_nombre: t.visita?.paciente_nombre ?? null,
     ubicacion_etiqueta: t.visita?.ubicacion_etiqueta ?? null,
@@ -119,6 +121,7 @@ export async function tarjetasEnUso(f: FiltrosTarjeta = {}): Promise<TarjetaEnUs
       r.codigo.toLowerCase().includes(b) ||
       r.visitante_nombre?.toLowerCase().includes(b) ||
       r.cedula?.includes(b) ||
+      r.celular?.includes(b) ||
       r.paciente_nombre?.toLowerCase().includes(b) ||
       r.ubicacion_etiqueta?.toLowerCase().includes(b))
   }
@@ -131,7 +134,7 @@ interface VisitaRow {
   tipo_acompanante: TipoAcompanante | null
   tipo_visitante: 'familiar' | 'proveedor' | 'colaborador'
   created_at: string
-  visitante: { nombres_completos: string } | null
+  visitante: { nombres_completos: string; celular: string | null } | null
   tarjeta: { codigo: string } | null
 }
 
@@ -141,7 +144,7 @@ export async function getOcupacionPiso(pisoId: string): Promise<OcupacionUbicaci
     supabase.from('ubicaciones').select('*').eq('piso_id', pisoId).eq('activo', true).order('orden'),
     supabase.from('pacientes_ubicacion').select('*').eq('piso_id', pisoId),
     supabase.from('visitas')
-      .select('id, ubicacion_id, tipo_acompanante, tipo_visitante, created_at, visitante:visitantes(nombres_completos), tarjeta:tarjetas!visitas_tarjeta_id_fkey(codigo)')
+      .select('id, ubicacion_id, tipo_acompanante, tipo_visitante, created_at, visitante:visitantes(nombres_completos, celular), tarjeta:tarjetas!visitas_tarjeta_id_fkey(codigo)')
       .eq('piso_id', pisoId).eq('estado', 'activa'),
   ])
 
@@ -166,6 +169,7 @@ export async function getOcupacionPiso(pisoId: string): Promise<OcupacionUbicaci
     arr.push({
       visita_id: v.id,
       visitante_nombre: v.visitante?.nombres_completos ?? '—',
+      celular: v.visitante?.celular ?? null,
       tipo_acompanante: v.tipo_acompanante,
       tipo_visitante: v.tipo_visitante,
       tarjeta_codigo: v.tarjeta?.codigo ?? null,

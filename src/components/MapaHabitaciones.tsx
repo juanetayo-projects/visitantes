@@ -119,44 +119,45 @@ export default function MapaHabitaciones({ pisoId, onSelect, refreshKey = 0 }: {
 
       {/* Tooltip estilo Odoo */}
       {tip && (
-        <div className="hab-tip absolute z-30 w-64 rounded-lg border border-gray-200 bg-white p-3 pointer-events-none"
+        <div className="hab-tip absolute z-30 w-72 overflow-hidden rounded-xl bg-white ring-1 ring-brand/20 pointer-events-none"
           style={{ left: tip.x, top: tip.y }}>
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[13px] font-semibold text-brand">{tip.o.etiqueta}</span>
-            {tip.o.aislamiento && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-medium text-rose-700">
-                <Icono d={ICON_VIRUS} className="h-3 w-3" /> Aislamiento {AISL_LABEL[tip.o.aislamiento]}
-              </span>
-            )}
+          {/* Encabezado azul para destacar */}
+          <div className="flex items-center justify-between gap-2 bg-brand px-3 py-2">
+            <span className="text-sm font-semibold text-white">{tip.o.etiqueta}</span>
+            {tip.o.aislamiento
+              ? <span className="inline-flex items-center gap-1 rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-medium text-white">
+                  <Icono d={ICON_VIRUS} className="h-3 w-3" /> Aislamiento {AISL_LABEL[tip.o.aislamiento]}
+                </span>
+              : <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-medium text-white">Cupo {tip.o.visitas.length}/{tip.o.cupo}</span>}
           </div>
-          {/* Paciente — destacado */}
-          <div className="mt-2 rounded-lg bg-brand-50 px-2.5 py-1.5">
-            <div className="text-[10px] font-semibold uppercase tracking-wide text-brand-light">Paciente</div>
-            <div className="text-[14px] font-bold leading-tight text-brand">{tip.o.paciente_nombre}{tip.o.edad ? ` · ${tip.o.edad} a.` : ''}</div>
-            <div className="text-[11px] text-gray-500"># ingreso {tip.o.num_ingreso}</div>
-          </div>
-          {/* Visitantes — bloque diferenciado */}
-          <div className="mt-2">
-            <div className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Visitantes ({tip.o.visitas.length}/{tip.o.cupo})</div>
-            <div className="mt-1 space-y-1.5">
-              {tip.o.visitas.length === 0
-                ? <div className="text-[12px] text-gray-500">Sin visitantes · cupo libre</div>
-                : tip.o.visitas.map((v) => (
-                  <div key={v.visita_id} className="flex items-center justify-between gap-2 rounded-md border border-gray-100 bg-gray-50 px-2 py-1">
-                    <div className="min-w-0">
-                      <div className="text-[12px] font-medium text-gray-800 truncate">{v.visitante_nombre}</div>
-                      <div className="text-[11px] text-gray-500">{horaCorta(v.hora_ingreso)} · {v.tarjeta_codigo ?? 'sin tarjeta'}</div>
-                    </div>
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${v.tipo_acompanante === 'permanente' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                      {v.tipo_acompanante === 'permanente' ? 'Permanente' : 'Visita'}
-                    </span>
-                  </div>
-                ))}
+          <div className="p-3">
+            {/* Paciente — destacado */}
+            <div className="rounded-lg border-l-4 border-brand bg-brand-50 px-2.5 py-1.5">
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-brand-light">Paciente</div>
+              <div className="text-[15px] font-bold leading-tight text-brand">{tip.o.paciente_nombre}{tip.o.edad ? ` · ${tip.o.edad} a.` : ''}</div>
+              <div className="text-[11px] text-gray-500"># ingreso {tip.o.num_ingreso}</div>
             </div>
-          </div>
-          <div className="mt-2 flex items-center justify-between text-[11px] text-gray-500">
-            <span>Cupo {tip.o.visitas.length}/{tip.o.cupo}</span>
-            {onSelect && <span className="text-brand-light">Clic para registrar</span>}
+            {/* Visitantes — bloque diferenciado */}
+            <div className="mt-2.5">
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Visitantes ({tip.o.visitas.length}/{tip.o.cupo})</div>
+              <div className="mt-1 space-y-1.5">
+                {tip.o.visitas.length === 0
+                  ? <div className="rounded-md border border-dashed border-gray-200 px-2 py-1.5 text-[12px] text-gray-400">Sin visitantes · cupo libre</div>
+                  : tip.o.visitas.map((v) => (
+                    <div key={v.visita_id} className="flex items-center justify-between gap-2 rounded-md border border-gray-100 bg-gray-50 px-2 py-1.5">
+                      <div className="min-w-0">
+                        <div className="text-[12px] font-medium text-gray-800 truncate">{v.visitante_nombre}</div>
+                        <div className="text-[11px] text-gray-500">{horaCorta(v.hora_ingreso)} · {v.tarjeta_codigo ?? 'sin tarjeta'}</div>
+                        {v.celular && <div className="text-[11px] text-brand-light">☎ {v.celular}</div>}
+                      </div>
+                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${v.tipo_acompanante === 'permanente' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                        {v.tipo_acompanante === 'permanente' ? 'Permanente' : 'Visita'}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+            {onSelect && <div className="mt-2 text-right text-[11px] font-medium text-brand-light">Clic para registrar →</div>}
           </div>
         </div>
       )}

@@ -28,8 +28,9 @@ asignar y liberar tarjetas de acceso, y consultar el flujo histórico con estad�
    un modal informativo y no se permite registrar (familiar).
 3. **Snapshot del paciente:** los datos del paciente (nombre, # ingreso, ubicación) se
    copian en la visita al momento del registro, porque las habitaciones se reasignan.
-4. **Tarjeta de acceso:** se asigna al ingreso (queda *en uso*) y se libera al registrar
-   la salida (vuelve a *disponible*), liberando el cupo.
+4. **Tarjeta de acceso (obligatoria):** es requerida para registrar el ingreso; se asigna
+   (queda *en uso*) y se libera al registrar la salida (vuelve a *disponible*), liberando
+   el cupo. El teléfono del visitante se conserva para localizarlo y gestionar la salida.
 5. **Ingresos/salidas múltiples:** una visita puede tener varios eventos de entrada/salida.
 6. **Visitante existente:** si la cédula ya existe, se traen sus datos y pueden actualizarse.
 7. **Aislamiento:** proviene de CENSO; se muestra de forma destacada (banner/ícono rojo).
@@ -37,8 +38,8 @@ asignar y liberar tarjetas de acceso, y consultar el flujo histórico con estad�
    y estadísticas. Zona horaria fija GMT-5.
 
 ## 5. Módulos
-- **Inicio / Dashboard:** métricas operativas (dentro, ingresos hoy, con acompañante,
-  aislamiento, por tipo, tarjetas).
+- **Inicio / Dashboard:** métricas operativas (dentro, total, con acompañante, aislamiento,
+  por tipo, tarjetas) con **filtros completos** (estado, tipo, sede, piso, fechas, texto).
 - **Registrar visita:** flujo por tipo con mapa de habitaciones, validaciones y tarjeta.
 - **Mapa de habitaciones:** vista global de ocupación por piso, con colores por estado
   y tooltips estilo Odoo (paciente destacado + visitantes diferenciados).
