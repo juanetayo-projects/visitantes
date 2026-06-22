@@ -66,3 +66,15 @@ generación (GMT-5). Disponible en Visitas, Histórico, Tarjetas y el detalle de
 ## Administración (solo Administrador)
 CRUD completo de: Usuarios, Responsables, Sedes y ubicaciones, Servicios y cargos,
 Tarjetas de acceso, Visitantes y Festivos (con generación automática por año).
+
+### Importar Pisos y Ubicaciones por Excel
+En **Administración → Sedes y ubicaciones**, panel «Importar / actualizar estructura por Excel»:
+1. **Descargar plantilla** — genera un Excel con la estructura actual (hojas *Pisos* y
+   *Ubicaciones*) ya precargada.
+2. Corrige el archivo (puedes agregar, editar o quitar filas). No cambies los encabezados.
+3. **Importar Excel** — actualiza por clave natural: *Pisos* por (sede + nombre) y
+   *Ubicaciones* por (sede + piso + área + etiqueta). Las filas existentes se actualizan y
+   las nuevas se crean.
+4. Marca **«Desactivar los que no estén en el archivo»** si quieres que la importación sea un
+   reemplazo (las ubicaciones/pisos ausentes quedan inactivos en vez de eliminarse, para no
+   afectar el histórico de visitas).

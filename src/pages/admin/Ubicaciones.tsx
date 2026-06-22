@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { PageHeader } from '../../components/ui'
 import CrudTable from '../../components/CrudTable'
+import ImportarEstructura from '../../components/ImportarEstructura'
 
 const TIPOS = [
   { value: 'habitacion', label: 'Habitación' }, { value: 'cubiculo', label: 'Cubículo' },
@@ -8,11 +10,14 @@ const TIPOS = [
 ]
 
 export default function Ubicaciones() {
+  const [recarga, setRecarga] = useState(0)
   return (
     <div>
       <PageHeader title="Sedes y ubicaciones" subtitle="Estructura física: sedes, puertas, pisos y ubicaciones (camas, cubículos, sillones)" />
       <div className="space-y-6">
+        <ImportarEstructura onDone={() => setRecarga((k) => k + 1)} />
         <CrudTable
+          key={`sedes-${recarga}`}
           tabla="sedes" titulo="Sedes" orderBy="orden"
           columnas={[{ key: 'nombre', label: 'Sede' }, { key: 'orden', label: 'Orden' }, { key: 'activo', label: 'Activo' }]}
           campos={[
@@ -31,6 +36,7 @@ export default function Ubicaciones() {
           ]}
         />
         <CrudTable
+          key={`pisos-${recarga}`}
           tabla="pisos" titulo="Pisos" orderBy="orden"
           columnas={[{ key: 'nombre', label: 'Piso' }, { key: 'numero', label: 'N°' }, { key: 'sede_id', label: 'Sede' }, { key: 'orden', label: 'Orden' }, { key: 'activo', label: 'Activo' }]}
           campos={[
@@ -42,6 +48,7 @@ export default function Ubicaciones() {
           ]}
         />
         <CrudTable
+          key={`ubic-${recarga}`}
           tabla="ubicaciones" titulo="Ubicaciones" orderBy="orden"
           subtitulo="Habitaciones, cubículos, camas, camillas y sillones por piso"
           columnas={[

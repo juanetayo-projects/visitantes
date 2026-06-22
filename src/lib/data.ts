@@ -40,6 +40,63 @@ export async function tarjetasDisponibles(sedeId?: string): Promise<Tarjeta[]> {
   return (await q).data ?? []
 }
 
+// ─── Importación de estructura (Pisos / Ubicaciones) ────────
+export interface FilaPiso { sede: string; numero: number; nombre: string; orden: number; activo: boolean }
+export interface FilaUbic { sede: string; piso: string; area: string | null; tipo: string; etiqueta: string; cupo: number; orden: number; activo: boolean }
+export interface ResultadoImport { pisos: number; ubicaciones: number; pisosDesactivados: number; ubicDesactivadas: number; errores: string[] }
+
+const norm = (s: string) => (s ?? '').toString().trim().toLowerCase()
+
+export async function importarEstructura(
+  pisosRows: FilaPiso[], ubicRows: FilaUbic[], opts: { desactivarFaltantes?: boolean } = {},
+): Promise<ResultadoImport> {
+  const errores: string[] = []
+  const { data: sedes } = await supabase.from('sedes').select('id, nombre')
+  const sedeId = new Map((sedes ?? []).map((s: any) => [norm(s.nombre), s.id]))
+
+  // Pisos
+  const pisosPayload = pisosRows.map((r) => {
+    const sid = sedeId.get(norm(r.sede))
+    if (!sid) { errores.push(`Piso "${r.nombre}": sede "${r.sede}" no existe.`); return null }
+    return { sede_id: sid, numero: r.numero, nombre: r.nombre, orden: r.orden, activo: r.activo }
+  }).filter(Boolean) as any[]
+  if (pisosPayload.length) {
+    const { error } = await supabase.from('pisos').upsert(pisosPayload, { onConflict: 'sede_id,nombre' })
+    if (error) errores.push('Pisos: ' + error.message)
+  }
+
+  // Mapa (sede_id|nombre) → piso_id
+  const { data: pisos } = await supabase.from('pisos').select('id, sede_id, nombre')
+  const pisoKey = new Map((pisos ?? []).map((p: any) => [p.sede_id + '|' + norm(p.nombre), p.id]))
+
+  // Ubicaciones
+  const ubicPayload = ubicRows.map((r) => {
+    const sid = sedeId.get(norm(r.sede))
+    const pid = sid ? pisoKey.get(sid + '|' + norm(r.piso)) : null
+    if (!pid) { errores.push(`Ubicación "${r.etiqueta}": piso "${r.piso}" (sede "${r.sede}") no existe.`); return null }
+    return { piso_id: pid, area: r.area && r.area.trim() ? r.area.trim() : null, tipo: r.tipo, etiqueta: r.etiqueta, cupo_default: r.cupo, orden: r.orden, activo: r.activo }
+  }).filter(Boolean) as any[]
+  if (ubicPayload.length) {
+    const { error } = await supabase.from('ubicaciones').upsert(ubicPayload, { onConflict: 'piso_id,area,etiqueta' })
+    if (error) errores.push('Ubicaciones: ' + error.message)
+  }
+
+  // Desactivar lo que no vino en el archivo (opcional)
+  let pisosDesactivados = 0, ubicDesactivadas = 0
+  if (opts.desactivarFaltantes) {
+    const keyP = new Set(pisosPayload.map((p) => p.sede_id + '|' + norm(p.nombre)))
+    const faltP = (pisos ?? []).filter((p: any) => !keyP.has(p.sede_id + '|' + norm(p.nombre))).map((p: any) => p.id)
+    if (faltP.length) { await supabase.from('pisos').update({ activo: false }).in('id', faltP); pisosDesactivados = faltP.length }
+
+    const keyU = new Set(ubicPayload.map((u) => u.piso_id + '|' + norm(u.area ?? '') + '|' + norm(u.etiqueta)))
+    const { data: allU } = await supabase.from('ubicaciones').select('id, piso_id, area, etiqueta')
+    const faltU = (allU ?? []).filter((u: any) => !keyU.has(u.piso_id + '|' + norm(u.area ?? '') + '|' + norm(u.etiqueta))).map((u: any) => u.id)
+    if (faltU.length) { await supabase.from('ubicaciones').update({ activo: false }).in('id', faltU); ubicDesactivadas = faltU.length }
+  }
+
+  return { pisos: pisosPayload.length, ubicaciones: ubicPayload.length, pisosDesactivados, ubicDesactivadas, errores }
+}
+
 // ─── Inventario y tenencia de tarjetas ──────────────────────
 export interface InventarioTarjetas {
   total: number; disponible: number; en_uso: number; inactiva: number
