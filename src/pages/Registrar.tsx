@@ -35,7 +35,7 @@ export default function Registrar() {
   const [puertaId, setPuertaId] = useState('')
   const [tarjetaId, setTarjetaId] = useState('')
   const [sel, setSel] = useState<OcupacionUbicacion | null>(null)
-  const [aviso, setAviso] = useState<{ tipo: 'sinPaciente' | 'cupo'; o?: OcupacionUbicacion } | null>(null)
+  const [aviso, setAviso] = useState<{ tipo: 'sinPaciente' | 'cupo' | 'tarjeta'; o?: OcupacionUbicacion } | null>(null)
 
   // Maneja el clic en una habitación del mapa (ajustes 2 y 4)
   function seleccionar(o: OcupacionUbicacion) {
@@ -53,7 +53,6 @@ export default function Registrar() {
 
   // específicos
   const [tipoAcomp, setTipoAcomp] = useState<'permanente' | 'visita'>('visita')
-  const [permisoAlim, setPermisoAlim] = useState(false)
   const [permisoOtros, setPermisoOtros] = useState('')
   const [responsableId, setResponsableId] = useState('')
   const [servicioVisita, setServicioVisita] = useState('')
@@ -76,7 +75,7 @@ export default function Registrar() {
 
   function reset() {
     setTipo(null); setSel(null); setCedula(''); setNombres(''); setCelular(''); setEmail(''); setExiste(false)
-    setTipoAcomp('visita'); setPermisoAlim(false); setPermisoOtros(''); setResponsableId(''); setServicioVisita(''); setTarjetaId('')
+    setTipoAcomp('visita'); setPermisoOtros(''); setResponsableId(''); setServicioVisita(''); setTarjetaId('')
   }
 
   async function guardar() {
@@ -84,7 +83,7 @@ export default function Registrar() {
     if (!cedula.trim() || !nombres.trim()) { setMsg({ ok: false, texto: 'Cédula y nombres son obligatorios.' }); return }
     if (tipo === 'familiar' && !sel?.num_ingreso) { setMsg({ ok: false, texto: 'Selecciona la habitación del paciente en el mapa.' }); return }
     if (tipo === 'proveedor' && !responsableId) { setMsg({ ok: false, texto: 'Selecciona la persona responsable que acompaña.' }); return }
-    if (!tarjetaId) { setMsg({ ok: false, texto: 'La tarjeta de acceso es obligatoria. Selecciona una tarjeta disponible.' }); return }
+    if (!tarjetaId) { setAviso({ tipo: 'tarjeta' }); return }
     setGuardando(true)
     try {
       const visitanteId = await upsertVisitante({ cedula, nombres_completos: nombres, celular: celular || null, email: email || null })
@@ -100,7 +99,7 @@ export default function Registrar() {
         piso_id: tipo === 'familiar' ? pisoId : null,
         aislamiento: sel?.aislamiento ?? null,
         responsable_id: tipo === 'proveedor' ? responsableId : null,
-        permiso_alimentos: permisoAlim,
+        permiso_alimentos: false,
         permiso_otros: permisoOtros || null,
         servicio_paciente: tipo === 'colaborador' ? servicioVisita || null : sel?.area ?? null,
         sede_id: sedeId || null,
@@ -224,11 +223,7 @@ export default function Registrar() {
                       ))}
                     </div>
                   </div>
-                  <label className="flex items-center gap-2 text-sm text-gray-700">
-                    <input type="checkbox" checked={permisoAlim} onChange={(e) => setPermisoAlim(e.target.checked)} className="rounded" />
-                    Autoriza ingreso de alimentos
-                  </label>
-                  <input className={inputCls} value={permisoOtros} onChange={(e) => setPermisoOtros(e.target.value)} placeholder="Otros elementos autorizados (opcional)" />
+                  <input className={inputCls} value={permisoOtros} onChange={(e) => setPermisoOtros(e.target.value)} placeholder="Elementos / permisos autorizados (opcional)" />
                 </>
               )}
 
@@ -291,6 +286,20 @@ export default function Registrar() {
           <p className="text-sm text-gray-700">
             Esta ubicación <b>no tiene un paciente registrado</b> actualmente, por lo que no es posible
             registrar un visitante familiar aquí. Verifica el número de habitación o selecciona una ocupada.
+          </p>
+        </div>
+        <div className="mt-4 text-right"><Btn onClick={() => setAviso(null)}>Entendido</Btn></div>
+      </Modal>
+
+      {/* Tarjeta obligatoria */}
+      <Modal open={aviso?.tipo === 'tarjeta'} onClose={() => setAviso(null)} title="Falta la tarjeta de acceso">
+        <div className="flex items-start gap-3">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-amber-100 text-amber-600">
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M3 7a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2z" /></svg>
+          </span>
+          <p className="text-sm text-gray-700">
+            Debes <b>seleccionar una tarjeta de acceso</b> para registrar el ingreso del visitante.
+            Elige una tarjeta disponible en el campo «Tarjeta de acceso».
           </p>
         </div>
         <div className="mt-4 text-right"><Btn onClick={() => setAviso(null)}>Entendido</Btn></div>
