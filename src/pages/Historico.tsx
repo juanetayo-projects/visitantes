@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { PageHeader, Card, FilterBar, selectCls, Btn, Badge } from '../components/ui'
-import { listVisitas, listSedes, listPisos, listUbicaciones, type VisitaListado, type FiltrosVisita } from '../lib/data'
+import { listVisitas, listSedes, listPisos, listUbicaciones, describirFiltros, type VisitaListado, type FiltrosVisita } from '../lib/data'
 import { exportarExcel, exportarPDF, type Columna } from '../lib/exportar'
 import type { Sede, Piso, Ubicacion } from '../lib/types'
 
@@ -48,8 +48,8 @@ export default function Historico() {
     <div>
       <PageHeader title="Histórico de visitas" subtitle="Consulta por habitación/ubicación y por paciente (incluye visitas finalizadas)"
         action={<div className="flex gap-2">
-          <Btn variant="light" onClick={() => exportarExcel('Historico visitas', COLS, filtrados)}>Excel</Btn>
-          <Btn variant="light" onClick={() => exportarPDF('Historico visitas', COLS, filtrados)}>PDF</Btn>
+          <Btn variant="light" onClick={() => exportarExcel('Histórico de visitas', COLS, filtrados, describirFiltros(f, { sedes, pisos, ubicaciones }))}>Excel</Btn>
+          <Btn variant="light" onClick={() => exportarPDF('Histórico de visitas', COLS, filtrados, describirFiltros(f, { sedes, pisos, ubicaciones }))}>PDF</Btn>
         </div>} />
 
       <FilterBar onClear={() => setF({ estado: '' })}>

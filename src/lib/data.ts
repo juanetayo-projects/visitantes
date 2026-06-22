@@ -200,6 +200,30 @@ export async function getOcupacionPiso(pisoId: string): Promise<OcupacionUbicaci
   })
 }
 
+// ─── Descripción legible de filtros (para encabezados de export) ──
+const ESTADO_LBL: Record<string, string> = {
+  activa: 'Activas (dentro)', finalizada: 'Finalizadas',
+  disponible: 'Disponibles', en_uso: 'En uso', inactiva: 'Inactivas',
+}
+const TIPO_LBL: Record<string, string> = { familiar: 'Familiar', proveedor: 'Proveedor', colaborador: 'Colaborador' }
+
+export function describirFiltros(
+  f: { estado?: string; tipo?: string; sedeId?: string; pisoId?: string; ubicacionId?: string; desde?: string; hasta?: string; texto?: string; numIngreso?: string },
+  ctx: { sedes?: { id: string; nombre: string }[]; pisos?: { id: string; nombre: string }[]; ubicaciones?: { id: string; etiqueta: string }[] } = {},
+): { sede: string; filtros: string } {
+  const sede = f.sedeId ? (ctx.sedes?.find((s) => s.id === f.sedeId)?.nombre ?? 'Sede seleccionada') : 'Todas las sedes'
+  const p: string[] = []
+  if (f.estado) p.push(`Estado: ${ESTADO_LBL[f.estado] ?? f.estado}`)
+  if (f.tipo) p.push(`Tipo: ${TIPO_LBL[f.tipo] ?? f.tipo}`)
+  if (f.pisoId) p.push(`Piso: ${ctx.pisos?.find((x) => x.id === f.pisoId)?.nombre ?? f.pisoId}`)
+  if (f.ubicacionId) p.push(`Ubicación: ${ctx.ubicaciones?.find((x) => x.id === f.ubicacionId)?.etiqueta ?? f.ubicacionId}`)
+  if (f.numIngreso) p.push(`# ingreso: ${f.numIngreso}`)
+  if (f.desde) p.push(`Desde: ${f.desde}`)
+  if (f.hasta) p.push(`Hasta: ${f.hasta}`)
+  if (f.texto) p.push(`Búsqueda: "${f.texto}"`)
+  return { sede, filtros: p.join(' · ') }
+}
+
 // ─── Listado de visitas (con filtros) ───────────────────────
 export interface VisitaListado {
   id: string

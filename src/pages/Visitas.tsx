@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { PageHeader, Card, FilterBar, selectCls, Btn, Badge, Modal } from '../components/ui'
 import { useAuth } from '../auth/AuthProvider'
-import { listVisitas, listSedes, listPisos, listUbicaciones, finalizarVisita, type VisitaListado, type FiltrosVisita } from '../lib/data'
+import { listVisitas, listSedes, listPisos, listUbicaciones, finalizarVisita, describirFiltros, type VisitaListado, type FiltrosVisita } from '../lib/data'
 import { exportarExcel, exportarPDF, type Columna } from '../lib/exportar'
 import type { Sede, Piso, Ubicacion } from '../lib/types'
 
@@ -60,8 +60,8 @@ export default function Visitas() {
     <div>
       <PageHeader title="Visitas" subtitle={`${filtrados.length} registros`} action={
         <div className="flex gap-2">
-          <Btn variant="light" onClick={() => exportarExcel('Visitas', COLS, filtrados)}>Excel</Btn>
-          <Btn variant="light" onClick={() => exportarPDF('Visitas', COLS, filtrados)}>PDF</Btn>
+          <Btn variant="light" onClick={() => exportarExcel('Visitas', COLS, filtrados, describirFiltros(f, { sedes, pisos, ubicaciones }))}>Excel</Btn>
+          <Btn variant="light" onClick={() => exportarPDF('Visitas', COLS, filtrados, describirFiltros(f, { sedes, pisos, ubicaciones }))}>PDF</Btn>
         </div>
       } />
 

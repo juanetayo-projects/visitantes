@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { PageHeader, Card, MetricCard, Badge, Btn, FilterBar, selectCls, Modal } from '../components/ui'
 import { useAuth } from '../auth/AuthProvider'
-import { inventarioTarjetas, listTarjetasDetalle, listSedes, listPisos, listUbicaciones, finalizarVisita, type InventarioTarjetas, type TarjetaDetalle, type FiltrosTarjeta } from '../lib/data'
+import { inventarioTarjetas, listTarjetasDetalle, listSedes, listPisos, listUbicaciones, finalizarVisita, describirFiltros, type InventarioTarjetas, type TarjetaDetalle, type FiltrosTarjeta } from '../lib/data'
 import { exportarExcel, exportarPDF, type Columna } from '../lib/exportar'
 import type { Sede, Piso, Ubicacion } from '../lib/types'
 
@@ -61,8 +61,8 @@ export default function Tarjetas() {
     <div>
       <PageHeader title="Tarjetas de acceso" subtitle="Inventario, tenencia y devolución de tarjetas"
         action={<div className="flex gap-2">
-          <Btn variant="light" onClick={() => exportarExcel('Tarjetas', COLS, rows)}>Excel</Btn>
-          <Btn variant="light" onClick={() => exportarPDF('Tarjetas', COLS, rows)}>PDF</Btn>
+          <Btn variant="light" onClick={() => exportarExcel('Tarjetas de acceso', COLS, rows, describirFiltros(f, { sedes, pisos, ubicaciones }))}>Excel</Btn>
+          <Btn variant="light" onClick={() => exportarPDF('Tarjetas de acceso', COLS, rows, describirFiltros(f, { sedes, pisos, ubicaciones }))}>PDF</Btn>
         </div>} />
 
       {/* Inventario — clic para filtrar por estado */}

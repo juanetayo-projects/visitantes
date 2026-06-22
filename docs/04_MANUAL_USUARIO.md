@@ -51,6 +51,11 @@ Consulta todas las visitas (activas y finalizadas) filtrando por **habitación/u
 Como el dato del paciente queda congelado en cada visita, el histórico se mantiene aunque la
 habitación se reasigne a otro paciente.
 
+## Exportación (Excel / PDF)
+Los archivos generados incluyen un **encabezado institucional**: logo de la Clínica Santa
+Bárbara, título del módulo, sede consultada, descripción de los filtros aplicados y fecha de
+generación (GMT-5). Disponible en Visitas, Histórico, Tarjetas y el detalle del Mapa de calor.
+
 ## Consultas y reportes
 - **Visitas:** filtra por estado, tipo, sede, piso, ubicación, fechas y texto.
   Exporta a **Excel** o **PDF**.

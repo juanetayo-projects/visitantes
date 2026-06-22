@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import ReactECharts from 'echarts-for-react'
 import { PageHeader, Card, FilterBar, selectCls, MetricCard, Modal, Badge } from '../components/ui'
-import { listVisitas, listSedes, listPisos, type VisitaListado, type FiltrosVisita } from '../lib/data'
+import { listVisitas, listSedes, listPisos, describirFiltros, type VisitaListado, type FiltrosVisita } from '../lib/data'
 import { exportarExcel, exportarPDF, type Columna } from '../lib/exportar'
 import { setFestivos } from '../lib/festivosColombia'
 import type { Sede, Piso } from '../lib/types'
@@ -74,6 +74,12 @@ export default function Estadisticas() {
 
   const onEvents = { click: (p: any) => { if (p.value && p.value[2] > 0) setSel({ hora: p.value[0], dow: p.value[1] }) } }
 
+  function metaDetalle() {
+    const base = describirFiltros(f, { sedes, pisos })
+    const dh = sel ? `Día/hora: ${DIAS[sel.dow]} ${HORAS[sel.hora]}` : ''
+    return { sede: base.sede, filtros: [dh, base.filtros].filter(Boolean).join(' · ') }
+  }
+
   return (
     <div>
       <PageHeader title="Mapa de calor" subtitle="Flujo de visitantes por día y hora — zona horaria Colombia (GMT-5)" />
@@ -112,8 +118,8 @@ export default function Estadisticas() {
       <Modal open={!!sel} onClose={() => setSel(null)} maxWidth="max-w-3xl"
         title={sel ? `${DIAS[sel.dow]} · ${HORAS[sel.hora]} — ${detalle.length} visita(s)` : ''}>
         <div className="mb-3 flex justify-end gap-2">
-          <button onClick={() => exportarExcel(`Visitas ${sel ? DIAS[sel.dow] + ' ' + HORAS[sel.hora] : ''}`, COLS, detalle)} className="rounded-lg bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand hover:bg-brand-100">Excel</button>
-          <button onClick={() => exportarPDF(`Visitas ${sel ? DIAS[sel.dow] + ' ' + HORAS[sel.hora] : ''}`, COLS, detalle)} className="rounded-lg bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand hover:bg-brand-100">PDF</button>
+          <button onClick={() => exportarExcel('Mapa de calor — detalle', COLS, detalle, metaDetalle())} className="rounded-lg bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand hover:bg-brand-100">Excel</button>
+          <button onClick={() => exportarPDF('Mapa de calor — detalle', COLS, detalle, metaDetalle())} className="rounded-lg bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand hover:bg-brand-100">PDF</button>
         </div>
         <div className="max-h-[55vh] overflow-y-auto">
           <table className="w-full text-sm">

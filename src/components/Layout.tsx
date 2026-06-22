@@ -80,14 +80,14 @@ export default function Layout() {
         </div>
       </aside>
       <main className="flex-1 overflow-auto">
-        {/* Header con datos del usuario y cerrar sesión */}
-        <header className="sticky top-0 z-20 flex items-center justify-end gap-3 border-b border-gray-200 bg-white/90 px-6 py-2.5 backdrop-blur">
-          <div className="grid h-9 w-9 place-items-center rounded-full bg-brand text-sm font-semibold text-white">{iniciales}</div>
+        {/* Header azul (mismo tono que el menú lateral) */}
+        <header className="sticky top-0 z-20 flex items-center justify-end gap-3 bg-brand px-6 py-2.5 shadow-sm">
+          <div className="grid h-9 w-9 place-items-center rounded-full bg-white/15 text-sm font-semibold text-white ring-1 ring-white/30">{iniciales}</div>
           <div className="leading-tight">
-            <div className="text-sm font-medium text-gray-800">{perfil?.nombre || perfil?.email}</div>
-            <div className="text-xs text-gray-500">{ROL_LABEL[rol]}{perfil?.email ? ` · ${perfil.email}` : ''}</div>
+            <div className="text-sm font-medium text-white">{perfil?.nombre || perfil?.email}</div>
+            <div className="text-xs text-brand-100">{ROL_LABEL[rol]}{perfil?.email ? ` · ${perfil.email}` : ''}</div>
           </div>
-          <button onClick={signOut} className="ml-2 inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-600 transition hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200">
+          <button onClick={signOut} className="ml-2 inline-flex items-center gap-1.5 rounded-lg border border-white/30 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-white/15">
             <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7M13 16v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
             Cerrar sesión
           </button>
