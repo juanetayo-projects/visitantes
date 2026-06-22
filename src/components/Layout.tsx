@@ -38,6 +38,7 @@ export default function Layout() {
   const esAdmin = rol === 'admin'
   const adminActivo = ADMIN.some(i => location.pathname === i.to)
   const [abierto, setAbierto] = useState(adminActivo)
+  const iniciales = (perfil?.nombre || perfil?.email || '?').split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join('')
 
   return (
     <div className="min-h-screen flex">
@@ -74,13 +75,23 @@ export default function Layout() {
             </div>
           )}
         </nav>
-        <div className="px-4 py-3 border-t border-white/10 text-xs">
-          <p className="font-medium truncate">{perfil?.nombre || perfil?.email}</p>
-          <p className="text-brand-100">{ROL_LABEL[rol]}</p>
-          <button onClick={signOut} className="mt-2 text-brand-100 hover:text-white underline">Cerrar sesión</button>
+        <div className="px-4 py-3 border-t border-white/10 text-[11px] text-brand-100">
+          © 2026 Clínica Santa Bárbara
         </div>
       </aside>
       <main className="flex-1 overflow-auto">
+        {/* Header con datos del usuario y cerrar sesión */}
+        <header className="sticky top-0 z-20 flex items-center justify-end gap-3 border-b border-gray-200 bg-white/90 px-6 py-2.5 backdrop-blur">
+          <div className="grid h-9 w-9 place-items-center rounded-full bg-brand text-sm font-semibold text-white">{iniciales}</div>
+          <div className="leading-tight">
+            <div className="text-sm font-medium text-gray-800">{perfil?.nombre || perfil?.email}</div>
+            <div className="text-xs text-gray-500">{ROL_LABEL[rol]}{perfil?.email ? ` · ${perfil.email}` : ''}</div>
+          </div>
+          <button onClick={signOut} className="ml-2 inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-600 transition hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200">
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7M13 16v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+            Cerrar sesión
+          </button>
+        </header>
         <div className="mx-auto max-w-7xl px-6 py-6">
           <Outlet />
         </div>

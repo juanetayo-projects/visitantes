@@ -60,9 +60,10 @@ export async function inventarioTarjetas(): Promise<InventarioTarjetas> {
   return inv
 }
 
-export interface TarjetaEnUso {
+export interface TarjetaDetalle {
   id: string
   codigo: string
+  estado: string
   sede: string | null
   sede_id: string | null
   piso_id: string | null
@@ -78,6 +79,7 @@ export interface TarjetaEnUso {
 }
 
 export interface FiltrosTarjeta {
+  estado?: string
   sedeId?: string
   pisoId?: string
   ubicacionId?: string
@@ -87,14 +89,17 @@ export interface FiltrosTarjeta {
   texto?: string
 }
 
-// ¿Quién tiene cada tarjeta en su poder? (tarjetas en uso + titular)
-export async function tarjetasEnUso(f: FiltrosTarjeta = {}): Promise<TarjetaEnUso[]> {
-  const { data } = await supabase.from('tarjetas')
-    .select('id, codigo, sede_id, sede:sedes(nombre), visita:visitas!tarjetas_visita_fk(id, paciente_nombre, ubicacion_etiqueta, ubicacion_id, piso_id, created_at, tipo_visitante, visitante:visitantes(nombres_completos, cedula, celular))')
-    .eq('estado', 'en_uso').order('codigo')
+// Listado de tarjetas con su titular (cuando están en uso). Filtrable por estado/sede/etc.
+export async function listTarjetasDetalle(f: FiltrosTarjeta = {}): Promise<TarjetaDetalle[]> {
+  let q = supabase.from('tarjetas')
+    .select('id, codigo, estado, sede_id, sede:sedes(nombre), visita:visitas!tarjetas_visita_fk(id, paciente_nombre, ubicacion_etiqueta, ubicacion_id, piso_id, created_at, tipo_visitante, visitante:visitantes(nombres_completos, cedula, celular))')
+    .order('codigo')
+  if (f.estado) q = q.eq('estado', f.estado)
+  const { data } = await q
   let rows = (data ?? []).map((t: any) => ({
     id: t.id,
     codigo: t.codigo,
+    estado: t.estado,
     sede: t.sede?.nombre ?? null,
     sede_id: t.sede_id ?? null,
     piso_id: t.visita?.piso_id ?? null,
@@ -107,7 +112,7 @@ export async function tarjetasEnUso(f: FiltrosTarjeta = {}): Promise<TarjetaEnUs
     paciente_nombre: t.visita?.paciente_nombre ?? null,
     ubicacion_etiqueta: t.visita?.ubicacion_etiqueta ?? null,
     hora_ingreso: t.visita?.created_at ?? null,
-  })) as TarjetaEnUso[]
+  })) as TarjetaDetalle[]
 
   if (f.sedeId) rows = rows.filter((r) => r.sede_id === f.sedeId)
   if (f.pisoId) rows = rows.filter((r) => r.piso_id === f.pisoId)

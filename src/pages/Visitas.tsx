@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { PageHeader, Card, FilterBar, selectCls, Btn, Badge } from '../components/ui'
+import { PageHeader, Card, FilterBar, selectCls, Btn, Badge, Modal } from '../components/ui'
 import { useAuth } from '../auth/AuthProvider'
 import { listVisitas, listSedes, listPisos, listUbicaciones, finalizarVisita, type VisitaListado, type FiltrosVisita } from '../lib/data'
 import { exportarExcel, exportarPDF, type Columna } from '../lib/exportar'
@@ -33,6 +33,7 @@ export default function Visitas() {
   const [ubicaciones, setUbicaciones] = useState<Ubicacion[]>([])
   const [loading, setLoading] = useState(true)
   const [f, setF] = useState<FiltrosVisita>({ estado: 'activa' })
+  const [confirmar, setConfirmar] = useState<VisitaListado | null>(null)
 
   async function cargar() { setLoading(true); setRows(await listVisitas(f)); setLoading(false) }
   useEffect(() => { listSedes().then(setSedes) }, [])
@@ -44,10 +45,10 @@ export default function Visitas() {
   }, [f.pisoId])
   useEffect(() => { cargar() }, [f.estado, f.tipo, f.sedeId, f.pisoId, f.ubicacionId, f.desde, f.hasta])
 
-  async function salida(r: VisitaListado) {
-    if (!confirm(`Registrar salida y liberar la tarjeta ${r.tarjeta?.codigo ?? ''} de ${r.visitante?.nombres_completos}?`)) return
-    await finalizarVisita(r.id, perfil?.id)
-    cargar()
+  async function salida() {
+    if (!confirmar) return
+    await finalizarVisita(confirmar.id, perfil?.id)
+    setConfirmar(null); cargar()
   }
 
   const filtrados = f.texto
@@ -129,7 +130,10 @@ export default function Visitas() {
                     <td className="px-3 py-2">{r.estado === 'activa' ? <Badge color="green">Dentro</Badge> : <Badge>Finalizada</Badge>}</td>
                     <td className="px-3 py-2 text-right">
                       {esStaff && r.estado === 'activa' &&
-                        <button onClick={() => salida(r)} className="rounded-lg bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700 hover:bg-rose-100 whitespace-nowrap">Registrar salida</button>}
+                        <button onClick={() => setConfirmar(r)} className="inline-flex items-center gap-1 rounded-lg bg-rose-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-rose-700 whitespace-nowrap">
+                          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7M13 16v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                          Registrar salida
+                        </button>}
                     </td>
                   </tr>
                 ))}
@@ -137,6 +141,37 @@ export default function Visitas() {
           </table>
         </div>
       </Card>
+
+      {/* Modal de confirmación de salida */}
+      <Modal open={!!confirmar} onClose={() => setConfirmar(null)} title="Registrar salida y devolver tarjeta">
+        {confirmar && (
+          <>
+            <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Visitante</div>
+              <div className="text-base font-semibold text-gray-800">{confirmar.visitante?.nombres_completos}</div>
+              <div className="text-sm text-gray-500">Cédula {confirmar.visitante?.cedula ?? '—'}{confirmar.visitante?.celular ? ` · ☎ ${confirmar.visitante.celular}` : ''}</div>
+              <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                <div><span className="text-gray-400 text-xs">Tarjeta</span><div className="font-medium text-brand">{confirmar.tarjeta?.codigo ?? '— sin tarjeta —'}</div></div>
+                <div><span className="text-gray-400 text-xs">Tipo</span><div>{TIPO_LABEL[confirmar.tipo_visitante] ?? confirmar.tipo_visitante}</div></div>
+                <div className="col-span-2"><span className="text-gray-400 text-xs">Paciente / ubicación</span>
+                  <div>{confirmar.paciente_nombre ? `${confirmar.paciente_nombre} · ${confirmar.ubicacion_etiqueta ?? ''}` : (confirmar.responsable?.nombre_completo ? `Resp.: ${confirmar.responsable.nombre_completo}` : 'Sin paciente asociado')}</div></div>
+                <div className="col-span-2"><span className="text-gray-400 text-xs">Ingreso</span><div>{horaCO(confirmar.created_at)}</div></div>
+              </div>
+            </div>
+            <p className="mt-3 text-sm text-gray-600">Al confirmar, se registra la salida, la tarjeta queda <b>disponible</b> y se libera el cupo de la habitación.</p>
+            <div className="mt-4 flex gap-2">
+              <button onClick={salida} className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                Confirmar salida
+              </button>
+              <button onClick={() => setConfirmar(null)} className="inline-flex items-center justify-center gap-2 rounded-lg bg-gray-100 px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-200">
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" /></svg>
+                Cancelar
+              </button>
+            </div>
+          </>
+        )}
+      </Modal>
     </div>
   )
 }

@@ -37,6 +37,11 @@ visitantes/
 └─ .github/workflows/deploy.yml CI/CD a GitHub Pages
 ```
 
+## Navegación
+Barra lateral azul con los módulos por rol + acordeón de Administración (solo admin).
+**Header superior** con los datos del usuario logueado (iniciales, nombre, rol, correo) y el
+botón de **cerrar sesión**.
+
 ## Branding
 - Azul principal `#0D2D6B`, contraste `#16468E` (Tailwind: `brand`, `brand-light`).
 - Cards/tablas/filtros con sombra (`shadow-card`).

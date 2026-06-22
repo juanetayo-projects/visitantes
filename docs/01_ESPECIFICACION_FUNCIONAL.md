@@ -50,10 +50,11 @@ asignar y liberar tarjetas de acceso, y consultar el flujo histórico con estad�
   y de salida/devolución de la tarjeta**; exportable a Excel/PDF.
 - **Tarjetas de acceso (operativo):**
   - **Inventario** de tarjetas: total, disponibles, en uso, inactivas; desglose por sede.
-  - **Tenencia** ("¿quién tiene cada tarjeta?"): listado de tarjetas en uso con su titular,
-    tipo, paciente/ubicación y hora de ingreso, con **filtros completos** (sede, piso,
-    ubicación, tipo, rango de fechas y búsqueda).
-  - **Registro de salida y devolución:** libera la tarjeta (queda disponible) y el cupo.
+  - **Listado filtrable** de tarjetas con su estado (disponible/en uso/inactiva), titular,
+    teléfono, paciente/ubicación y hora de ingreso, con **filtros completos** (estado, sede,
+    piso, ubicación, tipo, rango de fechas y búsqueda).
+  - **Registro de salida y devolución:** modal con los datos del visitante y botones de
+    confirmar/cancelar; libera la tarjeta (queda disponible) y el cupo.
 - **Mapa de calor:** mapa día×hora con filtros completos; clic en celda abre el detalle de
   las personas contabilizadas, exportable.
 - **Administración (CRUD):** usuarios, responsables, sedes/puertas/pisos/ubicaciones,
