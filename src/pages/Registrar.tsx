@@ -3,7 +3,7 @@ import { PageHeader, Card, Btn, selectCls, inputCls, Badge, Modal } from '../com
 import MapaHabitaciones from '../components/MapaHabitaciones'
 import { useAuth } from '../auth/AuthProvider'
 import {
-  listSedes, listPisos, listPuertas, listResponsables, listServicios, tarjetasDisponibles,
+  listSedes, listPisos, listPuertas, listUbicaciones, listResponsables, listServicios, tarjetasDisponibles,
   buscarVisitante, upsertVisitante, registrarVisita,
 } from '../lib/data'
 import type { Sede, Piso, Puerta, Responsable, Servicio, Tarjeta, TipoVisitante, OcupacionUbicacion } from '../lib/types'
@@ -32,6 +32,8 @@ export default function Registrar() {
   // selección
   const [sedeId, setSedeId] = useState('')
   const [pisoId, setPisoId] = useState('')
+  const [areas, setAreas] = useState<string[]>([])
+  const [area, setArea] = useState('')
   const [puertaId, setPuertaId] = useState('')
   const [tarjetaId, setTarjetaId] = useState('')
   const [sel, setSel] = useState<OcupacionUbicacion | null>(null)
@@ -65,6 +67,11 @@ export default function Registrar() {
     tarjetasDisponibles(sedeId).then(setTarjetas)
   }, [sedeId])
   useEffect(() => { listResponsables().then(setResponsables); listServicios().then(setServicios) }, [])
+  useEffect(() => {
+    setArea(''); setSel(null)
+    if (!pisoId) { setAreas([]); return }
+    listUbicaciones(pisoId).then((u) => setAreas([...new Set(u.map((x) => x.area).filter((a): a is string => !!a))]))
+  }, [pisoId])
 
   async function lookupCedula() {
     if (!cedula.trim()) return
@@ -156,8 +163,14 @@ export default function Registrar() {
                 <select className={selectCls} value={pisoId} onChange={(e) => { setPisoId(e.target.value); setSel(null) }}>
                   {pisos.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
                 </select>
+                {areas.length > 0 && (
+                  <select className={selectCls} value={area} onChange={(e) => { setArea(e.target.value); setSel(null) }}>
+                    <option value="">Todas las áreas</option>
+                    {areas.map((a) => <option key={a} value={a}>{a}</option>)}
+                  </select>
+                )}
               </div>
-              {pisoId && <MapaHabitaciones pisoId={pisoId} refreshKey={refreshMapa} onSelect={seleccionar} />}
+              {pisoId && <MapaHabitaciones pisoId={pisoId} refreshKey={refreshMapa} onSelect={seleccionar} area={area || undefined} />}
             </Card>
           )}
 
@@ -169,9 +182,10 @@ export default function Registrar() {
               <div className={`mb-4 rounded-lg border px-3 py-2 text-sm ${sel ? 'border-brand-light bg-brand-50' : 'border-dashed border-gray-300 bg-gray-50 text-gray-500'}`}>
                 {sel
                   ? <div>
-                      <div className="font-semibold text-brand flex items-center gap-2">Habitación {sel.etiqueta}
+                      <div className="font-semibold text-brand flex items-center gap-2">{sel.etiqueta}
                         {sel.aislamiento && <Badge color="red">Aislamiento {sel.aislamiento}</Badge>}
                       </div>
+                      {sel.area && <div className="text-xs text-brand-light">{sel.area}</div>}
                       <div className="text-gray-700">{sel.paciente_nombre} · # ingreso {sel.num_ingreso}</div>
                       <div className="text-xs text-gray-500">Cupo {sel.visitas.length}/{sel.cupo}{sel.visitas.length >= sel.cupo ? ' — completo' : ''}</div>
                     </div>

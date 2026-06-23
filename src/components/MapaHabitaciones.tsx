@@ -25,10 +25,11 @@ function Icono({ d, className }: { d: string; className?: string }) {
 
 const ICON_VIRUS = 'M12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10l2 2m0-14l-2 2M7 17l-2 2M12 8a4 4 0 100 8 4 4 0 000-8z'
 
-export default function MapaHabitaciones({ pisoId, onSelect, refreshKey = 0 }: {
+export default function MapaHabitaciones({ pisoId, onSelect, refreshKey = 0, area }: {
   pisoId: string
   onSelect?: (o: OcupacionUbicacion) => void
   refreshKey?: number
+  area?: string
 }) {
   const [ocup, setOcup] = useState<OcupacionUbicacion[]>([])
   const [loading, setLoading] = useState(true)
@@ -79,9 +80,9 @@ export default function MapaHabitaciones({ pisoId, onSelect, refreshKey = 0 }: {
         </span>
       </div>
 
-      {grupos.map(([area, items]) => (
-        <div key={area} className="mb-5">
-          {area !== '__' && <div className="mb-2 text-sm font-semibold text-brand">{area}</div>}
+      {grupos.filter(([k]) => !area || k === area).map(([grp, items]) => (
+        <div key={grp} className="mb-5">
+          {grp !== '__' && <div className="mb-2 text-sm font-semibold text-brand">{grp}</div>}
           <div className="grid gap-2.5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))' }}>
             {items.map((o) => {
               const est = estadoCelda(o)
@@ -94,11 +95,11 @@ export default function MapaHabitaciones({ pisoId, onSelect, refreshKey = 0 }: {
                   onClick={() => onSelect?.(o)}
                   className={`relative text-left rounded-lg border-2 ${s.bg} ${s.bd} px-2.5 py-2 transition hover:-translate-y-0.5 hover:shadow-card ${o.aislamiento ? 'ring-2 ring-rose-500 ring-offset-1' : ''}`}
                 >
-                  <div className="flex items-center justify-between">
-                    <span className={`text-[13px] font-semibold ${s.tx}`}>{o.etiqueta}</span>
+                  <div className="flex items-center justify-between gap-1">
+                    <span className={`min-w-0 truncate text-[13px] font-semibold ${s.tx}`} title={o.etiqueta}>{o.etiqueta}</span>
                     {o.aislamiento
-                      ? <Icono d={ICON_VIRUS} className="h-4 w-4 text-rose-600" />
-                      : <Icono d={s.icon} className={`h-4 w-4 ${s.tx} opacity-80`} />}
+                      ? <Icono d={ICON_VIRUS} className="h-4 w-4 shrink-0 text-rose-600" />
+                      : <Icono d={s.icon} className={`h-4 w-4 shrink-0 ${s.tx} opacity-80`} />}
                   </div>
                   {est !== 'libre'
                     ? <>
@@ -123,7 +124,10 @@ export default function MapaHabitaciones({ pisoId, onSelect, refreshKey = 0 }: {
           style={{ left: tip.x, top: tip.y }}>
           {/* Encabezado azul para destacar */}
           <div className="flex items-center justify-between gap-2 bg-brand px-3 py-2">
-            <span className="text-sm font-semibold text-white">{tip.o.etiqueta}</span>
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-white truncate">{tip.o.etiqueta}</div>
+              {tip.o.area && <div className="text-[11px] text-brand-100 truncate">{tip.o.area}</div>}
+            </div>
             {tip.o.aislamiento
               ? <span className="inline-flex items-center gap-1 rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-medium text-white">
                   <Icono d={ICON_VIRUS} className="h-3 w-3" /> Aislamiento {AISL_LABEL[tip.o.aislamiento]}
