@@ -43,9 +43,9 @@ export default function ImportarEstructura({ onDone }: { onDone?: () => void }) 
     wsP.views = [{ state: 'frozen', ySplit: 1 }]
 
     const wsU = wb.addWorksheet('Ubicaciones')
-    wsU.columns = [{ header: 'Sede', width: 22 }, { header: 'Piso', width: 34 }, { header: 'Area', width: 18 }, { header: 'Tipo', width: 14 }, { header: 'Etiqueta', width: 18 }, { header: 'Cupo', width: 8 }, { header: 'Orden', width: 8 }, { header: 'Activo', width: 8 }]
-    head(wsU, 8)
-    ;(ubic ?? []).forEach((u: any) => { const p = pisoById[u.piso_id]; wsU.addRow([sedeName[p?.sede_id], p?.nombre, u.area ?? '', u.tipo, u.etiqueta, u.cupo_default, u.orden, u.activo ? 'SI' : 'NO']) })
+    wsU.columns = [{ header: 'Sede', width: 22 }, { header: 'Piso', width: 34 }, { header: 'Area', width: 16 }, { header: 'Servicio', width: 26 }, { header: 'Tipo', width: 14 }, { header: 'Etiqueta', width: 18 }, { header: 'Cupo', width: 8 }, { header: 'Orden', width: 8 }, { header: 'Activo', width: 8 }]
+    head(wsU, 9)
+    ;(ubic ?? []).forEach((u: any) => { const p = pisoById[u.piso_id]; wsU.addRow([sedeName[p?.sede_id], p?.nombre, u.area ?? '', u.servicio ?? '', u.tipo, u.etiqueta, u.cupo_default, u.orden, u.activo ? 'SI' : 'NO']) })
     wsU.views = [{ state: 'frozen', ySplit: 1 }]
 
     const buf = await wb.xlsx.writeBuffer()
@@ -80,7 +80,8 @@ export default function ImportarEstructura({ onDone }: { onDone?: () => void }) 
         const etiqueta = String(row.getCell(iu['etiqueta']).value ?? '').trim()
         if (!sede || !piso || !etiqueta) return
         const area = String(row.getCell(iu['area']).value ?? '').trim()
-        ubicRows.push({ sede, piso, area: area || null, tipo: String(row.getCell(iu['tipo']).value ?? '').trim().toLowerCase(), etiqueta, cupo: num(row.getCell(iu['cupo']).value) || 1, orden: num(row.getCell(iu['orden']).value), activo: siNo(row.getCell(iu['activo']).value) })
+        const servicio = iu['servicio'] ? String(row.getCell(iu['servicio']).value ?? '').trim() : ''
+        ubicRows.push({ sede, piso, area: area || null, servicio: servicio || null, tipo: String(row.getCell(iu['tipo']).value ?? '').trim().toLowerCase(), etiqueta, cupo: num(row.getCell(iu['cupo']).value) || 1, orden: num(row.getCell(iu['orden']).value), activo: siNo(row.getCell(iu['activo']).value) })
       })
 
       const r = await importarEstructura(pisosRows, ubicRows, { desactivarFaltantes: desactivar })

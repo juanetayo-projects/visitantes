@@ -108,7 +108,7 @@ export default function Registrar() {
         responsable_id: tipo === 'proveedor' ? responsableId : null,
         permiso_alimentos: false,
         permiso_otros: permisoOtros || null,
-        servicio_paciente: tipo === 'colaborador' ? servicioVisita || null : sel?.area ?? null,
+        servicio_paciente: tipo === 'colaborador' ? servicioVisita || null : sel?.servicio ?? sel?.area ?? null,
         sede_id: sedeId || null,
         puerta_id: puertaId || null,
         tarjeta_id: tarjetaId || null,
@@ -185,7 +185,7 @@ export default function Registrar() {
                       <div className="font-semibold text-brand flex items-center gap-2">{sel.etiqueta}
                         {sel.aislamiento && <Badge color="red">Aislamiento {sel.aislamiento}</Badge>}
                       </div>
-                      {sel.area && <div className="text-xs text-brand-light">{sel.area}</div>}
+                      {(sel.area || sel.servicio) && <div className="text-xs text-brand-light">{[sel.area, sel.servicio].filter(Boolean).join(' · ')}</div>}
                       <div className="text-gray-700">{sel.paciente_nombre} · # ingreso {sel.num_ingreso}</div>
                       <div className="text-xs text-gray-500">Cupo {sel.visitas.length}/{sel.cupo}{sel.visitas.length >= sel.cupo ? ' — completo' : ''}</div>
                     </div>

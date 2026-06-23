@@ -53,7 +53,7 @@ export default function Ubicaciones() {
           subtitulo="Habitaciones, cubículos, camas, camillas y sillones por piso"
           columnas={[
             { key: 'etiqueta', label: 'Etiqueta' }, { key: 'tipo', label: 'Tipo' },
-            { key: 'area', label: 'Área' }, { key: 'piso_id', label: 'Piso' },
+            { key: 'area', label: 'Área' }, { key: 'servicio', label: 'Servicio' }, { key: 'piso_id', label: 'Piso' },
             { key: 'cupo_default', label: 'Cupo' }, { key: 'activo', label: 'Activo' },
           ]}
           campos={[
@@ -61,6 +61,7 @@ export default function Ubicaciones() {
             { key: 'tipo', label: 'Tipo', type: 'select', required: true, options: TIPOS },
             { key: 'piso_id', label: 'Piso', type: 'select', required: true, optionsTable: { tabla: 'pisos', labelKey: 'nombre', order: 'orden' } },
             { key: 'area', label: 'Área (opcional)', type: 'text' },
+            { key: 'servicio', label: 'Servicio / descripción (opcional)', type: 'text' },
             { key: 'cupo_default', label: 'Cupo', type: 'number', default: 2 },
             { key: 'orden', label: 'Orden', type: 'number', default: 0 },
             { key: 'activo', label: 'Activo', type: 'checkbox', default: true },

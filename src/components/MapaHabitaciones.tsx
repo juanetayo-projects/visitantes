@@ -126,7 +126,7 @@ export default function MapaHabitaciones({ pisoId, onSelect, refreshKey = 0, are
           <div className="flex items-center justify-between gap-2 bg-brand px-3 py-2">
             <div className="min-w-0">
               <div className="text-sm font-semibold text-white truncate">{tip.o.etiqueta}</div>
-              {tip.o.area && <div className="text-[11px] text-brand-100 truncate">{tip.o.area}</div>}
+              {(tip.o.area || tip.o.servicio) && <div className="text-[11px] text-brand-100 truncate">{[tip.o.area, tip.o.servicio].filter(Boolean).join(' · ')}</div>}
             </div>
             {tip.o.aislamiento
               ? <span className="inline-flex items-center gap-1 rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-medium text-white">

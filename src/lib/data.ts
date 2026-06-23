@@ -42,7 +42,7 @@ export async function tarjetasDisponibles(sedeId?: string): Promise<Tarjeta[]> {
 
 // ─── Importación de estructura (Pisos / Ubicaciones) ────────
 export interface FilaPiso { sede: string; numero: number; nombre: string; orden: number; activo: boolean }
-export interface FilaUbic { sede: string; piso: string; area: string | null; tipo: string; etiqueta: string; cupo: number; orden: number; activo: boolean }
+export interface FilaUbic { sede: string; piso: string; area: string | null; servicio?: string | null; tipo: string; etiqueta: string; cupo: number; orden: number; activo: boolean }
 export interface ResultadoImport { pisos: number; ubicaciones: number; pisosDesactivados: number; ubicDesactivadas: number; errores: string[] }
 
 const norm = (s: string) => (s ?? '').toString().trim().toLowerCase()
@@ -74,7 +74,7 @@ export async function importarEstructura(
     const sid = sedeId.get(norm(r.sede))
     const pid = sid ? pisoKey.get(sid + '|' + norm(r.piso)) : null
     if (!pid) { errores.push(`Ubicación "${r.etiqueta}": piso "${r.piso}" (sede "${r.sede}") no existe.`); return null }
-    return { piso_id: pid, area: r.area && r.area.trim() ? r.area.trim() : null, tipo: r.tipo, etiqueta: r.etiqueta, cupo_default: r.cupo, orden: r.orden, activo: r.activo }
+    return { piso_id: pid, area: r.area && r.area.trim() ? r.area.trim() : null, servicio: r.servicio && r.servicio.trim() ? r.servicio.trim() : null, tipo: r.tipo, etiqueta: r.etiqueta, cupo_default: r.cupo, orden: r.orden, activo: r.activo }
   }).filter(Boolean) as any[]
   if (ubicPayload.length) {
     const { error } = await supabase.from('ubicaciones').upsert(ubicPayload, { onConflict: 'piso_id,area,etiqueta' })
@@ -247,6 +247,7 @@ export async function getOcupacionPiso(pisoId: string): Promise<OcupacionUbicaci
       etiqueta: u.etiqueta,
       tipo: u.tipo as TipoUbicacion,
       area: u.area,
+      servicio: (u as any).servicio ?? null,
       cupo: u.cupo_default,
       num_ingreso: pac?.num_ingreso ?? null,
       paciente_nombre: pac?.nombre ?? null,

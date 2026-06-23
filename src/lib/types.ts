@@ -43,7 +43,8 @@ export type TipoUbicacion =
 export interface Ubicacion {
   id: string
   piso_id: string
-  area: string | null          // p.ej. "Observación-1", "UCI", "UCIN" (Urgencias / agrupador)
+  area: string | null          // p.ej. "Zona A", "Pediatria" (Urgencias / agrupador)
+  servicio: string | null      // descripción/servicio (p.ej. "HOSPITALIZACION 7 PISO")
   tipo: TipoUbicacion
   etiqueta: string             // "701A", "Cubículo 12", "Cama 3", "Tomografía"
   cupo_default: number
@@ -156,6 +157,7 @@ export interface OcupacionUbicacion {
   etiqueta: string
   tipo: TipoUbicacion
   area: string | null
+  servicio: string | null
   cupo: number
   // datos del paciente (espejo)
   num_ingreso: string | null
