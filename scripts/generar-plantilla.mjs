@@ -12,7 +12,7 @@ const env = Object.fromEntries(
 
 const supabase = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY)
 const { error: authErr } = await supabase.auth.signInWithPassword({
-  email: 'juan.etayo@cacsantabarbara.co', password: 'admin123*',
+  email: env.ADMIN_EMAIL, password: env.ADMIN_PASSWORD,   // definidos en .env.local (gitignored)
 })
 if (authErr) { console.error('Auth:', authErr.message); process.exit(1) }
 
