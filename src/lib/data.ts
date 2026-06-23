@@ -47,6 +47,16 @@ export interface ResultadoImport { pisos: number; ubicaciones: number; pisosDesa
 
 const norm = (s: string) => (s ?? '').toString().trim().toLowerCase()
 
+// Ordena las áreas de forma natural: "Zona A".."Zona E" primero, luego el resto (Pediatría…).
+export function ordenarAreas(areas: string[]): string[] {
+  const esZona = (a: string) => /^zona\b/i.test(a.trim())
+  return [...areas].sort((a, b) => {
+    const ra = esZona(a) ? 0 : 1, rb = esZona(b) ? 0 : 1
+    if (ra !== rb) return ra - rb
+    return a.localeCompare(b, 'es', { numeric: true, sensitivity: 'base' })
+  })
+}
+
 export async function importarEstructura(
   pisosRows: FilaPiso[], ubicRows: FilaUbic[], opts: { desactivarFaltantes?: boolean } = {},
 ): Promise<ResultadoImport> {

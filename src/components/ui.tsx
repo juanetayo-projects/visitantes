@@ -87,11 +87,11 @@ export function Modal({ open, onClose, title, children, maxWidth = 'max-w-md' }:
 }) {
   if (!open) return null
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onClick={onClose}>
-      <div className={`w-full ${maxWidth} rounded-2xl bg-white shadow-2xl`} onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3">
-          <div className="text-lg font-semibold text-brand">{title}</div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-700" aria-label="Cerrar">
+    <div className="modal-overlay fixed inset-0 z-50 grid place-items-center bg-[#061536]/55 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div className={`modal-panel w-full ${maxWidth} overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/5`} onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between gap-3 bg-gradient-to-r from-brand to-brand-light px-5 py-3.5">
+          <div className="text-base font-semibold text-white">{title}</div>
+          <button onClick={onClose} className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-white/80 transition hover:bg-white/20 hover:text-white" aria-label="Cerrar">
             <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" /></svg>
           </button>
         </div>

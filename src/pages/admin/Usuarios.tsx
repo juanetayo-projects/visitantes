@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { PageHeader, Card, Badge, selectCls, Btn, inputCls } from '../../components/ui'
+import { PageHeader, Card, Badge, selectCls, Btn, inputCls, Modal } from '../../components/ui'
 import { supabase } from '../../lib/supabase'
 import { ROL_LABEL, type Perfil, type Rol } from '../../lib/types'
 
@@ -86,26 +86,21 @@ export default function Usuarios() {
         </table>
       </Card>
 
-      {open && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onClick={() => setOpen(false)}>
-          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-4 text-lg font-semibold text-brand">Nuevo usuario</div>
-            <div className="space-y-3">
-              <input className={inputCls} placeholder="Nombre completo" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} />
-              <input className={inputCls} type="email" placeholder="Correo electrónico" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-              <input className={inputCls} type="text" placeholder="Contraseña (mín. 6)" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
-              <select className={inputCls} value={form.rol} onChange={(e) => setForm({ ...form, rol: e.target.value as Rol })}>
-                {(Object.keys(ROL_LABEL) as Rol[]).map((r) => <option key={r} value={r}>{ROL_LABEL[r]}</option>)}
-              </select>
-              {msg && !msg.ok && <p className="text-sm text-rose-600">{msg.t}</p>}
-            </div>
-            <div className="mt-4 flex gap-2">
-              <Btn onClick={crear} disabled={busy} className="flex-1">{busy ? 'Creando…' : 'Crear usuario'}</Btn>
-              <Btn variant="ghost" onClick={() => setOpen(false)}>Cancelar</Btn>
-            </div>
-          </div>
+      <Modal open={open} onClose={() => setOpen(false)} title="Nuevo usuario">
+        <div className="space-y-3">
+          <input className={inputCls} placeholder="Nombre completo" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} />
+          <input className={inputCls} type="email" placeholder="Correo electrónico" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          <input className={inputCls} type="text" placeholder="Contraseña (mín. 6)" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+          <select className={inputCls} value={form.rol} onChange={(e) => setForm({ ...form, rol: e.target.value as Rol })}>
+            {(Object.keys(ROL_LABEL) as Rol[]).map((r) => <option key={r} value={r}>{ROL_LABEL[r]}</option>)}
+          </select>
+          {msg && !msg.ok && <p className="text-sm text-rose-600">{msg.t}</p>}
         </div>
-      )}
+        <div className="mt-4 flex gap-2">
+          <Btn onClick={crear} disabled={busy} className="flex-1">{busy ? 'Creando…' : 'Crear usuario'}</Btn>
+          <Btn variant="ghost" onClick={() => setOpen(false)}>Cancelar</Btn>
+        </div>
+      </Modal>
     </div>
   )
 }

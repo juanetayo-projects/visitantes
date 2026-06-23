@@ -16,3 +16,9 @@ body {
 .hab-tip {
   box-shadow: 0 12px 32px rgba(13, 45, 107, 0.28), 0 2px 8px rgba(13, 45, 107, 0.18);
 }
+
+/* Animación de entrada de modales */
+@keyframes modalOverlayIn { from { opacity: 0 } to { opacity: 1 } }
+@keyframes modalPanelIn { from { opacity: 0; transform: translateY(8px) scale(0.98) } to { opacity: 1; transform: translateY(0) scale(1) } }
+.modal-overlay { animation: modalOverlayIn 0.15s ease-out }
+.modal-panel { animation: modalPanelIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) }

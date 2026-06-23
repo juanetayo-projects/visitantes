@@ -4,7 +4,7 @@ import MapaHabitaciones from '../components/MapaHabitaciones'
 import { useAuth } from '../auth/AuthProvider'
 import {
   listSedes, listPisos, listPuertas, listUbicaciones, listResponsables, listServicios, tarjetasDisponibles,
-  buscarVisitante, upsertVisitante, registrarVisita,
+  buscarVisitante, upsertVisitante, registrarVisita, ordenarAreas,
 } from '../lib/data'
 import type { Sede, Piso, Puerta, Responsable, Servicio, Tarjeta, TipoVisitante, OcupacionUbicacion } from '../lib/types'
 
@@ -70,7 +70,7 @@ export default function Registrar() {
   useEffect(() => {
     setArea(''); setSel(null)
     if (!pisoId) { setAreas([]); return }
-    listUbicaciones(pisoId).then((u) => setAreas([...new Set(u.map((x) => x.area).filter((a): a is string => !!a))]))
+    listUbicaciones(pisoId).then((u) => setAreas(ordenarAreas([...new Set(u.map((x) => x.area).filter((a): a is string => !!a))])))
   }, [pisoId])
 
   async function lookupCedula() {

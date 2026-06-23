@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '../lib/supabase'
-import { Card, Btn, inputCls, Badge } from './ui'
+import { Card, Btn, inputCls, Badge, Modal } from './ui'
 
 export type Lookups = Record<string, Map<string, string>>
 
@@ -158,10 +158,7 @@ export default function CrudTable({ tabla, titulo, columnas, campos, orderBy = '
         </table>
       </div>
 
-      {open && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onClick={() => setOpen(false)}>
-          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-4 text-lg font-semibold text-brand">{editing ? 'Editar' : 'Nuevo'} — {titulo}</div>
+      <Modal open={open} onClose={() => setOpen(false)} title={`${editing ? 'Editar' : 'Nuevo'} — ${titulo}`}>
             <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
               {campos.filter((c) => c.inForm !== false).map((c) => (
                 <div key={c.key}>
@@ -187,9 +184,7 @@ export default function CrudTable({ tabla, titulo, columnas, campos, orderBy = '
               <Btn onClick={guardar} className="flex-1">{editing ? 'Guardar cambios' : 'Crear'}</Btn>
               <Btn variant="ghost" onClick={() => setOpen(false)}>Cancelar</Btn>
             </div>
-          </div>
-        </div>
-      )}
+      </Modal>
     </Card>
   )
 }

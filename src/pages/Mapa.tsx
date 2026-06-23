@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { PageHeader, Card, selectCls } from '../components/ui'
 import MapaHabitaciones from '../components/MapaHabitaciones'
-import { listSedes, listPisos, listUbicaciones } from '../lib/data'
+import { listSedes, listPisos, listUbicaciones, ordenarAreas } from '../lib/data'
 import type { Sede, Piso } from '../lib/types'
 
 export default function Mapa() {
@@ -21,7 +21,7 @@ export default function Mapa() {
     setArea('')
     if (!pisoId) { setAreas([]); return }
     listUbicaciones(pisoId).then((u) => {
-      setAreas([...new Set(u.map((x) => x.area).filter((a): a is string => !!a))])
+      setAreas(ordenarAreas([...new Set(u.map((x) => x.area).filter((a): a is string => !!a))]))
     })
   }, [pisoId])
 
