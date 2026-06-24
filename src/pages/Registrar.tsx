@@ -37,7 +37,7 @@ export default function Registrar() {
   const [puertaId, setPuertaId] = useState('')
   const [tarjetaId, setTarjetaId] = useState('')
   const [sel, setSel] = useState<OcupacionUbicacion | null>(null)
-  const [aviso, setAviso] = useState<{ tipo: 'sinPaciente' | 'cupo' | 'tarjeta'; o?: OcupacionUbicacion } | null>(null)
+  const [aviso, setAviso] = useState<{ tipo: 'sinPaciente' | 'cupo' | 'tarjeta' | 'sinTarjetas'; o?: OcupacionUbicacion } | null>(null)
 
   // Maneja el clic en una habitación del mapa (ajustes 2 y 4)
   function seleccionar(o: OcupacionUbicacion) {
@@ -90,7 +90,7 @@ export default function Registrar() {
     if (!cedula.trim() || !nombres.trim()) { setMsg({ ok: false, texto: 'Cédula y nombres son obligatorios.' }); return }
     if (tipo === 'familiar' && !sel?.num_ingreso) { setMsg({ ok: false, texto: 'Selecciona la habitación del paciente en el mapa.' }); return }
     if (tipo === 'proveedor' && !responsableId) { setMsg({ ok: false, texto: 'Selecciona la persona responsable que acompaña.' }); return }
-    if (!tarjetaId) { setAviso({ tipo: 'tarjeta' }); return }
+    if (!tarjetaId) { setAviso({ tipo: tarjetas.length === 0 ? 'sinTarjetas' : 'tarjeta' }); return }
     setGuardando(true)
     try {
       const visitanteId = await upsertVisitante({ cedula, nombres_completos: nombres, celular: celular || null, email: email || null })
@@ -300,6 +300,21 @@ export default function Registrar() {
           <p className="text-sm text-gray-700">
             Esta ubicación <b>no tiene un paciente registrado</b> actualmente, por lo que no es posible
             registrar un visitante familiar aquí. Verifica el número de habitación o selecciona una ocupada.
+          </p>
+        </div>
+        <div className="mt-4 text-right"><Btn onClick={() => setAviso(null)}>Entendido</Btn></div>
+      </Modal>
+
+      {/* Sin tarjetas disponibles en la sede */}
+      <Modal open={aviso?.tipo === 'sinTarjetas'} onClose={() => setAviso(null)} title="Sin tarjetas de acceso disponibles">
+        <div className="flex items-start gap-3">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-rose-100 text-rose-600">
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M3 7a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2zM7 15h2" /></svg>
+          </span>
+          <p className="text-sm text-gray-700">
+            No hay <b>tarjetas de acceso disponibles</b> en esta sede en este momento (todas están en uso).
+            No es posible registrar el ingreso sin una tarjeta. Por favor <b>solicita al área administrativa
+            la compra de más tarjetas</b>, o registra primero la salida de algún visitante para liberar una.
           </p>
         </div>
         <div className="mt-4 text-right"><Btn onClick={() => setAviso(null)}>Entendido</Btn></div>
