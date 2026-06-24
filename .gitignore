@@ -11,3 +11,7 @@ npm-debug.log*
 .vite
 /images/
 docs/planilla.jpeg
+
+# Datos clínicos / muestras con PII — nunca al repo
+docs/*.json
+docs/*.csv
