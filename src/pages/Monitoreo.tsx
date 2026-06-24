@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { monitoreoResumen, feedReciente, ocupacionPorPiso, heatmapDiaHora, type ResumenMonitoreo, type FeedItem, type PisoOcup } from '../lib/data'
+import { monitoreoResumen, feedReciente, ocupacionPorPiso, listVisitas, type ResumenMonitoreo, type FeedItem, type PisoOcup, type VisitaListado } from '../lib/data'
 import { hoyColombia } from '../lib/festivosColombia'
+import HeatmapDiaHora from '../components/HeatmapDiaHora'
 
-const DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 const PALETA = ['#0d2444', '#13335c', '#185FA5', '#2f7ccb', '#378ADD', '#6aa6e6', '#85B7EB']
 const REFRESCO_MS = 45_000
 
@@ -42,13 +42,13 @@ export default function Monitoreo() {
   const [m, setM] = useState<ResumenMonitoreo | null>(null)
   const [feed, setFeed] = useState<FeedItem[]>([])
   const [pisos, setPisos] = useState<PisoOcup[]>([])
-  const [heat, setHeat] = useState<{ matriz: number[][]; max: number }>({ matriz: [], max: 0 })
+  const [visitasHeat, setVisitasHeat] = useState<VisitaListado[]>([])
   const [reloj, setReloj] = useState('')
   const [actualizado, setActualizado] = useState('')
 
   async function cargar() {
-    const [me, fe, pi, he] = await Promise.all([monitoreoResumen(hoyColombia()), feedReciente(14), ocupacionPorPiso(), heatmapDiaHora()])
-    setM(me); setFeed(fe); setPisos(pi); setHeat(he)
+    const [me, fe, pi, vh] = await Promise.all([monitoreoResumen(hoyColombia()), feedReciente(14), ocupacionPorPiso(), listVisitas({ estado: '' })])
+    setM(me); setFeed(fe); setPisos(pi); setVisitasHeat(vh)
     setActualizado(new Date(Date.now() - 5 * 3_600_000).toISOString().substring(11, 19))
   }
   useEffect(() => { cargar(); const t = setInterval(cargar, REFRESCO_MS); return () => clearInterval(t) }, [])
@@ -57,7 +57,6 @@ export default function Monitoreo() {
     return () => clearInterval(t)
   }, [])
 
-  const horas = Array.from({ length: 24 }, (_, h) => h)
   const maxPiso = Math.max(1, ...pisos.map((p) => p.n))
 
   return (
@@ -94,15 +93,19 @@ export default function Monitoreo() {
         <div style={{ ...PANEL, padding: 14 }}>
           <div className="flex items-center justify-between mb-2.5">
             <span style={{ fontSize: 13, fontWeight: 500, color: '#B5D4F4' }}>Mapa de calor · ingresos por día y hora</span>
-            <span style={{ fontSize: 11, color: '#5b7aa6' }}>GMT-5</span>
+            <span style={{ fontSize: 11, color: '#5b7aa6' }}>GMT-5 · pasa el mouse para ver registros</span>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: `30px repeat(24, 1fr)`, gap: 3, alignItems: 'center' }}>
-            <div />
-            {horas.map((h) => <div key={h} style={{ textAlign: 'center', fontSize: 9, color: '#5b7aa6' }}>{h % 2 === 0 ? h : ''}</div>)}
-            {DIAS.map((d, di) => (
-              <DiaFila key={d} dia={d} fila={heat.matriz[di] ?? []} max={heat.max} />
-            ))}
-          </div>
+          <HeatmapDiaHora
+            registros={visitasHeat}
+            getFecha={(r) => r.created_at}
+            dark
+            columnas={[
+              { header: 'Hora', get: (r) => horaCO(r.created_at) },
+              { header: 'Visitante', get: (r) => r.visitante?.nombres_completos ?? '' },
+              { header: 'Ubicación', get: (r) => r.ubicacion_etiqueta ?? '' },
+              { header: 'Tipo', get: (r) => r.tipo_visitante },
+            ]}
+          />
           <div className="flex items-center gap-1.5 mt-2" style={{ fontSize: 10, color: '#5b7aa6' }}>
             menos
             <span className="inline-flex gap-0.5">{PALETA.slice(1, 6).map((c) => <i key={c} style={{ width: 12, height: 8, background: c, borderRadius: 2, display: 'inline-block' }} />)}</span>
@@ -145,26 +148,5 @@ export default function Monitoreo() {
 
       <div className="mt-3 text-right" style={{ fontSize: 10, color: '#5b7aa6' }}>Actualizado {actualizado} · refresco automático cada {REFRESCO_MS / 1000}s</div>
     </div>
-  )
-}
-
-function DiaFila({ dia, fila, max }: { dia: string; fila: number[]; max: number }) {
-  const horas = Array.from({ length: 24 }, (_, h) => h)
-  return (
-    <>
-      <div style={{ fontSize: 10, color: '#85B7EB', textAlign: 'right', paddingRight: 2 }}>{dia}</div>
-      {horas.map((h) => {
-        const v = fila[h] ?? 0
-        const lvl = max > 0 ? Math.round((v / max) * (PALETA.length - 1)) : 0
-        const pico = max > 0 && v >= 0.85 * max && v > 0
-        return (
-          <div key={h} className={pico ? 'cm-pulse' : ''}
-            title={`${dia} ${String(h).padStart(2, '0')}:00 — ${v} ingreso(s)`}
-            style={{ height: 18, borderRadius: 3, background: pico ? '#85B7EB' : PALETA[lvl], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: lvl >= 4 ? '#04284f' : '#cfe2f7', fontWeight: 500 }}>
-            {v > 0 && max <= 40 ? v : ''}
-          </div>
-        )
-      })}
-    </>
   )
 }
