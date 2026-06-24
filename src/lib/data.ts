@@ -399,6 +399,75 @@ export async function metricasDashboard(hoy: string): Promise<Metricas> {
   }
 }
 
+// ─── Centro de monitoreo ────────────────────────────────────
+export interface ResumenMonitoreo { activas: number; conAcomp: number; pacientes: number; aislamiento: number; ingresosHoy: number }
+export async function monitoreoResumen(hoy: string): Promise<ResumenMonitoreo> {
+  const [act, pac, ais, hoyEv] = await Promise.all([
+    supabase.from('visitas').select('num_ingreso').eq('estado', 'activa'),
+    supabase.from('pacientes_ubicacion').select('id', { count: 'exact', head: true }),
+    supabase.from('aislamientos').select('id', { count: 'exact', head: true }).eq('vigente', true),
+    supabase.from('visita_eventos').select('id', { count: 'exact', head: true }).eq('tipo', 'ingreso').gte('hora', hoy + 'T00:00:00-05:00'),
+  ])
+  const rows = (act.data ?? []) as { num_ingreso: string | null }[]
+  return {
+    activas: rows.length,
+    conAcomp: new Set(rows.map((r) => r.num_ingreso).filter(Boolean)).size,
+    pacientes: pac.count ?? 0,
+    aislamiento: ais.count ?? 0,
+    ingresosHoy: hoyEv.count ?? 0,
+  }
+}
+
+
+export interface FeedItem {
+  hora: string
+  tipo: 'ingreso' | 'salida'
+  visitante: string
+  ubicacion: string | null
+  tipo_visitante: string | null
+  tipo_acompanante: string | null
+}
+export async function feedReciente(limit = 14): Promise<FeedItem[]> {
+  const { data } = await supabase.from('visita_eventos')
+    .select('tipo, hora, visita:visitas(tipo_visitante, tipo_acompanante, ubicacion_etiqueta, visitante:visitantes(nombres_completos))')
+    .order('hora', { ascending: false }).limit(limit)
+  return (data ?? []).map((e: any) => ({
+    hora: e.hora,
+    tipo: e.tipo,
+    visitante: e.visita?.visitante?.nombres_completos ?? '—',
+    ubicacion: e.visita?.ubicacion_etiqueta ?? null,
+    tipo_visitante: e.visita?.tipo_visitante ?? null,
+    tipo_acompanante: e.visita?.tipo_acompanante ?? null,
+  })) as FeedItem[]
+}
+
+export interface PisoOcup { piso: string; orden: number; n: number }
+export async function ocupacionPorPiso(): Promise<PisoOcup[]> {
+  const { data } = await supabase.from('visitas')
+    .select('piso_id, piso:pisos(nombre, orden)').eq('estado', 'activa')
+  const m = new Map<string, PisoOcup>()
+  ;(data ?? []).forEach((v: any) => {
+    const nombre = v.piso?.nombre ?? 'Sin piso'
+    const cur = m.get(nombre) ?? { piso: nombre, orden: v.piso?.orden ?? 99, n: 0 }
+    cur.n++; m.set(nombre, cur)
+  })
+  return Array.from(m.values()).sort((a, b) => a.orden - b.orden)
+}
+
+// Matriz 7×24 (día×hora, Colombia GMT-5) de ingresos para el mapa de calor del monitoreo.
+export async function heatmapDiaHora(): Promise<{ matriz: number[][]; max: number }> {
+  const evs = await eventosIngreso()
+  const m: number[][] = Array.from({ length: 7 }, () => Array(24).fill(0))
+  let max = 0
+  evs.forEach((e) => {
+    const co = new Date(new Date(e.hora).getTime() - 5 * 3_600_000)
+    const dow = (co.getUTCDay() + 6) % 7
+    m[dow][co.getUTCHours()]++
+  })
+  m.forEach((r) => r.forEach((v) => { if (v > max) max = v }))
+  return { matriz: m, max }
+}
+
 // ─── Visitantes ─────────────────────────────────────────────
 export async function buscarVisitante(cedula: string) {
   const { data } = await supabase.from('visitantes').select('*').eq('cedula', cedula.trim()).maybeSingle()

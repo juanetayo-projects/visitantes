@@ -7,6 +7,7 @@ import Registrar from './pages/Registrar'
 import Visitas from './pages/Visitas'
 import Mapa from './pages/Mapa'
 import Estadisticas from './pages/Estadisticas'
+import Monitoreo from './pages/Monitoreo'
 import Tarjetas from './pages/Tarjetas'
 import Historico from './pages/Historico'
 import Usuarios from './pages/admin/Usuarios'
@@ -38,6 +39,7 @@ export default function App() {
               <Route path="mapa" element={<Mapa />} />
               <Route path="tarjetas" element={<Tarjetas />} />
               <Route path="estadisticas" element={<Estadisticas />} />
+              <Route path="monitoreo" element={<Monitoreo />} />
               <Route path="admin/usuarios" element={<Usuarios />} />
               <Route path="admin/responsables" element={<Responsables />} />
               <Route path="admin/ubicaciones" element={<Ubicaciones />} />
