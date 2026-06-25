@@ -12,6 +12,7 @@ const COLS: Columna<VisitaListado>[] = [
   { header: 'Fecha/hora salida', get: (r) => (r.salida_at ? horaCO(r.salida_at) : '') },
   { header: 'Visitante', get: (r) => r.visitante?.nombres_completos ?? '' },
   { header: 'Cédula', get: (r) => r.visitante?.cedula ?? '' },
+  { header: 'Celular', get: (r) => r.visitante?.celular ?? '' },
   { header: 'Tipo', get: (r) => TIPO_LABEL[r.tipo_visitante] ?? r.tipo_visitante },
   { header: 'Acompañante', get: (r) => r.tipo_acompanante ?? '' },
   { header: 'Paciente', get: (r) => r.paciente_nombre ?? '' },
@@ -89,7 +90,18 @@ export default function Historico() {
                     <td className="px-3 py-2 whitespace-nowrap text-gray-600">{r.salida_at ? horaCO(r.salida_at) : <span className="text-gray-300">— dentro —</span>}</td>
                     <td className="px-3 py-2">
                       <div className="font-medium text-gray-800">{r.visitante?.nombres_completos}</div>
-                      <div className="text-xs text-gray-500">{r.visitante?.cedula}</div>
+                      <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-500">
+                        <span className="inline-flex items-center gap-1" title="Cédula">
+                          <svg className="h-3.5 w-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 7a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2zM7 9h4M7 13h2m4-4h4m-4 4h4" /></svg>
+                          {r.visitante?.cedula ?? '—'}
+                        </span>
+                        {r.visitante?.celular && (
+                          <a href={`tel:${r.visitante.celular}`} className="inline-flex items-center gap-1 text-brand-light hover:underline" title="Celular">
+                            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h2.3a1 1 0 01.95.68l1 3a1 1 0 01-.5 1.2L7 9a11 11 0 005 5l1.1-1.7a1 1 0 011.2-.5l3 1a1 1 0 01.7.95V19a2 2 0 01-2 2A16 16 0 013 5z" /></svg>
+                            {r.visitante.celular}
+                          </a>
+                        )}
+                      </div>
                     </td>
                     <td className="px-3 py-2">
                       <Badge color={r.tipo_visitante === 'familiar' ? 'blue' : r.tipo_visitante === 'proveedor' ? 'amber' : 'gray'}>{TIPO_LABEL[r.tipo_visitante]}</Badge>

@@ -52,6 +52,24 @@ export interface Ubicacion {
   activo: boolean
 }
 
+// ─── Horarios de visita por servicio (política 6.1) ─────────────────
+export interface HorarioVisita {
+  id: string
+  servicio: string
+  match_censo: string | null
+  aplica_aislamiento: boolean
+  ventana1_inicio: string          // "HH:MM" / "HH:MM:SS"
+  ventana1_fin: string
+  ventana2_inicio: string | null
+  ventana2_fin: string | null
+  duracion_horas: number | null
+  max_por_dia: number
+  max_simultaneo: number | null    // null ⇒ usa el cupo de la ubicación
+  prioridad: number
+  notas: string | null
+  activo: boolean
+}
+
 // ─── Personas ───────────────────────────────────────────────────────
 export interface Responsable {
   id: string
@@ -131,6 +149,9 @@ export interface Visita {
   aislamiento: TipoAislamiento | null
   // Proveedor
   responsable_id: string | null
+  // Autorización excepcional (fuera de horario / excede cupo)
+  autorizado_por_id: string | null
+  autorizacion_motivo: string | null
   // Permisos
   permiso_alimentos: boolean
   permiso_otros: string | null

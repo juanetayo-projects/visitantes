@@ -13,10 +13,15 @@ const AISL_LABEL: Record<TipoAislamiento, string> = {
   contacto: 'Contacto', gotas: 'Gotas', aereo: 'Aéreo', protector: 'Protector', estricto: 'Estricto',
 }
 
-function horaCorta(iso: string | null): string {
+// Fecha y hora de ingreso en hora Colombia (GMT-5): "25/06 03:14 p.m."
+function fechaHora(iso: string | null): string {
   if (!iso) return '—'
   const co = new Date(new Date(iso).getTime() - 5 * 3_600_000)
-  return co.toISOString().substring(11, 16)
+  const dd = String(co.getUTCDate()).padStart(2, '0')
+  const mm = String(co.getUTCMonth() + 1).padStart(2, '0')
+  let h = co.getUTCHours(); const min = String(co.getUTCMinutes()).padStart(2, '0')
+  const ap = h < 12 ? 'a.m.' : 'p.m.'; h = h % 12 === 0 ? 12 : h % 12
+  return `${dd}/${mm} ${h}:${min} ${ap}`
 }
 
 function Icono({ d, className }: { d: string; className?: string }) {
@@ -153,7 +158,7 @@ export default function MapaHabitaciones({ pisoId, onSelect, refreshKey = 0, are
                     <div key={v.visita_id} className="flex items-center justify-between gap-2 rounded-md border border-gray-100 bg-gray-50 px-2 py-1.5">
                       <div className="min-w-0">
                         <div className="text-[12px] font-medium text-gray-800 truncate">{v.visitante_nombre}</div>
-                        <div className="text-[11px] text-gray-500">{horaCorta(v.hora_ingreso)} · {v.tarjeta_codigo ?? 'sin tarjeta'}</div>
+                        <div className="text-[11px] text-gray-500">Ingresó {fechaHora(v.hora_ingreso)} · {v.tarjeta_codigo ?? 'sin tarjeta'}</div>
                         {v.celular && <div className="text-[11px] text-brand-light">☎ {v.celular}</div>}
                       </div>
                       <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${v.tipo_acompanante === 'permanente' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>

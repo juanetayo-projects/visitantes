@@ -23,6 +23,7 @@ const ADMIN: Item[] = [
   { to: '/admin/responsables', label: 'Responsables', icon: '', roles: ['admin'] },
   { to: '/admin/ubicaciones', label: 'Sedes y ubicaciones', icon: '', roles: ['admin'] },
   { to: '/admin/servicios', label: 'Servicios y cargos', icon: '', roles: ['admin'] },
+  { to: '/admin/horarios', label: 'Horarios de visita', icon: '', roles: ['admin'] },
   { to: '/admin/tarjetas', label: 'Tarjetas (catálogo)', icon: '', roles: ['admin'] },
   { to: '/admin/visitantes', label: 'Visitantes', icon: '', roles: ['admin'] },
   { to: '/admin/festivos', label: 'Festivos', icon: '', roles: ['admin'] },

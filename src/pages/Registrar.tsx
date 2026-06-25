@@ -4,9 +4,33 @@ import MapaHabitaciones from '../components/MapaHabitaciones'
 import { useAuth } from '../auth/AuthProvider'
 import {
   listSedes, listPisos, listPuertas, listUbicaciones, listResponsables, listServicios, tarjetasDisponibles,
-  buscarVisitante, upsertVisitante, registrarVisita, ordenarAreas,
+  buscarVisitante, upsertVisitante, registrarVisita, ordenarAreas, evaluarRestricciones, type EvalRestriccion,
 } from '../lib/data'
 import type { Sede, Piso, Puerta, Responsable, Servicio, Tarjeta, TipoVisitante, OcupacionUbicacion } from '../lib/types'
+
+// Fecha y hora de ingreso en hora Colombia (GMT-5): "25/06 03:14 p.m."
+function fechaHoraCO(iso: string | null): string {
+  if (!iso) return '—'
+  const co = new Date(new Date(iso).getTime() - 5 * 3_600_000)
+  const dd = String(co.getUTCDate()).padStart(2, '0')
+  const mm = String(co.getUTCMonth() + 1).padStart(2, '0')
+  let h = co.getUTCHours(); const min = String(co.getUTCMinutes()).padStart(2, '0')
+  const ap = h < 12 ? 'a.m.' : 'p.m.'; h = h % 12 === 0 ? 12 : h % 12
+  return `${dd}/${mm} ${h}:${min} ${ap}`
+}
+
+// Texto del motivo de autorización a partir de las restricciones detectadas.
+function motivoAutorizacion(r: EvalRestriccion | null): string {
+  if (!r) return ''
+  const p: string[] = []
+  if (r.fueraHorario) p.push(`Fuera de horario (${r.ventanas})`)
+  if (r.excedeSimultaneo) p.push(`Excede máx. simultáneo (${r.limiteSimultaneo})`)
+  if (r.excedeDia) p.push(`Excede máx. por día (${r.maxPorDia})`)
+  return p.join('; ')
+}
+
+// La regla institucional: pacientes ≥65 o ≤18 años requieren acompañante permanente.
+const requierePermanente = (edad: number | null | undefined) => edad != null && (edad >= 65 || edad <= 18)
 
 const TIPOS: { v: TipoVisitante; label: string; icon: string; desc: string }[] = [
   { v: 'familiar', label: 'Familiar', icon: 'M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4z', desc: 'Acompañante de un paciente' },
@@ -37,13 +61,21 @@ export default function Registrar() {
   const [puertaId, setPuertaId] = useState('')
   const [tarjetaId, setTarjetaId] = useState('')
   const [sel, setSel] = useState<OcupacionUbicacion | null>(null)
-  const [aviso, setAviso] = useState<{ tipo: 'sinPaciente' | 'cupo' | 'tarjeta' | 'sinTarjetas'; o?: OcupacionUbicacion } | null>(null)
+  const [aviso, setAviso] = useState<{ tipo: 'sinPaciente' | 'autorizacion' | 'tarjeta' | 'sinTarjetas'; o?: OcupacionUbicacion } | null>(null)
 
-  // Maneja el clic en una habitación del mapa (ajustes 2 y 4)
+  // Restricciones (horario / cupo) del paciente seleccionado y datos de autorización excepcional
+  const [restric, setRestric] = useState<EvalRestriccion | null>(null)
+  const [autorizadoPorId, setAutorizadoPorId] = useState('')
+  const [autorizacionObs, setAutorizacionObs] = useState('')
+
+  // Maneja el clic en una habitación del mapa: valida paciente y evalúa horario/cupos.
   function seleccionar(o: OcupacionUbicacion) {
     if (!o.num_ingreso) { setAviso({ tipo: 'sinPaciente' }); return }
-    if (o.visitas.length >= o.cupo) { setAviso({ tipo: 'cupo', o }); return }
     setSel(o)
+    setRestric(null)
+    // Regla de edad: ≥65 o ≤18 ⇒ acompañante permanente
+    if (requierePermanente(o.edad)) setTipoAcomp('permanente')
+    evaluarRestricciones(o).then(setRestric)
   }
 
   // visitante
@@ -83,14 +115,35 @@ export default function Registrar() {
   function reset() {
     setTipo(null); setSel(null); setCedula(''); setNombres(''); setCelular(''); setEmail(''); setExiste(false)
     setTipoAcomp('visita'); setPermisoOtros(''); setResponsableId(''); setServicioVisita(''); setTarjetaId('')
+    setRestric(null); setAutorizadoPorId(''); setAutorizacionObs('')
   }
 
-  async function guardar() {
+  const restriccionActiva = !!restric && (restric.fueraHorario || restric.excedeSimultaneo || restric.excedeDia)
+
+  // Validaciones básicas; si hay restricción de horario/cupo abre el modal de autorización.
+  function guardar() {
     setMsg(null)
     if (!cedula.trim() || !nombres.trim()) { setMsg({ ok: false, texto: 'Cédula y nombres son obligatorios.' }); return }
     if (tipo === 'familiar' && !sel?.num_ingreso) { setMsg({ ok: false, texto: 'Selecciona la habitación del paciente en el mapa.' }); return }
     if (tipo === 'proveedor' && !responsableId) { setMsg({ ok: false, texto: 'Selecciona la persona responsable que acompaña.' }); return }
     if (!tarjetaId) { setAviso({ tipo: tarjetas.length === 0 ? 'sinTarjetas' : 'tarjeta' }); return }
+    // Fuera de horario o excede el cupo ⇒ pedir autorización (permite continuar)
+    if (tipo === 'familiar' && restriccionActiva && !autorizadoPorId) { setAviso({ tipo: 'autorizacion', o: sel ?? undefined }); return }
+    doGuardar()
+  }
+
+  // Confirma desde el modal de autorización (ya se eligió el responsable que autoriza).
+  function continuarConAutorizacion() {
+    if (!autorizadoPorId) return
+    setAviso(null)
+    doGuardar()
+  }
+
+  async function doGuardar() {
+    const autorizado = restriccionActiva && autorizadoPorId
+    const motivo = autorizado
+      ? motivoAutorizacion(restric) + (autorizacionObs.trim() ? ` — ${autorizacionObs.trim()}` : '')
+      : null
     setGuardando(true)
     try {
       const visitanteId = await upsertVisitante({ cedula, nombres_completos: nombres, celular: celular || null, email: email || null })
@@ -106,6 +159,8 @@ export default function Registrar() {
         piso_id: tipo === 'familiar' ? pisoId : null,
         aislamiento: sel?.aislamiento ?? null,
         responsable_id: tipo === 'proveedor' ? responsableId : null,
+        autorizado_por_id: autorizado ? autorizadoPorId : null,
+        autorizacion_motivo: motivo,
         permiso_alimentos: false,
         permiso_otros: permisoOtros || null,
         servicio_paciente: tipo === 'colaborador' ? servicioVisita || null : sel?.servicio ?? sel?.area ?? null,
@@ -114,7 +169,7 @@ export default function Registrar() {
         tarjeta_id: tarjetaId || null,
         registrado_por: perfil?.id ?? null,
       })
-      setMsg({ ok: true, texto: `Visita registrada para ${nombres}.` })
+      setMsg({ ok: true, texto: `Visita registrada para ${nombres}.${autorizado ? ' (ingreso autorizado excepcionalmente)' : ''}` })
       setRefreshMapa((k) => k + 1)
       tarjetasDisponibles(sedeId).then(setTarjetas)
       reset()
@@ -176,24 +231,43 @@ export default function Registrar() {
 
           {/* Formulario */}
           <Card className={`p-5 ${tipo === 'familiar' ? 'lg:col-span-2' : 'lg:col-span-5'}`}>
-            <div className="text-sm font-semibold text-brand mb-3">{tipo === 'familiar' ? '3. Datos del visitante' : '2. Datos del visitante'}</div>
+            <div className="text-sm font-semibold text-brand mb-3">{tipo === 'familiar' ? '3. Registro de la visita' : '2. Datos del visitante'}</div>
 
             {tipo === 'familiar' && (
-              <div className={`mb-4 rounded-lg border px-3 py-2 text-sm ${sel ? 'border-brand-light bg-brand-50' : 'border-dashed border-gray-300 bg-gray-50 text-gray-500'}`}>
+              <div className={`mb-4 rounded-lg border px-3 py-2.5 text-sm ${sel ? 'border-brand-light bg-brand-50' : 'border-dashed border-gray-300 bg-gray-50 text-gray-500'}`}>
                 {sel
                   ? <div>
-                      <div className="font-semibold text-brand flex items-center gap-2">{sel.etiqueta}
+                      <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-brand-light">
+                        <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                        Paciente seleccionado
+                      </div>
+                      <div className="text-base font-bold leading-tight text-brand">{sel.paciente_nombre}{sel.edad != null ? ` · ${sel.edad} años` : ''}</div>
+                      <div className="text-gray-700"># ingreso {sel.num_ingreso} · {sel.etiqueta}
                         {sel.aislamiento && <Badge color="red">Aislamiento {sel.aislamiento}</Badge>}
                       </div>
                       {(sel.area || sel.servicio) && <div className="text-xs text-brand-light">{[sel.area, sel.servicio].filter(Boolean).join(' · ')}</div>}
-                      <div className="text-gray-700">{sel.paciente_nombre} · # ingreso {sel.num_ingreso}</div>
-                      <div className="text-xs text-gray-500">Cupo {sel.visitas.length}/{sel.cupo}{sel.visitas.length >= sel.cupo ? ' — completo' : ''}</div>
+                      <div className="text-xs text-gray-500">Cupo {sel.visitas.length}/{restric?.limiteSimultaneo ?? sel.cupo}{restric ? ` · ${restric.visitasHoy} visita(s) hoy` : ''}</div>
                     </div>
                   : 'Selecciona una habitación ocupada en el mapa →'}
               </div>
             )}
 
+            {/* Avisos de regla institucional */}
+            {tipo === 'familiar' && sel && requierePermanente(sel.edad) && (
+              <div className="mb-3 flex items-start gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <span>Paciente de <b>{sel.edad} años</b> ({sel.edad! <= 18 ? 'menor de edad' : 'adulto mayor'}): requiere <b>acompañante permanente</b>.</span>
+              </div>
+            )}
+            {tipo === 'familiar' && restriccionActiva && (
+              <div className="mb-3 flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.3 3.9l-8 14A2 2 0 004 21h16a2 2 0 001.7-3.1l-8-14a2 2 0 00-3.4 0z" /></svg>
+                <span>{motivoAutorizacion(restric)}. Al registrar se pedirá <b>autorización</b>.</span>
+              </div>
+            )}
+
             <div className="space-y-3">
+              {tipo === 'familiar' && <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">Datos del visitante</div>}
               <div className="grid grid-cols-3 gap-2">
                 <div className="col-span-2">
                   <label className="block text-xs font-medium text-gray-500 mb-1">Cédula *</label>
@@ -334,32 +408,64 @@ export default function Registrar() {
         <div className="mt-4 text-right"><Btn onClick={() => setAviso(null)}>Entendido</Btn></div>
       </Modal>
 
-      {/* Ajuste 4: cupo completo (máximo de visitantes alcanzado) */}
-      <Modal open={aviso?.tipo === 'cupo'} onClose={() => setAviso(null)} title="Cupo de visitantes completo">
-        {aviso?.o && (
+      {/* Fuera de horario / excede cupo → autorización excepcional (permite continuar) */}
+      <Modal open={aviso?.tipo === 'autorizacion'} onClose={() => setAviso(null)} title="Ingreso fuera de las condiciones de visita">
+        {aviso?.o && restric && (
           <>
-            <div className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
-              La habitación <b>{aviso.o.etiqueta}</b> ({aviso.o.paciente_nombre}) ya alcanzó el máximo de
-              <b> {aviso.o.cupo} visitante(s)</b>. No es posible registrar otro hasta que alguno registre su salida.
+            <div className="flex items-start gap-3">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-amber-100 text-amber-600">
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.3 3.9l-8 14A2 2 0 004 21h16a2 2 0 001.7-3.1l-8-14a2 2 0 00-3.4 0z" /></svg>
+              </span>
+              <div className="text-sm text-gray-700">
+                Este ingreso <b>no cumple</b> las condiciones de visita de <b>{restric.horario?.servicio ?? 'este servicio'}</b>:
+                <ul className="mt-1.5 list-disc space-y-0.5 pl-5">
+                  {restric.fueraHorario && <li>Fuera del horario permitido (<b>{restric.ventanas}</b>).</li>}
+                  {restric.excedeSimultaneo && <li>Excede el máximo de <b>{restric.limiteSimultaneo}</b> acompañante(s) simultáneo(s).</li>}
+                  {restric.excedeDia && <li>Excede el máximo de <b>{restric.maxPorDia}</b> visita(s) por día (ya van {restric.visitasHoy}).</li>}
+                </ul>
+                {restric.horario?.notas && <div className="mt-1.5 text-xs text-gray-500">{restric.horario.notas}</div>}
+                <div className="mt-2">Puedes <b>continuar</b> registrando quién autoriza el ingreso de forma excepcional.</div>
+              </div>
             </div>
-            <div className="mt-3 text-xs font-semibold uppercase tracking-wide text-gray-400">Visitantes actuales</div>
-            <div className="mt-1 space-y-2">
-              {aviso.o.visitas.map((v) => (
-                <div key={v.visita_id} className="flex items-center justify-between gap-2 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
-                  <div>
-                    <div className="text-sm font-medium text-gray-800">{v.visitante_nombre}</div>
-                    <div className="text-xs text-gray-500">
-                      Tarjeta {v.tarjeta_codigo ?? '—'}
-                      {v.celular && <> · <a href={`tel:${v.celular}`} className="text-brand-light hover:underline">{v.celular}</a></>}
+
+            <div className="mt-4">
+              <label className="block text-xs font-medium text-gray-500 mb-1">Autoriza el ingreso (responsable) *</label>
+              <select className={`${inputCls} ${!autorizadoPorId ? 'border-amber-300' : ''}`} value={autorizadoPorId} onChange={(e) => setAutorizadoPorId(e.target.value)}>
+                <option value="">— Selecciona quién autoriza —</option>
+                {responsables.map((r) => <option key={r.id} value={r.id}>{r.nombre_completo} — {r.numero_documento}</option>)}
+              </select>
+              {responsables.length === 0 && <p className="text-xs text-amber-600 mt-1">No hay responsables. Créalos en Administración → Responsables.</p>}
+              <input className={`${inputCls} mt-2`} value={autorizacionObs} onChange={(e) => setAutorizacionObs(e.target.value)} placeholder="Observación / motivo de la autorización (opcional)" />
+            </div>
+
+            {aviso.o.visitas.length > 0 && (
+              <>
+                <div className="mt-4 text-xs font-semibold uppercase tracking-wide text-gray-400">Visitantes actuales</div>
+                <div className="mt-1 space-y-2">
+                  {aviso.o.visitas.map((v) => (
+                    <div key={v.visita_id} className="flex items-center justify-between gap-2 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
+                      <div>
+                        <div className="text-sm font-medium text-gray-800">{v.visitante_nombre}</div>
+                        <div className="text-xs text-gray-500">
+                          Ingresó {fechaHoraCO(v.hora_ingreso)} · Tarjeta {v.tarjeta_codigo ?? '—'}
+                          {v.celular && <> · <a href={`tel:${v.celular}`} className="text-brand-light hover:underline">{v.celular}</a></>}
+                        </div>
+                      </div>
+                      <Badge color={v.tipo_acompanante === 'permanente' ? 'green' : 'amber'}>
+                        {v.tipo_acompanante === 'permanente' ? 'Permanente' : 'Visita'}
+                      </Badge>
                     </div>
-                  </div>
-                  <Badge color={v.tipo_acompanante === 'permanente' ? 'green' : 'amber'}>
-                    {v.tipo_acompanante === 'permanente' ? 'Permanente' : 'Visita'}
-                  </Badge>
+                  ))}
                 </div>
-              ))}
+              </>
+            )}
+
+            <div className="mt-5 flex gap-2">
+              <Btn onClick={continuarConAutorizacion} disabled={!autorizadoPorId || guardando} className="flex-1">
+                {guardando ? 'Registrando…' : 'Continuar con autorización'}
+              </Btn>
+              <Btn variant="ghost" onClick={() => setAviso(null)}>Cancelar</Btn>
             </div>
-            <div className="mt-4 text-right"><Btn onClick={() => setAviso(null)}>Entendido</Btn></div>
           </>
         )}
       </Modal>

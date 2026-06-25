@@ -1,8 +1,11 @@
 import { supabase } from './supabase'
 import type {
-  Sede, Piso, Ubicacion, Servicio, Cargo, Puerta, Tarjeta, Responsable,
+  Sede, Piso, Ubicacion, Servicio, Cargo, Puerta, Tarjeta, Responsable, HorarioVisita,
   OcupacionUbicacion, VisitaResumen, TipoAislamiento, TipoUbicacion, TipoAcompanante,
 } from './types'
+
+// Normaliza texto para comparaciones (sin acentos, mayúsculas, espacios colapsados).
+const sinTildes = (s: string) => (s ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toUpperCase().replace(/\s+/g, ' ').trim()
 
 export async function listSedes(): Promise<Sede[]> {
   const { data } = await supabase.from('sedes').select('*').eq('activo', true).order('orden')
@@ -325,7 +328,7 @@ export interface FiltrosVisita {
 
 export async function listVisitas(f: FiltrosVisita = {}): Promise<VisitaListado[]> {
   let q = supabase.from('visitas')
-    .select('id, tipo_visitante, tipo_acompanante, paciente_nombre, num_ingreso, ubicacion_etiqueta, aislamiento, permiso_alimentos, estado, created_at, sede_id, visitante:visitantes(nombres_completos, cedula, celular), tarjeta:tarjetas!visitas_tarjeta_id_fkey(codigo), responsable:responsables(nombre_completo), sede:sedes(nombre), eventos:visita_eventos(tipo, hora)')
+    .select('id, tipo_visitante, tipo_acompanante, paciente_nombre, num_ingreso, ubicacion_etiqueta, aislamiento, permiso_alimentos, estado, created_at, sede_id, visitante:visitantes(nombres_completos, cedula, celular), tarjeta:tarjetas!visitas_tarjeta_id_fkey(codigo), responsable:responsables!visitas_responsable_id_fkey(nombre_completo), sede:sedes(nombre), eventos:visita_eventos(tipo, hora)')
     .order('created_at', { ascending: false }).limit(500)
   if (f.estado) q = q.eq('estado', f.estado)
   if (f.tipo) q = q.eq('tipo_visitante', f.tipo)
@@ -468,6 +471,89 @@ export async function heatmapDiaHora(): Promise<{ matriz: number[][]; max: numbe
   return { matriz: m, max }
 }
 
+// ─── Horarios de visita (política 6.1) ──────────────────────
+export async function listHorarios(): Promise<HorarioVisita[]> {
+  const { data } = await supabase.from('horarios_visita').select('*').eq('activo', true).order('prioridad')
+  return (data ?? []) as HorarioVisita[]
+}
+
+// "13:00:00" → "1:00 p.m."  (formato Colombia, 12h)
+function horaAmPm(t: string): string {
+  const [hRaw, m] = t.split(':')
+  const h = parseInt(hRaw, 10)
+  const ap = h < 12 ? 'a.m.' : 'p.m.'
+  const h12 = h % 12 === 0 ? 12 : h % 12
+  return `${h12}:${(m ?? '00').padStart(2, '0')} ${ap}`
+}
+function franja(ini: string, fin: string): string { return `${horaAmPm(ini)} – ${horaAmPm(fin)}` }
+
+export function ventanasTexto(h: HorarioVisita): string {
+  const partes = [franja(h.ventana1_inicio, h.ventana1_fin)]
+  if (h.ventana2_inicio && h.ventana2_fin) partes.push(franja(h.ventana2_inicio, h.ventana2_fin))
+  return partes.join('  /  ')
+}
+
+// Minutos transcurridos del día (hora Colombia GMT-5) a partir de "HH:MM[:SS]".
+const minutosDe = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + (m || 0) }
+function ahoraMinutosCO(): number {
+  const co = new Date(Date.now() - 5 * 3_600_000)
+  return co.getUTCHours() * 60 + co.getUTCMinutes()
+}
+function dentroDeVentanas(h: HorarioVisita): boolean {
+  const now = ahoraMinutosCO()
+  const en = (i?: string | null, f?: string | null) => !!i && !!f && now >= minutosDe(i) && now <= minutosDe(f)
+  return en(h.ventana1_inicio, h.ventana1_fin) || en(h.ventana2_inicio, h.ventana2_fin)
+}
+
+// Elige el horario que aplica a un paciente según su servicio (texto del CENSO) y si está aislado.
+export function horarioAplicable(horarios: HorarioVisita[], servicioTexto: string | null, aislado: boolean): HorarioVisita | null {
+  const orden = [...horarios].sort((a, b) => a.prioridad - b.prioridad)
+  if (aislado) { const r = orden.find((h) => h.aplica_aislamiento); if (r) return r }
+  const s = sinTildes(servicioTexto ?? '')
+  if (s) { const r = orden.find((h) => h.match_censo && !h.aplica_aislamiento && s.includes(sinTildes(h.match_censo))); if (r) return r }
+  return orden.find((h) => !h.match_censo && !h.aplica_aislamiento) ?? null
+}
+
+// Cuenta visitas (familiares) registradas hoy para un mismo ingreso/paciente.
+export async function visitasHoyPaciente(numIngreso: string): Promise<number> {
+  const hoyCO = new Date(Date.now() - 5 * 3_600_000).toISOString().substring(0, 10)
+  const { count } = await supabase.from('visitas')
+    .select('id', { count: 'exact', head: true })
+    .eq('num_ingreso', numIngreso).eq('tipo_visitante', 'familiar')
+    .gte('created_at', hoyCO + 'T00:00:00-05:00')
+  return count ?? 0
+}
+
+export interface EvalRestriccion {
+  horario: HorarioVisita | null
+  fueraHorario: boolean       // true ⇒ hay un horario definido y NO estamos dentro
+  ventanas: string
+  limiteSimultaneo: number
+  excedeSimultaneo: boolean    // registrar uno más superaría el simultáneo
+  maxPorDia: number | null
+  visitasHoy: number
+  excedeDia: boolean           // registrar uno más superaría el máximo por día
+}
+
+// Evalúa horario + cupos para una habitación antes de registrar un familiar.
+export async function evaluarRestricciones(o: OcupacionUbicacion): Promise<EvalRestriccion> {
+  const horarios = await listHorarios()
+  const h = horarioAplicable(horarios, o.servicio ?? o.area, !!o.aislamiento)
+  const limiteSimultaneo = h?.max_simultaneo ?? o.cupo
+  const visitasHoy = o.num_ingreso ? await visitasHoyPaciente(o.num_ingreso) : 0
+  const maxPorDia = h?.max_por_dia ?? null
+  return {
+    horario: h,
+    fueraHorario: !!h && !dentroDeVentanas(h),
+    ventanas: h ? ventanasTexto(h) : '',
+    limiteSimultaneo,
+    excedeSimultaneo: o.visitas.length >= limiteSimultaneo,
+    maxPorDia,
+    visitasHoy,
+    excedeDia: maxPorDia != null && visitasHoy >= maxPorDia,
+  }
+}
+
 // ─── Visitantes ─────────────────────────────────────────────
 export async function buscarVisitante(cedula: string) {
   const { data } = await supabase.from('visitantes').select('*').eq('cedula', cedula.trim()).maybeSingle()
@@ -495,6 +581,8 @@ export interface NuevaVisita {
   servicio_paciente?: string | null
   aislamiento?: TipoAislamiento | null
   responsable_id?: string | null
+  autorizado_por_id?: string | null
+  autorizacion_motivo?: string | null
   permiso_alimentos?: boolean
   permiso_otros?: string | null
   sede_id?: string | null

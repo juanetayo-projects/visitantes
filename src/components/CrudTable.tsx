@@ -7,7 +7,7 @@ export type Lookups = Record<string, Map<string, string>>
 export interface CrudField {
   key: string
   label: string
-  type: 'text' | 'number' | 'email' | 'checkbox' | 'select' | 'date'
+  type: 'text' | 'number' | 'email' | 'checkbox' | 'select' | 'date' | 'time'
   required?: boolean
   options?: { value: string; label: string }[]
   optionsTable?: { tabla: string; labelKey: string; order?: string; filterActive?: boolean }
@@ -85,7 +85,11 @@ export default function CrudTable({ tabla, titulo, columnas, campos, orderBy = '
   }
   function abrirEdicion(row: any) {
     const f: Record<string, any> = {}
-    campos.forEach((c) => { f[c.key] = row[c.key] ?? (c.type === 'checkbox' ? false : '') })
+    campos.forEach((c) => {
+      let v = row[c.key] ?? (c.type === 'checkbox' ? false : '')
+      if (c.type === 'time' && typeof v === 'string' && v) v = v.substring(0, 5) // "13:00:00" → "13:00"
+      f[c.key] = v
+    })
     setForm(f); setEditing(row); setError(null); setOpen(true)
   }
 
@@ -99,7 +103,7 @@ export default function CrudTable({ tabla, titulo, columnas, campos, orderBy = '
       let v = form[c.key]
       if (c.type === 'number') v = v === '' ? null : Number(v)
       if (c.type === 'select' && v === '') v = null
-      if ((c.type === 'text' || c.type === 'email') && v === '') v = null
+      if ((c.type === 'text' || c.type === 'email' || c.type === 'time' || c.type === 'date') && v === '') v = null
       payload[c.key] = v
     })
     const res = editing
@@ -227,7 +231,7 @@ export default function CrudTable({ tabla, titulo, columnas, campos, orderBy = '
                               <option value="">— Selecciona —</option>
                               {(optionsMap[c.key] ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                             </select>
-                          : <input className={inputCls} type={c.type === 'number' ? 'number' : c.type === 'email' ? 'email' : c.type === 'date' ? 'date' : 'text'} step={c.step}
+                          : <input className={inputCls} type={c.type === 'number' ? 'number' : c.type === 'email' ? 'email' : c.type === 'date' ? 'date' : c.type === 'time' ? 'time' : 'text'} step={c.step}
                               value={form[c.key] ?? ''} onChange={(e) => setForm({ ...form, [c.key]: e.target.value })} />}
                       </>}
                 </div>
