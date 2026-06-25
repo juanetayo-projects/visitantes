@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '../lib/supabase'
-import { Card, Btn, inputCls, selectCls, Badge, Modal } from './ui'
+import { Card, Btn, inputCls, selectCls, Badge, Modal, SearchableSelect } from './ui'
 
 export type Lookups = Record<string, Map<string, string>>
 
@@ -227,10 +227,7 @@ export default function CrudTable({ tabla, titulo, columnas, campos, orderBy = '
                     : <>
                         <label className="block text-xs font-medium text-gray-500 mb-1">{c.label}{c.required && ' *'}</label>
                         {c.type === 'select'
-                          ? <select className={inputCls} value={form[c.key] ?? ''} onChange={(e) => setForm({ ...form, [c.key]: e.target.value })}>
-                              <option value="">— Selecciona —</option>
-                              {(optionsMap[c.key] ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                            </select>
+                          ? <SearchableSelect value={form[c.key] ?? ''} onChange={(v) => setForm({ ...form, [c.key]: v })} options={optionsMap[c.key] ?? []} />
                           : <input className={inputCls} type={c.type === 'number' ? 'number' : c.type === 'email' ? 'email' : c.type === 'date' ? 'date' : c.type === 'time' ? 'time' : 'text'} step={c.step}
                               value={form[c.key] ?? ''} onChange={(e) => setForm({ ...form, [c.key]: e.target.value })} />}
                       </>}
