@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageHeader, Card, Badge, Btn, FilterBar, selectCls, inputCls, Modal } from '../../components/ui'
 import { listInconsistencias, ultimoSync, ejecutarSyncCenso, type CensoInconsistencia, type CensoSyncLog } from '../../lib/data'
+import { exportarExcel, type Columna } from '../../lib/exportar'
 
 const TIPO_LABEL: Record<string, { label: string; color: 'red' | 'amber' | 'gray' }> = {
   ubicacion_no_homologada: { label: 'Ubicación sin homologar', color: 'red' },
@@ -21,6 +22,24 @@ function fechaHoraCO(iso: string | null): string {
 
 interface Filtros { tipo: string; unidad: string; area: string; texto: string }
 const VACIO: Filtros = { tipo: '', unidad: '', area: '', texto: '' }
+
+const COLS: Columna<CensoInconsistencia>[] = [
+  { header: 'Tipo', get: (r) => TIPO_LABEL[r.tipo]?.label ?? r.tipo },
+  { header: 'Paciente', get: (r) => r.paciente ?? '' },
+  { header: '# Ingreso', get: (r) => r.num_ingreso ?? '' },
+  { header: 'Unidad CENSO', get: (r) => r.censo_unidad ?? '' },
+  { header: 'Área', get: (r) => r.censo_area ?? '' },
+  { header: 'Cama', get: (r) => r.censo_cama ?? '' },
+  { header: 'Detalle', get: (r) => r.detalle ?? '' },
+]
+function describirFiltros(f: Filtros): string {
+  const p: string[] = []
+  if (f.tipo) p.push(`Tipo: ${TIPO_LABEL[f.tipo]?.label ?? f.tipo}`)
+  if (f.unidad) p.push(`Unidad CENSO: ${f.unidad}`)
+  if (f.area) p.push(`Área: ${f.area}`)
+  if (f.texto.trim()) p.push(`Búsqueda: "${f.texto.trim()}"`)
+  return p.join(' · ')
+}
 
 export default function SincronizacionCenso() {
   const [rows, setRows] = useState<CensoInconsistencia[]>([])
@@ -66,7 +85,10 @@ export default function SincronizacionCenso() {
   return (
     <div>
       <PageHeader title="Sincronización CENSO" subtitle="Estado de la última sincronización e inconsistencias detectadas al cruzar el CENSO con la homologación."
-        action={<Btn onClick={() => setConfirmar(true)} disabled={ejecutando}>{ejecutando ? 'Sincronizando…' : '↻ Ejecutar ahora'}</Btn>} />
+        action={<div className="flex gap-2">
+          <Btn variant="light" onClick={() => exportarExcel('Sincronización CENSO — Inconsistencias', COLS, filtrados, { filtros: describirFiltros(f) })} disabled={!filtrados.length}>Excel</Btn>
+          <Btn onClick={() => setConfirmar(true)} disabled={ejecutando}>{ejecutando ? 'Sincronizando…' : '↻ Ejecutar ahora'}</Btn>
+        </div>} />
 
       {msg && <div className={`mb-4 rounded-lg px-4 py-3 text-sm ${msg.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>{msg.texto}</div>}
 
