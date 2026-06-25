@@ -32,6 +32,12 @@ export default function HomologacionCenso() {
       <CrudTable
         tabla="homologacion_ubicaciones" titulo="Homologación de ubicaciones" orderBy="censo_unidad"
         subtitulo="CENSO (unidad · área · cama) → ubicación de la app. El sync inserta automáticamente las nuevas; revisa y corrige aquí."
+        filtros={[
+          { key: 'ubicacion_id', label: 'Estado', opciones: [{ value: '__notnull', label: 'Homologadas' }, { value: '__null', label: 'Sin homologar' }] },
+          { key: 'censo_unidad', label: 'Unidad CENSO' },
+          { key: 'censo_area', label: 'Área CENSO' },
+          { key: 'origen', label: 'Origen', opciones: ORIGEN },
+        ]}
         columnas={[
           { key: 'censo_unidad', label: 'Unidad CENSO' },
           { key: 'censo_area', label: 'Área CENSO' },

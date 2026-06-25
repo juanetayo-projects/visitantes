@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '../lib/supabase'
-import { Card, Btn, inputCls, Badge, Modal } from './ui'
+import { Card, Btn, inputCls, selectCls, Badge, Modal } from './ui'
 
 export type Lookups = Record<string, Map<string, string>>
 
@@ -21,6 +21,14 @@ export interface CrudColumn {
   render?: (row: any, lookups: Lookups) => ReactNode
 }
 
+export interface CrudFiltro {
+  key: string
+  label: string
+  // opciones explícitas; usa '__null' / '__notnull' para filtrar por (no) tener valor.
+  // Si se omite, se calculan los valores distintos de la columna.
+  opciones?: { value: string; label: string }[]
+}
+
 interface Props {
   tabla: string
   titulo: string
@@ -28,9 +36,11 @@ interface Props {
   campos: CrudField[]
   orderBy?: string
   subtitulo?: string
+  filtros?: CrudFiltro[]
 }
 
-export default function CrudTable({ tabla, titulo, columnas, campos, orderBy = 'created_at', subtitulo }: Props) {
+export default function CrudTable({ tabla, titulo, columnas, campos, orderBy = 'created_at', subtitulo, filtros }: Props) {
+  const [filtroVals, setFiltroVals] = useState<Record<string, string>>({})
   const [rows, setRows] = useState<any[]>([])
   const [lookups, setLookups] = useState<Lookups>({})
   const [optionsMap, setOptionsMap] = useState<Record<string, { value: string; label: string }[]>>({})
@@ -106,21 +116,44 @@ export default function CrudTable({ tabla, titulo, columnas, campos, orderBy = '
     else cargar()
   }
 
+  // Opciones de cada filtro: explícitas, o valores distintos de la columna
+  const filtroOpciones = useMemo(() => {
+    const m: Record<string, { value: string; label: string }[]> = {}
+    ;(filtros ?? []).forEach((f) => {
+      if (f.opciones) { m[f.key] = f.opciones; return }
+      const lk = lookups[f.key]
+      const set = new Set<string>()
+      rows.forEach((r) => { const v = r[f.key]; if (v != null && v !== '') set.add(String(v)) })
+      m[f.key] = [...set].sort().map((v) => ({ value: v, label: lk?.get(v) ?? v }))
+    })
+    return m
+  }, [filtros, rows, lookups])
+
   const filtrados = useMemo(() => {
-    if (!busca.trim()) return rows
-    const t = busca.toLowerCase()
-    return rows.filter((r) => columnas.some((c) => {
-      const raw = c.render ? '' : String(r[c.key] ?? '')
-      const lk = lookups[c.key]?.get(r[c.key])
-      return raw.toLowerCase().includes(t) || (lk?.toLowerCase().includes(t) ?? false)
-    }))
-  }, [rows, busca, columnas, lookups])
+    let r = rows
+    ;(filtros ?? []).forEach((f) => {
+      const v = filtroVals[f.key]
+      if (!v) return
+      if (v === '__null') r = r.filter((x) => x[f.key] == null)
+      else if (v === '__notnull') r = r.filter((x) => x[f.key] != null)
+      else r = r.filter((x) => String(x[f.key] ?? '') === v)
+    })
+    if (busca.trim()) {
+      const t = busca.toLowerCase()
+      r = r.filter((row) => columnas.some((c) => {
+        const raw = c.render ? '' : String(row[c.key] ?? '')
+        const lk = lookups[c.key]?.get(row[c.key])
+        return raw.toLowerCase().includes(t) || (lk?.toLowerCase().includes(t) ?? false)
+      }))
+    }
+    return r
+  }, [rows, busca, columnas, lookups, filtros, filtroVals])
 
   return (
     <Card className="overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-2 p-4 border-b border-gray-100">
         <div>
-          <div className="font-semibold text-brand">{titulo} <span className="text-gray-400 text-sm">({rows.length})</span></div>
+          <div className="font-semibold text-brand">{titulo} <span className="text-gray-400 text-sm">({filtrados.length}{filtrados.length !== rows.length ? ` de ${rows.length}` : ''})</span></div>
           {subtitulo && <div className="text-xs text-gray-500">{subtitulo}</div>}
         </div>
         <div className="flex gap-2">
@@ -128,6 +161,27 @@ export default function CrudTable({ tabla, titulo, columnas, campos, orderBy = '
           <Btn onClick={abrirNuevo}>+ Agregar</Btn>
         </div>
       </div>
+
+      {filtros && filtros.length > 0 && (
+        <div className="flex flex-wrap items-end gap-3 border-b border-gray-100 bg-gray-50/60 px-4 py-3">
+          <div className="flex items-center gap-1.5 self-center text-sm font-medium text-brand">
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 4h18l-7 9v6l-4 2v-8z" /></svg>
+            Filtros
+          </div>
+          {filtros.map((f) => (
+            <div key={f.key}>
+              <label className="block text-[11px] font-medium text-gray-500 mb-1">{f.label}</label>
+              <select className={selectCls} value={filtroVals[f.key] ?? ''} onChange={(e) => setFiltroVals({ ...filtroVals, [f.key]: e.target.value })}>
+                <option value="">Todos</option>
+                {(filtroOpciones[f.key] ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </div>
+          ))}
+          {(Object.values(filtroVals).some(Boolean) || busca) && (
+            <button onClick={() => { setFiltroVals({}); setBusca('') }} className="self-center text-xs text-gray-500 hover:text-brand">Limpiar</button>
+          )}
+        </div>
+      )}
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm">

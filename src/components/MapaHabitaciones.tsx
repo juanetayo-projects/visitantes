@@ -33,7 +33,7 @@ export default function MapaHabitaciones({ pisoId, onSelect, refreshKey = 0, are
 }) {
   const [ocup, setOcup] = useState<OcupacionUbicacion[]>([])
   const [loading, setLoading] = useState(true)
-  const [tip, setTip] = useState<{ o: OcupacionUbicacion; x: number; y: number } | null>(null)
+  const [tip, setTip] = useState<{ o: OcupacionUbicacion; x: number; y: number; arriba: boolean } | null>(null)
   const cont = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -58,9 +58,11 @@ export default function MapaHabitaciones({ pisoId, onSelect, refreshKey = 0, are
     const cb = cont.current.getBoundingClientRect()
     const eb = el.getBoundingClientRect()
     let x = eb.left - cb.left
-    const y = eb.top - cb.top + eb.height + 8
-    if (x + 260 > cb.width) x = Math.max(4, cb.width - 264)
-    setTip({ o, x, y })
+    // Si no hay espacio debajo (celda al final de la pantalla), muestra el tooltip ARRIBA de la celda
+    const arriba = (window.innerHeight - eb.bottom) < 260
+    const y = arriba ? (eb.top - cb.top - 8) : (eb.top - cb.top + eb.height + 8)
+    if (x + 290 > cb.width) x = Math.max(4, cb.width - 292)
+    setTip({ o, x, y, arriba })
   }
 
   if (loading) return <div className="grid place-items-center py-16 text-brand text-sm">Cargando mapa…</div>
@@ -121,7 +123,7 @@ export default function MapaHabitaciones({ pisoId, onSelect, refreshKey = 0, are
       {/* Tooltip estilo Odoo */}
       {tip && (
         <div className="hab-tip absolute z-30 w-72 overflow-hidden rounded-xl bg-white ring-1 ring-brand/20 pointer-events-none"
-          style={{ left: tip.x, top: tip.y }}>
+          style={{ left: tip.x, top: tip.y, transform: tip.arriba ? 'translateY(-100%)' : undefined }}>
           {/* Encabezado azul para destacar */}
           <div className="flex items-center justify-between gap-2 bg-brand px-3 py-2">
             <div className="min-w-0">
