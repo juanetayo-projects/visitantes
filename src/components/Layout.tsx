@@ -26,6 +26,7 @@ const ADMIN: Item[] = [
   { to: '/admin/tarjetas', label: 'Tarjetas (catálogo)', icon: '', roles: ['admin'] },
   { to: '/admin/visitantes', label: 'Visitantes', icon: '', roles: ['admin'] },
   { to: '/admin/festivos', label: 'Festivos', icon: '', roles: ['admin'] },
+  { to: '/admin/homologacion', label: 'Homologación CENSO', icon: '', roles: ['admin'] },
 ]
 
 const linkCls = (isActive: boolean, sub = false) =>
