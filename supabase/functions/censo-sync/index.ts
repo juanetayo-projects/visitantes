@@ -91,6 +91,22 @@ Deno.serve(async (req) => {
     const ubicMap = new Map((ubic ?? []).map((u: any) => [u.id, u]))
     const previos = new Set((existentes ?? []).map((p: any) => p.num_ingreso))
 
+    // Índice de ubicaciones por etiqueta normalizada (para auto-homologar por nombre)
+    const ubicByEtiqueta = new Map<string, any[]>()
+    for (const u of (ubic ?? [])) { const k = norm(u.etiqueta); const a = ubicByEtiqueta.get(k) ?? []; a.push(u); ubicByEtiqueta.set(k, a) }
+    // Busca una ubicación inequívoca cuyo nombre coincida con la cama del CENSO.
+    function autoMatch(unidad: unknown, area: unknown, cama: string): any | null {
+      let cands = ubicByEtiqueta.get(norm(cama)) ?? []
+      if (cands.length === 0) return null
+      if (cands.length === 1) return cands[0]
+      if (area) { const byA = cands.filter((u) => norm(u.area) === norm(area)); if (byA.length === 1) return byA[0]; if (byA.length) cands = byA }
+      const byS = cands.filter((u) => u.servicio && (norm(u.servicio).includes(norm(unidad)) || norm(unidad).includes(norm(u.servicio))))
+      if (byS.length === 1) return byS[0]
+      return null // ambiguo: se deja como inconsistencia
+    }
+    const autoHomol: any[] = []
+    const autoDedup = new Set<string>()
+
     // ── 3) Transformar ──
     const pacientes: any[] = [], aislamientos: any[] = [], incons: any[] = []
     const vistos = new Set<string>(), dedup = new Set<string>()
@@ -111,7 +127,17 @@ Deno.serve(async (req) => {
       } else {
         ubicacionId = homolMap.get(key3(r.UbicacionActual, r.UbicacionArea, cama)) ?? null
         u = ubicacionId ? ubicMap.get(ubicacionId) : null
-        if (!ubicacionId || !u) pushIncon('ubicacion_no_homologada', r, cama, `Sin homologar: «${r.UbicacionActual ?? '?'}»${r.UbicacionArea ? ' / ' + r.UbicacionArea : ''} / cama «${cama}». Agrégala en Homologación CENSO.`)
+        if (!ubicacionId || !u) {
+          // Fallback: auto-homologar por coincidencia inequívoca de nombre
+          const m = autoMatch(r.UbicacionActual, r.UbicacionArea, cama)
+          if (m) {
+            ubicacionId = m.id; u = m
+            const k = key3(r.UbicacionActual, r.UbicacionArea, cama)
+            if (!autoDedup.has(k)) { autoDedup.add(k); autoHomol.push({ censo_unidad: r.UbicacionActual ?? null, censo_area: r.UbicacionArea ?? null, censo_cama: cama, ubicacion_id: m.id, origen: 'auto', activo: true }) }
+          } else {
+            pushIncon('ubicacion_no_homologada', r, cama, `Sin homologar: «${r.UbicacionActual ?? '?'}»${r.UbicacionArea ? ' / ' + r.UbicacionArea : ''} / cama «${cama}». Agrégala en Homologación CENSO.`)
+          }
+        }
       }
       pacientes.push({
         num_ingreso: numIngreso, documento: r.Identificacion ?? null, nombre: r.Paciente ?? null, edad: parseEdad(r.edad),
@@ -125,6 +151,8 @@ Deno.serve(async (req) => {
     const egresos = [...previos].filter((n) => !vistos.has(n as string))
 
     // ── 4) Escribir ──
+    // Persistir las homologaciones auto-detectadas (para revisión y para que el próximo sync sea hit directo)
+    if (autoHomol.length) await admin.from('homologacion_ubicaciones').upsert(autoHomol, { onConflict: 'censo_unidad,censo_area,censo_cama', ignoreDuplicates: true })
     if (pacientes.length) { const { error } = await admin.from('pacientes_ubicacion').upsert(pacientes, { onConflict: 'num_ingreso' }); if (error) throw new Error('upsert pacientes: ' + error.message) }
     if (egresos.length) await admin.from('pacientes_ubicacion').delete().in('num_ingreso', egresos as string[])
     await admin.from('aislamientos').delete().neq('num_ingreso', '__none__')
@@ -132,9 +160,9 @@ Deno.serve(async (req) => {
     await admin.from('censo_inconsistencias').delete().neq('id', '00000000-0000-0000-0000-000000000000')
     if (incons.length) await admin.from('censo_inconsistencias').insert(incons)
 
-    const resumen = { ok: true, total_censo: censo.length, pacientes_upsert: pacientes.length, altas: egresos.length, aislamientos: aislamientos.length, inconsistencias: incons.length, duracion_ms: Date.now() - t0, mensaje: 'OK' }
+    const resumen = { ok: true, total_censo: censo.length, pacientes_upsert: pacientes.length, altas: egresos.length, aislamientos: aislamientos.length, inconsistencias: incons.length, duracion_ms: Date.now() - t0, mensaje: autoHomol.length ? `OK · ${autoHomol.length} auto-homologadas` : 'OK' }
     await admin.from('censo_sync_log').insert(resumen)
-    return json(resumen)
+    return json({ ...resumen, auto_homologadas: autoHomol.length })
   } catch (e) {
     const cli = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
     await cli.from('censo_sync_log').insert({ ok: false, duracion_ms: Date.now() - t0, mensaje: String(e) })
