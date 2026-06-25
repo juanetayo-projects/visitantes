@@ -1,0 +1,28 @@
+name: Sync CENSO Hospitalario
+
+on:
+  schedule:
+    - cron: '0 * * * *'   # cada hora en punto (UTC)
+  workflow_dispatch:        # permite ejecutarlo a mano
+
+concurrency:
+  group: sync-censo
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: node scripts/sync/censo.mjs
+        env:
+          CENSO_API_BASE_URL: ${{ secrets.CENSO_API_BASE_URL }}
+          CENSO_API_USER: ${{ secrets.CENSO_API_USER }}
+          CENSO_API_PASSWORD: ${{ secrets.CENSO_API_PASSWORD }}
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

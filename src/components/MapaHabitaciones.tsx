@@ -1,16 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { getOcupacionPiso, estadoCelda, type EstadoCelda } from '../lib/data'
-import type { OcupacionUbicacion, TipoAislamiento } from '../lib/types'
+import { AISLAMIENTO_LABEL, type OcupacionUbicacion } from '../lib/types'
 
 const ESTILO: Record<EstadoCelda, { bg: string; bd: string; tx: string; icon: string; label: string }> = {
   permanente: { bg: 'bg-emerald-50', bd: 'border-emerald-500', tx: 'text-emerald-800', icon: 'M9 12l2 2 4-4m5 2a9 9 0 11-18 0 9 9 0 0118 0z', label: 'Acompañante permanente' },
   visita:     { bg: 'bg-amber-50',   bd: 'border-amber-500',   tx: 'text-amber-800',   icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z', label: 'Visita en curso' },
   solo:       { bg: 'bg-brand-50',   bd: 'border-brand-light', tx: 'text-brand',       icon: 'M3 12h18M3 7h18M3 17h18', label: 'Paciente solo (cupo libre)' },
   libre:      { bg: 'bg-gray-100',   bd: 'border-gray-300',    tx: 'text-gray-500',    icon: 'M5 12h14', label: 'Cama / cupo libre' },
-}
-
-const AISL_LABEL: Record<TipoAislamiento, string> = {
-  contacto: 'Contacto', gotas: 'Gotas', aereo: 'Aéreo', protector: 'Protector', estricto: 'Estricto',
 }
 
 // Fecha y hora de ingreso en hora Colombia (GMT-5): "25/06 03:14 p.m."
@@ -137,7 +133,7 @@ export default function MapaHabitaciones({ pisoId, onSelect, refreshKey = 0, are
             </div>
             {tip.o.aislamiento
               ? <span className="inline-flex items-center gap-1 rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-medium text-white">
-                  <Icono d={ICON_VIRUS} className="h-3 w-3" /> Aislamiento {AISL_LABEL[tip.o.aislamiento]}
+                  <Icono d={ICON_VIRUS} className="h-3 w-3" /> Aislamiento {AISLAMIENTO_LABEL[tip.o.aislamiento]}
                 </span>
               : <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-medium text-white">Cupo {tip.o.visitas.length}/{tip.o.cupo}</span>}
           </div>

@@ -6,6 +6,7 @@ import {
   listSedes, listPisos, listPuertas, listUbicaciones, listResponsables, listServicios, tarjetasDisponibles,
   buscarVisitante, upsertVisitante, registrarVisita, ordenarAreas, evaluarRestricciones, type EvalRestriccion,
 } from '../lib/data'
+import { AISLAMIENTO_LABEL } from '../lib/types'
 import type { Sede, Piso, Puerta, Responsable, Servicio, Tarjeta, TipoVisitante, OcupacionUbicacion } from '../lib/types'
 
 // Fecha y hora de ingreso en hora Colombia (GMT-5): "25/06 03:14 p.m."
@@ -243,7 +244,7 @@ export default function Registrar() {
                       </div>
                       <div className="text-base font-bold leading-tight text-brand">{sel.paciente_nombre}{sel.edad != null ? ` · ${sel.edad} años` : ''}</div>
                       <div className="text-gray-700"># ingreso {sel.num_ingreso} · {sel.etiqueta}
-                        {sel.aislamiento && <Badge color="red">Aislamiento {sel.aislamiento}</Badge>}
+                        {sel.aislamiento && <Badge color="red">Aislamiento {AISLAMIENTO_LABEL[sel.aislamiento]}</Badge>}
                       </div>
                       {(sel.area || sel.servicio) && <div className="text-xs text-brand-light">{[sel.area, sel.servicio].filter(Boolean).join(' · ')}</div>}
                       <div className="text-xs text-gray-500">Cupo {sel.visitas.length}/{restric?.limiteSimultaneo ?? sel.cupo}{restric ? ` · ${restric.visitasHoy} visita(s) hoy` : ''}</div>

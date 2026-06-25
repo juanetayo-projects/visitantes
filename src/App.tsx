@@ -19,6 +19,7 @@ import VisitantesAdmin from './pages/admin/VisitantesAdmin'
 import Festivos from './pages/admin/Festivos'
 import HomologacionCenso from './pages/admin/HomologacionCenso'
 import HorariosVisita from './pages/admin/HorariosVisita'
+import SincronizacionCenso from './pages/admin/SincronizacionCenso'
 
 function Protegido({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth()
@@ -51,6 +52,7 @@ export default function App() {
               <Route path="admin/horarios" element={<HorariosVisita />} />
               <Route path="admin/festivos" element={<Festivos />} />
               <Route path="admin/homologacion" element={<HomologacionCenso />} />
+              <Route path="admin/sync-censo" element={<SincronizacionCenso />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
           </Routes>

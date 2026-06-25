@@ -471,6 +471,25 @@ export async function heatmapDiaHora(): Promise<{ matriz: number[][]; max: numbe
   return { matriz: m, max }
 }
 
+// ─── Sincronización CENSO: inconsistencias y bitácora ───────
+export interface CensoInconsistencia {
+  id: string; tipo: string; num_ingreso: string | null; paciente: string | null
+  censo_unidad: string | null; censo_area: string | null; censo_cama: string | null
+  detalle: string | null; primera_vez: string; ultima_vez: string
+}
+export interface CensoSyncLog {
+  id: string; run_at: string; ok: boolean; total_censo: number | null; pacientes_upsert: number | null
+  altas: number | null; aislamientos: number | null; inconsistencias: number | null; duracion_ms: number | null; mensaje: string | null
+}
+export async function listInconsistencias(): Promise<CensoInconsistencia[]> {
+  const { data } = await supabase.from('censo_inconsistencias').select('*').order('tipo').order('censo_unidad')
+  return (data ?? []) as CensoInconsistencia[]
+}
+export async function ultimoSync(): Promise<CensoSyncLog | null> {
+  const { data } = await supabase.from('censo_sync_log').select('*').order('run_at', { ascending: false }).limit(1).maybeSingle()
+  return (data ?? null) as CensoSyncLog | null
+}
+
 // ─── Horarios de visita (política 6.1) ──────────────────────
 export async function listHorarios(): Promise<HorarioVisita[]> {
   const { data } = await supabase.from('horarios_visita').select('*').eq('activo', true).order('prioridad')
