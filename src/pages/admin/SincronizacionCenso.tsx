@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { PageHeader, Card, Badge, Btn } from '../../components/ui'
-import { listInconsistencias, ultimoSync, type CensoInconsistencia, type CensoSyncLog } from '../../lib/data'
+import { PageHeader, Card, Badge, Btn, FilterBar, selectCls, inputCls, Modal } from '../../components/ui'
+import { listInconsistencias, ultimoSync, ejecutarSyncCenso, type CensoInconsistencia, type CensoSyncLog } from '../../lib/data'
 
 const TIPO_LABEL: Record<string, { label: string; color: 'red' | 'amber' | 'gray' }> = {
   ubicacion_no_homologada: { label: 'Ubicación sin homologar', color: 'red' },
@@ -19,10 +19,17 @@ function fechaHoraCO(iso: string | null): string {
   return `${dd}/${mm}/${co.getUTCFullYear()} ${h}:${min} ${ap}`
 }
 
+interface Filtros { tipo: string; unidad: string; area: string; texto: string }
+const VACIO: Filtros = { tipo: '', unidad: '', area: '', texto: '' }
+
 export default function SincronizacionCenso() {
   const [rows, setRows] = useState<CensoInconsistencia[]>([])
   const [log, setLog] = useState<CensoSyncLog | null>(null)
   const [loading, setLoading] = useState(true)
+  const [f, setF] = useState<Filtros>(VACIO)
+  const [confirmar, setConfirmar] = useState(false)
+  const [ejecutando, setEjecutando] = useState(false)
+  const [msg, setMsg] = useState<{ ok: boolean; texto: string } | null>(null)
 
   function cargar() {
     setLoading(true)
@@ -30,15 +37,43 @@ export default function SincronizacionCenso() {
   }
   useEffect(cargar, [])
 
+  async function ejecutar() {
+    setConfirmar(false); setEjecutando(true); setMsg(null)
+    const res = await ejecutarSyncCenso()
+    setEjecutando(false)
+    if (res.ok) {
+      const r = res.resumen ?? {}
+      setMsg({ ok: true, texto: `Sincronización completada: ${r.total_censo} en censo · ${r.pacientes_upsert} actualizados · ${r.altas} egresos · ${r.inconsistencias} inconsistencias.` })
+      cargar()
+    } else {
+      setMsg({ ok: false, texto: 'No se pudo ejecutar: ' + (res.error ?? 'error desconocido') })
+    }
+  }
+
+  const unidades = useMemo(() => [...new Set(rows.map((r) => r.censo_unidad).filter(Boolean))].sort() as string[], [rows])
+  const areas = useMemo(() => [...new Set(rows.map((r) => r.censo_area).filter(Boolean))].sort() as string[], [rows])
+  const tipos = useMemo(() => [...new Set(rows.map((r) => r.tipo))].sort(), [rows])
+
+  const filtrados = useMemo(() => {
+    const t = f.texto.trim().toLowerCase()
+    return rows.filter((r) =>
+      (!f.tipo || r.tipo === f.tipo) &&
+      (!f.unidad || r.censo_unidad === f.unidad) &&
+      (!f.area || r.censo_area === f.area) &&
+      (!t || [r.paciente, r.num_ingreso, r.censo_cama, r.detalle].some((x) => x?.toLowerCase().includes(t))))
+  }, [rows, f])
+
   return (
     <div>
-      <PageHeader title="Sincronización CENSO" subtitle="Estado de la última sincronización horaria e inconsistencias detectadas al cruzar el CENSO con la homologación."
-        action={<Btn variant="light" onClick={cargar}>Actualizar</Btn>} />
+      <PageHeader title="Sincronización CENSO" subtitle="Estado de la última sincronización e inconsistencias detectadas al cruzar el CENSO con la homologación."
+        action={<Btn onClick={() => setConfirmar(true)} disabled={ejecutando}>{ejecutando ? 'Sincronizando…' : '↻ Ejecutar ahora'}</Btn>} />
+
+      {msg && <div className={`mb-4 rounded-lg px-4 py-3 text-sm ${msg.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>{msg.texto}</div>}
 
       {/* Estado de la última corrida */}
       <Card className="mb-5 p-5">
         {!log ? (
-          <div className="text-sm text-gray-500">Aún no se ha ejecutado ninguna sincronización. El proceso corre automáticamente cada hora.</div>
+          <div className="text-sm text-gray-500">Aún no se ha ejecutado ninguna sincronización. Usa «Ejecutar ahora» o espera la corrida automática horaria.</div>
         ) : (
           <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
             <div>
@@ -60,9 +95,25 @@ export default function SincronizacionCenso() {
         )}
       </Card>
 
+      <FilterBar onClear={() => setF(VACIO)}>
+        <select className={selectCls} value={f.tipo} onChange={(e) => setF({ ...f, tipo: e.target.value })}>
+          <option value="">Todos los tipos</option>
+          {tipos.map((t) => <option key={t} value={t}>{TIPO_LABEL[t]?.label ?? t}</option>)}
+        </select>
+        <select className={selectCls} value={f.unidad} onChange={(e) => setF({ ...f, unidad: e.target.value })}>
+          <option value="">Todas las unidades</option>
+          {unidades.map((u) => <option key={u} value={u}>{u}</option>)}
+        </select>
+        <select className={selectCls} value={f.area} onChange={(e) => setF({ ...f, area: e.target.value })}>
+          <option value="">Todas las áreas</option>
+          {areas.map((a) => <option key={a} value={a}>{a}</option>)}
+        </select>
+        <input className={inputCls} style={{ minWidth: 220 }} placeholder="Paciente, # ingreso, cama, detalle…" value={f.texto} onChange={(e) => setF({ ...f, texto: e.target.value })} />
+      </FilterBar>
+
       <Card className="overflow-hidden">
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
-          <div className="text-sm text-gray-500">{rows.length} inconsistencia(s) en la última corrida</div>
+          <div className="text-sm text-gray-500">{filtrados.length}{filtrados.length !== rows.length ? ` de ${rows.length}` : ''} inconsistencia(s)</div>
           <Link to="/admin/homologacion" className="text-sm font-medium text-brand-light hover:underline">Ir a Homologación CENSO →</Link>
         </div>
         <div className="overflow-x-auto">
@@ -72,8 +123,8 @@ export default function SincronizacionCenso() {
             </tr></thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? <tr><td colSpan={6} className="py-10 text-center text-gray-400">Cargando…</td></tr>
-                : rows.length === 0 ? <tr><td colSpan={6} className="py-10 text-center text-emerald-600">✓ Sin inconsistencias — todos los pacientes del CENSO quedaron homologados.</td></tr>
-                : rows.map((r) => {
+                : filtrados.length === 0 ? <tr><td colSpan={6} className="py-10 text-center text-emerald-600">{rows.length === 0 ? '✓ Sin inconsistencias — todos los pacientes del CENSO quedaron homologados.' : 'Sin resultados con estos filtros.'}</td></tr>
+                : filtrados.map((r) => {
                   const t = TIPO_LABEL[r.tipo] ?? { label: r.tipo, color: 'gray' as const }
                   return (
                     <tr key={r.id} className="hover:bg-brand-50/40">
@@ -93,6 +144,18 @@ export default function SincronizacionCenso() {
           </table>
         </div>
       </Card>
+
+      {/* Confirmación de ejecución manual */}
+      <Modal open={confirmar} onClose={() => setConfirmar(false)} title="Ejecutar sincronización del CENSO">
+        <p className="text-sm text-gray-700">
+          Esto <b>consultará la API del CENSO en este momento</b> y actualizará los pacientes, aislamientos e
+          inconsistencias en la base de datos. La corrida automática es cada hora; úsalo para <b>forzar</b> una actualización inmediata.
+        </p>
+        <div className="mt-4 flex gap-2">
+          <Btn onClick={ejecutar} className="flex-1">Sí, ejecutar ahora</Btn>
+          <Btn variant="ghost" onClick={() => setConfirmar(false)}>Cancelar</Btn>
+        </div>
+      </Modal>
     </div>
   )
 }

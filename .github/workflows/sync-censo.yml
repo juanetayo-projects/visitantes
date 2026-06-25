@@ -13,16 +13,14 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-      - run: npm ci
-      - run: node scripts/sync/censo.mjs
+      # Llama a la Edge Function censo-sync (misma lógica que el botón manual de la app).
+      # La función lee las credenciales del CENSO desde sus propios secrets en Supabase.
+      - name: Ejecutar sincronización
+        run: |
+          curl -fsS -X POST "${SUPABASE_URL%/}/functions/v1/censo-sync" \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Content-Type: application/json" \
+            -w "\nHTTP %{http_code}\n"
         env:
-          CENSO_API_BASE_URL: ${{ secrets.CENSO_API_BASE_URL }}
-          CENSO_API_USER: ${{ secrets.CENSO_API_USER }}
-          CENSO_API_PASSWORD: ${{ secrets.CENSO_API_PASSWORD }}
           SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

@@ -489,6 +489,18 @@ export async function ultimoSync(): Promise<CensoSyncLog | null> {
   const { data } = await supabase.from('censo_sync_log').select('*').order('run_at', { ascending: false }).limit(1).maybeSingle()
   return (data ?? null) as CensoSyncLog | null
 }
+// Ejecuta el sync del CENSO bajo demanda (Edge Function censo-sync; solo admin).
+export async function ejecutarSyncCenso(): Promise<{ ok: boolean; resumen?: any; error?: string }> {
+  const { data, error } = await supabase.functions.invoke('censo-sync', { method: 'POST' })
+  if (error) {
+    // intenta extraer el mensaje del cuerpo de la respuesta de error
+    let msg = error.message
+    try { const ctx = (error as any).context; if (ctx?.json) { const b = await ctx.json(); msg = b?.error ?? msg } } catch { /* noop */ }
+    return { ok: false, error: msg }
+  }
+  if (data && data.ok === false) return { ok: false, error: data.error ?? 'Error en la sincronización' }
+  return { ok: true, resumen: data }
+}
 
 // ─── Horarios de visita (política 6.1) ──────────────────────
 export async function listHorarios(): Promise<HorarioVisita[]> {
