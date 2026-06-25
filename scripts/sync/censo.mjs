@@ -103,25 +103,31 @@ async function main() {
   const incons = []
   const vistos = new Set()
   const dedup = new Set()
-  const pushIncon = (tipo, r, detalle) => {
-    const k = `${tipo}|${r.Ingreso ?? ''}|${norm(r.UbicacionActual)}|${norm(r.Cama)}`
+  const pushIncon = (tipo, r, cama, detalle) => {
+    const k = `${tipo}|${r.Ingreso ?? ''}|${norm(r.UbicacionActual)}|${norm(cama)}`
     if (dedup.has(k)) return; dedup.add(k)
     incons.push({ tipo, num_ingreso: r.Ingreso ?? null, paciente: r.Paciente ?? null,
-      censo_unidad: r.UbicacionActual ?? null, censo_area: r.UbicacionArea ?? null, censo_cama: r.Cama ?? null, detalle })
+      censo_unidad: r.UbicacionActual ?? null, censo_area: r.UbicacionArea ?? null, censo_cama: cama ?? null, detalle })
   }
+  // El identificador de cama llega en `Cama` (hospitalización/UCI) o en `UbicacionNombre` (urgencias/sillones).
+  const camaDe = (r) => (r.Cama && String(r.Cama).trim()) || (r.UbicacionNombre && String(r.UbicacionNombre).trim()) || null
 
   for (const r of censo) {
     const numIngreso = r.Ingreso
     if (!numIngreso) continue
     vistos.add(numIngreso)
 
-    if (!r.Cama) pushIncon('sin_cama', r, 'El paciente no tiene cama asignada en el CENSO.')
-
-    const ubicacionId = homolMap.get(key3(r.UbicacionActual, r.UbicacionArea, r.Cama))
-    const u = ubicacionId ? ubicMap.get(ubicacionId) : null
-    if (!ubicacionId || !u) {
-      pushIncon('ubicacion_no_homologada', r,
-        `Sin homologar: «${r.UbicacionActual ?? '?'}»${r.UbicacionArea ? ' / ' + r.UbicacionArea : ''} / cama «${r.Cama ?? '?'}». Agrégala en Homologación CENSO.`)
+    const cama = camaDe(r)
+    let ubicacionId = null, u = null
+    if (!cama) {
+      pushIncon('sin_cama', r, null, 'Sin cama asignada en el CENSO (sala de espera / sin ubicación física).')
+    } else {
+      ubicacionId = homolMap.get(key3(r.UbicacionActual, r.UbicacionArea, cama)) ?? null
+      u = ubicacionId ? ubicMap.get(ubicacionId) : null
+      if (!ubicacionId || !u) {
+        pushIncon('ubicacion_no_homologada', r, cama,
+          `Sin homologar: «${r.UbicacionActual ?? '?'}»${r.UbicacionArea ? ' / ' + r.UbicacionArea : ''} / cama «${cama}». Agrégala en Homologación CENSO.`)
+      }
     }
 
     pacientes.push({
@@ -139,7 +145,7 @@ async function main() {
 
     const aisl = mapAislamiento(r.TipoDeAislamiento)
     if (aisl === '__desconocido__') {
-      pushIncon('aislamiento_desconocido', r, `Tipo de aislamiento no contemplado: «${r.TipoDeAislamiento}».`)
+      pushIncon('aislamiento_desconocido', r, cama, `Tipo de aislamiento no contemplado: «${r.TipoDeAislamiento}».`)
     } else if (aisl) {
       aislamientos.push({ num_ingreso: numIngreso, tipo: aisl, vigente: true, sync_at: new Date().toISOString() })
     }
