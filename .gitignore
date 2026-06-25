@@ -15,3 +15,7 @@ docs/planilla.jpeg
 # Datos clínicos / muestras con PII — nunca al repo
 docs/*.json
 docs/*.csv
+docs/*.pdf
+docs/*.xlsx
+docs/*.xlsb
+docs/*.docx
