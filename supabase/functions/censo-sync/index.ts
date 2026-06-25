@@ -41,7 +41,8 @@ Deno.serve(async (req) => {
     // ── Autorización: admin autenticado o llamada de sistema (service_role) ──
     const authHeader = req.headers.get('Authorization') ?? ''
     const bearer = authHeader.replace(/^Bearer\s+/i, '')
-    let autorizado = bearer === service
+    const jwtRole = (t: string) => { try { return JSON.parse(atob(t.split('.')[1] ?? '')).role ?? null } catch { return null } }
+    let autorizado = bearer === service || jwtRole(bearer) === 'service_role'
     if (!autorizado) {
       const userClient = createClient(url, anon, { global: { headers: { Authorization: authHeader } } })
       const { data: { user } } = await userClient.auth.getUser()
@@ -49,6 +50,15 @@ Deno.serve(async (req) => {
       const { data: perfil } = await admin.from('perfiles').select('rol').eq('id', user.id).single()
       if (perfil?.rol !== 'admin') return json({ error: 'Solo administradores pueden ejecutar la sincronización.' }, 403)
       autorizado = true
+    }
+
+    // ── Modo chequeo: confirma presencia de secrets sin consumir la API ──
+    const body = await req.json().catch(() => ({}))
+    if (body?.action === 'check') {
+      return json({ ok: true, check: true,
+        CENSO_API_BASE_URL: !!Deno.env.get('CENSO_API_BASE_URL'),
+        CENSO_API_USER: !!Deno.env.get('CENSO_API_USER'),
+        CENSO_API_PASSWORD: !!Deno.env.get('CENSO_API_PASSWORD') })
     }
 
     // ── Config CENSO ──
