@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { PageHeader, MetricCard, Card, FilterBar, selectCls } from '../components/ui'
+import { PageHeader, MetricCard, Card, FilterBar, selectCls, Modal, Badge } from '../components/ui'
 import { useAuth } from '../auth/AuthProvider'
-import { listVisitas, listSedes, listPisos, inventarioTarjetas, type VisitaListado, type FiltrosVisita, type InventarioTarjetas } from '../lib/data'
+import { listVisitas, listSedes, listPisos, inventarioTarjetas, pacientesSinCama, type VisitaListado, type FiltrosVisita, type InventarioTarjetas, type PacienteSinCama } from '../lib/data'
 import type { Sede, Piso } from '../lib/types'
 
 function Ico({ d }: { d: string }) {
@@ -16,8 +16,10 @@ export default function Dashboard() {
   const [sedes, setSedes] = useState<Sede[]>([])
   const [pisos, setPisos] = useState<Piso[]>([])
   const [f, setF] = useState<FiltrosVisita>({ estado: '' })
+  const [sinCama, setSinCama] = useState<PacienteSinCama[]>([])
+  const [verSinCama, setVerSinCama] = useState(false)
 
-  useEffect(() => { listSedes().then(setSedes); inventarioTarjetas().then(setInv) }, [])
+  useEffect(() => { listSedes().then(setSedes); inventarioTarjetas().then(setInv); pacientesSinCama().then(setSinCama) }, [])
   useEffect(() => { if (f.sedeId) listPisos(f.sedeId).then(setPisos); else setPisos([]) }, [f.sedeId])
   useEffect(() => { listVisitas(f).then(setRows) }, [f.estado, f.tipo, f.sedeId, f.pisoId, f.desde, f.hasta])
 
@@ -70,10 +72,14 @@ export default function Dashboard() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+        <button onClick={() => setVerSinCama(true)} className="text-left transition hover:-translate-y-0.5">
+          <MetricCard label="Sin cama asignada" value={sinCama.length} hint="clic para ver registros →" color="amber"
+            icon={<Ico d="M3 7v10M3 12h15a3 3 0 013 3v2M7 12V9a1 1 0 011-1h6a1 1 0 011 1v3" />} />
+        </button>
         <MetricCard label="Familiares" value={m.familiar} color="blue" />
-        <MetricCard label="Proveedores" value={m.proveedor} color="amber" />
-        <MetricCard label="Tarjetas en uso" value={inv?.en_uso ?? '—'} hint="inventario global" color="purple" />
-        <MetricCard label="Tarjetas disponibles" value={inv?.disponible ?? '—'} hint="inventario global" color="teal" />
+        <MetricCard label="Proveedores" value={m.proveedor} color="purple" />
+        <MetricCard label="Tarjetas en uso" value={inv?.en_uso ?? '—'} hint="inventario global" color="teal" />
+        <MetricCard label="Tarjetas disponibles" value={inv?.disponible ?? '—'} hint="inventario global" color="green" />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -93,6 +99,34 @@ export default function Dashboard() {
           <div className="text-sm text-gray-500">Inventario, tenencia y devolución</div>
         </Card></Link>
       </div>
+
+      <Modal open={verSinCama} onClose={() => setVerSinCama(false)} title="Pacientes sin cama asignada" maxWidth="max-w-3xl">
+        <p className="mb-3 text-sm text-gray-600">
+          Pacientes que el CENSO reporta <b>sin ubicación física</b> (sala de espera de urgencias, recuperación, etc.).
+          Búscalos por su número de identificación al registrar una visita.
+        </p>
+        <div className="max-h-[60vh] overflow-auto rounded-lg ring-1 ring-gray-100">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-brand text-white"><tr>
+              {['Paciente', 'Identificación', 'Edad', 'Unidad CENSO', '# Ingreso'].map((h) => <th key={h} className="px-3 py-2 text-left font-medium whitespace-nowrap">{h}</th>)}
+            </tr></thead>
+            <tbody className="divide-y divide-gray-100">
+              {sinCama.length === 0
+                ? <tr><td colSpan={5} className="py-8 text-center text-emerald-600">✓ Todos los pacientes tienen cama asignada.</td></tr>
+                : sinCama.map((p) => (
+                  <tr key={p.num_ingreso} className="hover:bg-brand-50/40">
+                    <td className="px-3 py-2 font-medium text-gray-800">{p.paciente ?? '—'}</td>
+                    <td className="px-3 py-2 text-gray-700">{p.documento ?? <span className="text-gray-300">—</span>}</td>
+                    <td className="px-3 py-2 text-gray-600">{p.edad ?? '—'}</td>
+                    <td className="px-3 py-2"><Badge color="amber">{p.unidad ?? '—'}</Badge></td>
+                    <td className="px-3 py-2 text-gray-600">{p.num_ingreso}</td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="mt-3 text-right text-xs text-gray-400">{sinCama.length} paciente(s)</div>
+      </Modal>
     </div>
   )
 }

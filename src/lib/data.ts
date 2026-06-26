@@ -262,13 +262,62 @@ export async function getOcupacionPiso(pisoId: string): Promise<OcupacionUbicaci
       area: u.area,
       servicio: (u as any).servicio ?? null,
       cupo: u.cupo_default,
+      piso_id: pisoId,
       num_ingreso: pac?.num_ingreso ?? null,
       paciente_nombre: pac?.nombre ?? null,
+      paciente_documento: pac?.documento ?? null,
       edad: pac?.edad ?? null,
       aislamiento: pac ? aislMap.get(pac.num_ingreso) ?? null : null,
       visitas: visByUbic.get(u.id) ?? [],
     }
   })
+}
+
+// Visitas activas (acompañantes actuales) de un ingreso, sin depender de la ubicación.
+export async function visitasActivasPorIngreso(numIngreso: string): Promise<VisitaResumen[]> {
+  const { data } = await supabase.from('visitas')
+    .select('id, tipo_acompanante, tipo_visitante, created_at, visitante:visitantes(nombres_completos, celular), tarjeta:tarjetas!visitas_tarjeta_id_fkey(codigo)')
+    .eq('num_ingreso', numIngreso).eq('estado', 'activa')
+  return ((data as any[]) ?? []).map((v) => ({
+    visita_id: v.id, visitante_nombre: v.visitante?.nombres_completos ?? '—', celular: v.visitante?.celular ?? null,
+    tipo_acompanante: v.tipo_acompanante, tipo_visitante: v.tipo_visitante, tarjeta_codigo: v.tarjeta?.codigo ?? null, hora_ingreso: v.created_at,
+  }))
+}
+
+// Busca un paciente por su número de identificación y arma su ocupación (aunque no tenga cama).
+export async function buscarPacientePorDocumento(doc: string): Promise<OcupacionUbicacion | null> {
+  const { data: pac } = await supabase.from('pacientes_ubicacion').select('*').eq('documento', doc.trim()).maybeSingle()
+  if (!pac) return null
+  const [{ data: ais }, visitas] = await Promise.all([
+    supabase.from('aislamientos').select('tipo').eq('num_ingreso', pac.num_ingreso).eq('vigente', true).maybeSingle(),
+    visitasActivasPorIngreso(pac.num_ingreso),
+  ])
+  let cupo = 2
+  if (pac.ubicacion_id) { const { data: u } = await supabase.from('ubicaciones').select('cupo_default').eq('id', pac.ubicacion_id).maybeSingle(); if (u) cupo = u.cupo_default }
+  return {
+    ubicacion_id: pac.ubicacion_id ?? '',
+    etiqueta: pac.ubicacion_etiqueta ?? 'Sin cama asignada',
+    tipo: 'cama' as TipoUbicacion, area: null, servicio: pac.servicio ?? null, cupo, piso_id: pac.piso_id ?? null,
+    num_ingreso: pac.num_ingreso, paciente_nombre: pac.nombre ?? null, paciente_documento: pac.documento ?? null,
+    edad: pac.edad ?? null, aislamiento: (ais?.tipo as TipoAislamiento) ?? null, visitas,
+  }
+}
+
+// Pacientes en estado "sin cama asignada" (para tarjeta y tabla del dashboard).
+export interface PacienteSinCama { num_ingreso: string; paciente: string | null; documento: string | null; edad: number | null; unidad: string | null; area: string | null }
+export async function pacientesSinCama(): Promise<PacienteSinCama[]> {
+  const { data: inc } = await supabase.from('censo_inconsistencias').select('num_ingreso, paciente, censo_unidad, censo_area').eq('tipo', 'sin_cama')
+  const rows = (inc ?? []) as any[]
+  const ingresos = rows.map((r) => r.num_ingreso).filter(Boolean)
+  const docMap = new Map<string, { documento: string | null; edad: number | null }>()
+  if (ingresos.length) {
+    const { data: pac } = await supabase.from('pacientes_ubicacion').select('num_ingreso, documento, edad').in('num_ingreso', ingresos)
+    ;(pac ?? []).forEach((p: any) => docMap.set(p.num_ingreso, { documento: p.documento, edad: p.edad }))
+  }
+  return rows.map((r) => ({
+    num_ingreso: r.num_ingreso, paciente: r.paciente, unidad: r.censo_unidad, area: r.censo_area,
+    documento: docMap.get(r.num_ingreso)?.documento ?? null, edad: docMap.get(r.num_ingreso)?.edad ?? null,
+  })).sort((a, b) => (a.paciente ?? '').localeCompare(b.paciente ?? ''))
 }
 
 // ─── Descripción legible de filtros (para encabezados de export) ──

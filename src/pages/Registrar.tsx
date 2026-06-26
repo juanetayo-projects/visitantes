@@ -4,7 +4,7 @@ import MapaHabitaciones from '../components/MapaHabitaciones'
 import { useAuth } from '../auth/AuthProvider'
 import {
   listSedes, listPisos, listPuertas, listUbicaciones, listResponsables, listServicios, tarjetasDisponibles,
-  buscarVisitante, upsertVisitante, registrarVisita, ordenarAreas, evaluarRestricciones, type EvalRestriccion,
+  buscarVisitante, upsertVisitante, registrarVisita, ordenarAreas, evaluarRestricciones, buscarPacientePorDocumento, type EvalRestriccion,
 } from '../lib/data'
 import { AISLAMIENTO_LABEL } from '../lib/types'
 import type { Sede, Piso, Puerta, Responsable, Servicio, Tarjeta, TipoVisitante, OcupacionUbicacion } from '../lib/types'
@@ -69,6 +69,11 @@ export default function Registrar() {
   const [autorizadoPorId, setAutorizadoPorId] = useState('')
   const [autorizacionObs, setAutorizacionObs] = useState('')
 
+  // Búsqueda de paciente por identificación (cuando no está en el mapa / sin cama)
+  const [docPaciente, setDocPaciente] = useState('')
+  const [buscandoDoc, setBuscandoDoc] = useState(false)
+  const [docMsg, setDocMsg] = useState<string | null>(null)
+
   // Maneja el clic en una habitación del mapa: valida paciente y evalúa horario/cupos.
   function seleccionar(o: OcupacionUbicacion) {
     if (!o.num_ingreso) { setAviso({ tipo: 'sinPaciente' }); return }
@@ -77,6 +82,18 @@ export default function Registrar() {
     // Regla de edad: ≥65 o ≤18 ⇒ acompañante permanente
     if (requierePermanente(o.edad)) setTipoAcomp('permanente')
     evaluarRestricciones(o).then(setRestric)
+  }
+
+  // Busca el paciente por número de identificación y lo selecciona aunque no tenga cama.
+  async function buscarPorIdentificacion() {
+    setDocMsg(null)
+    if (!docPaciente.trim()) return
+    setBuscandoDoc(true)
+    try {
+      const o = await buscarPacientePorDocumento(docPaciente)
+      if (!o) { setDocMsg('No se encontró un paciente con esa identificación.'); return }
+      seleccionar(o)
+    } finally { setBuscandoDoc(false) }
   }
 
   // visitante
@@ -117,6 +134,7 @@ export default function Registrar() {
     setTipo(null); setSel(null); setCedula(''); setNombres(''); setCelular(''); setEmail(''); setExiste(false)
     setTipoAcomp('visita'); setPermisoOtros(''); setResponsableId(''); setServicioVisita(''); setTarjetaId('')
     setRestric(null); setAutorizadoPorId(''); setAutorizacionObs('')
+    setDocPaciente(''); setDocMsg('')
   }
 
   const restriccionActiva = !!restric && (restric.fueraHorario || restric.excedeSimultaneo || restric.excedeDia)
@@ -155,9 +173,9 @@ export default function Registrar() {
         paciente_documento: sel?.num_ingreso ? (sel as any).paciente_documento ?? null : null,
         paciente_nombre: sel?.paciente_nombre ?? null,
         num_ingreso: sel?.num_ingreso ?? null,
-        ubicacion_id: sel?.ubicacion_id ?? null,
+        ubicacion_id: sel?.ubicacion_id || null,
         ubicacion_etiqueta: sel?.etiqueta ?? null,
-        piso_id: tipo === 'familiar' ? pisoId : null,
+        piso_id: sel?.piso_id || (tipo === 'familiar' ? pisoId : null),
         aislamiento: sel?.aislamiento ?? null,
         responsable_id: tipo === 'proveedor' ? responsableId : null,
         autorizado_por_id: autorizado ? autorizadoPorId : null,
@@ -226,13 +244,33 @@ export default function Registrar() {
                   </select>
                 )}
               </div>
+              {/* Búsqueda por identificación: para pacientes sin cama o que no se ven en el mapa */}
+              <div className="mb-4 rounded-lg border border-dashed border-brand-light/50 bg-brand-50/40 p-3">
+                <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-brand">
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.3-4.3M11 19a8 8 0 100-16 8 8 0 000 16z" /></svg>
+                  ¿No está en el mapa o sin cama asignada? Búscalo por identificación
+                </div>
+                <div className="flex gap-2">
+                  <input className={inputCls} value={docPaciente} placeholder="N° identificación del paciente"
+                    inputMode="numeric" autoComplete="off"
+                    onChange={(e) => setDocPaciente(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') buscarPorIdentificacion() }} />
+                  <Btn variant="light" onClick={buscarPorIdentificacion} disabled={buscandoDoc}>{buscandoDoc ? 'Buscando…' : 'Buscar'}</Btn>
+                </div>
+                {docMsg && <p className="mt-1.5 text-xs text-rose-600">{docMsg}</p>}
+              </div>
+
               {pisoId && <MapaHabitaciones pisoId={pisoId} refreshKey={refreshMapa} onSelect={seleccionar} area={area || undefined} />}
             </Card>
           )}
 
-          {/* Formulario */}
-          <Card className={`p-5 ${tipo === 'familiar' ? 'lg:col-span-2' : 'lg:col-span-5'}`}>
-            <div className="text-sm font-semibold text-brand mb-3">{tipo === 'familiar' ? '3. Registro de la visita' : '2. Datos del visitante'}</div>
+          {/* Formulario — resaltado para que destaque */}
+          <Card className={`relative overflow-hidden border-2 border-brand-light/50 shadow-lg p-5 ${tipo === 'familiar' ? 'lg:col-span-2' : 'lg:col-span-5'}`}>
+            <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-brand to-brand-light" />
+            <div className="mt-1 mb-3 inline-flex items-center gap-2 rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-white">
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+              {tipo === 'familiar' ? '3. Registro de la visita' : '2. Datos del visitante'}
+            </div>
 
             {tipo === 'familiar' && (
               <div className={`mb-4 rounded-lg border px-3 py-2.5 text-sm ${sel ? 'border-brand-light bg-brand-50' : 'border-dashed border-gray-300 bg-gray-50 text-gray-500'}`}>
@@ -243,7 +281,7 @@ export default function Registrar() {
                         Paciente seleccionado
                       </div>
                       <div className="text-base font-bold leading-tight text-brand">{sel.paciente_nombre}{sel.edad != null ? ` · ${sel.edad} años` : ''}</div>
-                      <div className="text-gray-700"># ingreso {sel.num_ingreso} · {sel.etiqueta}
+                      <div className="text-gray-700">{sel.paciente_documento ? <><b>ID</b> {sel.paciente_documento} · </> : ''}# ingreso {sel.num_ingreso} · {sel.etiqueta}
                         {sel.aislamiento && <Badge color="red">Aislamiento {AISLAMIENTO_LABEL[sel.aislamiento]}</Badge>}
                       </div>
                       {(sel.area || sel.servicio) && <div className="text-xs text-brand-light">{[sel.area, sel.servicio].filter(Boolean).join(' · ')}</div>}

@@ -188,9 +188,11 @@ export interface OcupacionUbicacion {
   area: string | null
   servicio: string | null
   cupo: number
+  piso_id?: string | null
   // datos del paciente (espejo)
   num_ingreso: string | null
   paciente_nombre: string | null
+  paciente_documento?: string | null
   edad: number | null
   aislamiento: TipoAislamiento | null
   // visitas activas

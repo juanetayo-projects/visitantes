@@ -142,7 +142,7 @@ export default function MapaHabitaciones({ pisoId, onSelect, refreshKey = 0, are
             <div className="rounded-lg border-l-4 border-brand bg-brand-50 px-2.5 py-1.5">
               <div className="text-[10px] font-semibold uppercase tracking-wide text-brand-light">Paciente</div>
               <div className="text-[15px] font-bold leading-tight text-brand">{tip.o.paciente_nombre}{tip.o.edad ? ` · ${tip.o.edad} a.` : ''}</div>
-              <div className="text-[11px] text-gray-500"># ingreso {tip.o.num_ingreso}</div>
+              <div className="text-[11px] text-gray-500">{tip.o.paciente_documento ? `ID ${tip.o.paciente_documento} · ` : ''}# ingreso {tip.o.num_ingreso}</div>
             </div>
             {/* Visitantes — bloque diferenciado */}
             <div className="mt-2.5">
