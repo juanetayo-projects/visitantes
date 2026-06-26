@@ -1,12 +1,22 @@
+import { useState } from 'react'
 import { PageHeader } from '../../components/ui'
 import CrudTable from '../../components/CrudTable'
+import ImportarResponsables from '../../components/ImportarResponsables'
 
 export default function Responsables() {
+  const [recarga, setRecarga] = useState(0)
   return (
     <div>
       <PageHeader title="Responsables" subtitle="Colaboradores que acompañan a proveedores" />
+      <div className="mb-6"><ImportarResponsables onDone={() => setRecarga((k) => k + 1)} /></div>
       <CrudTable
+        key={`resp-${recarga}`}
         tabla="responsables" titulo="Responsables" orderBy="nombre_completo"
+        filtros={[
+          { key: 'servicio_id', label: 'Servicio' },
+          { key: 'cargo_id', label: 'Cargo' },
+          { key: 'activo', label: 'Activo', opciones: [{ value: 'true', label: 'Activos' }, { value: 'false', label: 'Inactivos' }] },
+        ]}
         columnas={[
           { key: 'nombre_completo', label: 'Nombre' },
           { key: 'numero_documento', label: 'Documento' },

@@ -108,18 +108,20 @@ export default function Dashboard() {
         <div className="max-h-[60vh] overflow-auto rounded-lg ring-1 ring-gray-100">
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-brand text-white"><tr>
-              {['Paciente', 'Identificación', 'Edad', 'Unidad CENSO', '# Ingreso'].map((h) => <th key={h} className="px-3 py-2 text-left font-medium whitespace-nowrap">{h}</th>)}
+              {['Paciente', 'Edad', 'Unidad CENSO', '# Ingreso'].map((h) => <th key={h} className="px-3 py-2 text-left font-medium whitespace-nowrap">{h}</th>)}
             </tr></thead>
             <tbody className="divide-y divide-gray-100">
               {sinCama.length === 0
-                ? <tr><td colSpan={5} className="py-8 text-center text-emerald-600">✓ Todos los pacientes tienen cama asignada.</td></tr>
+                ? <tr><td colSpan={4} className="py-8 text-center text-emerald-600">✓ Todos los pacientes tienen cama asignada.</td></tr>
                 : sinCama.map((p) => (
                   <tr key={p.num_ingreso} className="hover:bg-brand-50/40">
-                    <td className="px-3 py-2 font-medium text-gray-800">{p.paciente ?? '—'}</td>
-                    <td className="px-3 py-2 text-gray-700">{p.documento ?? <span className="text-gray-300">—</span>}</td>
+                    <td className="px-3 py-2">
+                      <div className="font-medium text-gray-800">{p.paciente ?? '—'}</div>
+                      <div className="text-xs text-gray-500">ID {p.documento ?? '—'}</div>
+                    </td>
                     <td className="px-3 py-2 text-gray-600">{p.edad ?? '—'}</td>
-                    <td className="px-3 py-2"><Badge color="amber">{p.unidad ?? '—'}</Badge></td>
-                    <td className="px-3 py-2 text-gray-600">{p.num_ingreso}</td>
+                    <td className="px-3 py-2"><Badge color="amber"><span className="whitespace-nowrap">{p.unidad ?? '—'}</span></Badge></td>
+                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{p.num_ingreso}</td>
                   </tr>
                 ))}
             </tbody>

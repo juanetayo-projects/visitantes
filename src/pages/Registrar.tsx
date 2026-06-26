@@ -265,7 +265,7 @@ export default function Registrar() {
           )}
 
           {/* Formulario — resaltado para que destaque */}
-          <Card className={`relative overflow-hidden border-2 border-brand-light/50 shadow-lg p-5 ${tipo === 'familiar' ? 'lg:col-span-2' : 'lg:col-span-5'}`}>
+          <Card className={`relative overflow-hidden border-2 border-brand-light/50 shadow-lg p-5 ${tipo === 'familiar' ? 'lg:col-span-2' : 'lg:col-span-5 mx-auto w-full max-w-xl'}`}>
             <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-brand to-brand-light" />
             <div className="mt-1 mb-3 inline-flex items-center gap-2 rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-white">
               <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>

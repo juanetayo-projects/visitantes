@@ -110,6 +110,36 @@ export async function importarEstructura(
   return { pisos: pisosPayload.length, ubicaciones: ubicPayload.length, pisosDesactivados, ubicDesactivadas, errores }
 }
 
+// ─── Importación de responsables por Excel ──────────────────
+export interface FilaResponsable { nombre_completo: string; numero_documento: string; servicio?: string | null; cargo?: string | null; telefono?: string | null; email?: string | null; activo: boolean }
+export interface ResultadoImportResp { creados: number; actualizados: number; errores: string[] }
+
+export async function importarResponsables(rows: FilaResponsable[]): Promise<ResultadoImportResp> {
+  const errores: string[] = []
+  const [{ data: serv }, { data: carg }, { data: existentes }] = await Promise.all([
+    supabase.from('servicios').select('id, nombre'),
+    supabase.from('cargos').select('id, nombre'),
+    supabase.from('responsables').select('id, numero_documento'),
+  ])
+  const servId = new Map((serv ?? []).map((s: any) => [norm(s.nombre), s.id]))
+  const cargId = new Map((carg ?? []).map((c: any) => [norm(c.nombre), c.id]))
+  const existById = new Map((existentes ?? []).map((r: any) => [String(r.numero_documento).trim(), r.id]))
+  let creados = 0, actualizados = 0
+  for (const r of rows) {
+    if (!r.nombre_completo?.trim() || !String(r.numero_documento ?? '').trim()) { errores.push(`Fila ignorada: falta nombre o documento.`); continue }
+    const servicio_id = r.servicio ? servId.get(norm(r.servicio)) ?? null : null
+    const cargo_id = r.cargo ? cargId.get(norm(r.cargo)) ?? null : null
+    if (r.servicio && !servicio_id) errores.push(`Servicio no encontrado: «${r.servicio}» (${r.nombre_completo}).`)
+    if (r.cargo && !cargo_id) errores.push(`Cargo no encontrado: «${r.cargo}» (${r.nombre_completo}).`)
+    const payload = { nombre_completo: r.nombre_completo.trim(), numero_documento: String(r.numero_documento).trim(), servicio_id, cargo_id, telefono: r.telefono || null, email: r.email || null, activo: r.activo }
+    const id = existById.get(payload.numero_documento)
+    const res = id ? await supabase.from('responsables').update(payload).eq('id', id) : await supabase.from('responsables').insert(payload)
+    if (res.error) errores.push(`${payload.numero_documento}: ${res.error.message}`)
+    else if (id) actualizados++; else creados++
+  }
+  return { creados, actualizados, errores }
+}
+
 // ─── Inventario y tenencia de tarjetas ──────────────────────
 export interface InventarioTarjetas {
   total: number; disponible: number; en_uso: number; inactiva: number

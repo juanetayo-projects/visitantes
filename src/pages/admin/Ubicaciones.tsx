@@ -51,6 +51,13 @@ export default function Ubicaciones() {
           key={`ubic-${recarga}`}
           tabla="ubicaciones" titulo="Ubicaciones" orderBy="orden"
           subtitulo="Habitaciones, cubículos, camas, camillas y sillones por piso"
+          filtros={[
+            { key: 'piso_id', label: 'Piso' },
+            { key: 'tipo', label: 'Tipo', opciones: TIPOS },
+            { key: 'area', label: 'Área' },
+            { key: 'servicio', label: 'Servicio' },
+            { key: 'activo', label: 'Activo', opciones: [{ value: 'true', label: 'Activos' }, { value: 'false', label: 'Inactivos' }] },
+          ]}
           columnas={[
             { key: 'etiqueta', label: 'Etiqueta' }, { key: 'tipo', label: 'Tipo' },
             { key: 'area', label: 'Área' }, { key: 'servicio', label: 'Servicio' }, { key: 'piso_id', label: 'Piso' },
