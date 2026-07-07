@@ -38,7 +38,9 @@ export async function listResponsables(): Promise<Responsable[]> {
   return data ?? []
 }
 export async function tarjetasDisponibles(sedeId?: string): Promise<Tarjeta[]> {
-  let q = supabase.from('tarjetas').select('*').eq('estado', 'disponible').order('codigo')
+  // Solo tarjetas realmente libres: estado 'disponible' (excluye 'en_uso'/asignada e 'inactiva')
+  // y, por seguridad, sin visita ligada aunque su estado hubiera quedado desactualizado.
+  let q = supabase.from('tarjetas').select('*').eq('estado', 'disponible').is('visita_id', null).order('codigo')
   if (sedeId) q = q.eq('sede_id', sedeId)
   return (await q).data ?? []
 }
