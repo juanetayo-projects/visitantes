@@ -212,7 +212,7 @@ export default function Registrar() {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {TIPOS.map((t) => (
             <button key={t.v} onClick={() => { reset(); setTipo(t.v) }}
-              className={`flex items-center gap-3 rounded-xl p-3 text-left transition-all duration-150 ${tipo === t.v ? 'bg-brand-50 shadow-neu-inset' : 'bg-[#F4F6FB] shadow-neu-sm hover:shadow-neu'}`}>
+              className={`flex items-center gap-3 rounded-xl p-3 text-left transition-all duration-150 ${tipo === t.v ? 'bg-brand-50 shadow-neu-inset' : 'bg-white shadow-neu-sm hover:shadow-neu'}`}>
               <span className={`grid h-10 w-10 place-items-center rounded-lg ${tipo === t.v ? 'bg-brand text-white' : 'bg-gray-100 text-brand'}`}>
                 <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d={t.icon} /></svg>
               </span>
@@ -347,7 +347,7 @@ export default function Registrar() {
                     <div className="flex gap-2">
                       {(['permanente', 'visita'] as const).map((t) => (
                         <button key={t} onClick={() => setTipoAcomp(t)}
-                          className={`flex-1 rounded-lg px-3 py-2 text-sm capitalize transition-all duration-150 ${tipoAcomp === t ? 'bg-brand-50 text-brand font-medium shadow-neu-inset-sm' : 'bg-[#F4F6FB] text-gray-600 shadow-neu-xs hover:shadow-neu-sm'}`}>{t}</button>
+                          className={`flex-1 rounded-lg px-3 py-2 text-sm capitalize transition-all duration-150 ${tipoAcomp === t ? 'bg-brand-50 text-brand font-medium shadow-neu-inset-sm' : 'bg-white text-gray-600 shadow-neu-xs hover:shadow-neu-sm'}`}>{t}</button>
                       ))}
                     </div>
                   </div>

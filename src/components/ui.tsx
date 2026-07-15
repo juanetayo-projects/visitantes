@@ -45,7 +45,7 @@ export function MetricCard({ label, value, hint, color = 'blue', icon }: {
 
 export function FilterBar({ children, onClear }: { children: ReactNode; onClear?: () => void }) {
   return (
-    <div className="mb-5 rounded-2xl bg-[#F4F6FB] p-4 shadow-neu">
+    <div className="mb-5 rounded-2xl bg-white p-4 shadow-neu">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2 text-brand font-semibold text-sm">
           <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 4h18l-7 9v6l-4 2v-8z" /></svg>
@@ -63,8 +63,8 @@ export function FilterBar({ children, onClear }: { children: ReactNode; onClear?
   )
 }
 
-export const selectCls = 'rounded-xl bg-[#F4F6FB] px-3 py-2 text-sm text-gray-700 shadow-neu-inset-sm focus:shadow-neu-inset focus:ring-1 focus:ring-brand-light/40 outline-none min-w-[140px] shrink-0 transition-shadow'
-export const inputCls = 'rounded-xl bg-[#F4F6FB] px-3 py-2 text-sm text-gray-700 shadow-neu-inset-sm focus:shadow-neu-inset focus:ring-1 focus:ring-brand-light/40 outline-none w-full transition-shadow'
+export const selectCls = 'rounded-xl bg-neu-inset px-3 py-2 text-sm text-gray-700 shadow-neu-inset-sm focus:shadow-neu-inset focus:ring-1 focus:ring-brand-light/40 outline-none min-w-[140px] shrink-0 transition-shadow'
+export const inputCls = 'rounded-xl bg-neu-inset px-3 py-2 text-sm text-gray-700 shadow-neu-inset-sm focus:shadow-neu-inset focus:ring-1 focus:ring-brand-light/40 outline-none w-full transition-shadow'
 export const textareaCls = inputCls + ' resize-none'
 
 // Combobox con buscador. Escribes para filtrar; teclado ↑↓/Enter/Esc. El panel
@@ -116,7 +116,7 @@ export function SearchableSelect({ value, onChange, options, placeholder = '— 
       </span>
       {open && rect && createPortal(
         <div ref={popRef} style={{ position: 'fixed', left: rect.left, top: rect.top, width: rect.width, zIndex: 60 }}
-          className="max-h-64 overflow-y-auto rounded-xl bg-[#F4F6FB] shadow-neu">
+          className="max-h-64 overflow-y-auto rounded-xl bg-white shadow-neu">
           <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => pick('')} className="block w-full px-3 py-1.5 text-left text-sm text-gray-400 hover:bg-gray-50">— Sin asignar —</button>
           {filtered.map((o, i) => (
             <button key={o.value} type="button" onMouseDown={(e) => e.preventDefault()} onMouseEnter={() => setHi(i)} onClick={() => pick(o.value)}
@@ -134,15 +134,15 @@ export function Btn({ children, onClick, type = 'button', variant = 'primary', d
   const base = 'rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-150 disabled:opacity-50 disabled:pointer-events-none'
   const v = {
     primary: 'bg-brand text-white shadow-neu-sm hover:shadow-neu hover:brightness-110 active:scale-[0.97] active:shadow-neu-xs',
-    light: 'bg-[#F4F6FB] text-brand shadow-neu-sm hover:shadow-neu active:shadow-neu-inset-sm',
-    ghost: 'bg-[#F4F6FB] text-gray-600 shadow-neu-sm hover:shadow-neu active:shadow-neu-inset-sm',
+    light: 'bg-white text-brand shadow-neu-sm hover:shadow-neu active:shadow-neu-inset-sm',
+    ghost: 'bg-white text-gray-600 shadow-neu-sm hover:shadow-neu active:shadow-neu-inset-sm',
     danger: 'bg-red-600 text-white shadow-neu-sm hover:shadow-neu hover:brightness-110 active:scale-[0.97] active:shadow-neu-xs',
   }[variant]
   return <button type={type} onClick={onClick} disabled={disabled} className={`${base} ${v} ${className}`}>{children}</button>
 }
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <div className={`rounded-2xl bg-[#F4F6FB] shadow-neu ${className}`}>{children}</div>
+  return <div className={`rounded-2xl bg-white shadow-neu ${className}`}>{children}</div>
 }
 
 export function Modal({ open, onClose, title, children, maxWidth = 'max-w-md' }: {
@@ -151,7 +151,7 @@ export function Modal({ open, onClose, title, children, maxWidth = 'max-w-md' }:
   if (!open) return null
   return (
     <div className="modal-overlay fixed inset-0 z-50 grid place-items-center bg-[#061536]/55 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className={`modal-panel w-full ${maxWidth} overflow-hidden rounded-2xl bg-[#F4F6FB] shadow-neu`} onClick={(e) => e.stopPropagation()}>
+      <div className={`modal-panel w-full ${maxWidth} overflow-hidden rounded-2xl bg-white shadow-neu`} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between gap-3 bg-gradient-to-r from-brand to-brand-light px-5 py-3.5">
           <div className="text-base font-semibold text-white">{title}</div>
           <button onClick={onClose} className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-white/80 transition hover:bg-white/20 hover:text-white" aria-label="Cerrar">

@@ -41,7 +41,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#061536] to-[#0A2356] p-4">
-      <div className="w-full max-w-md overflow-hidden rounded-2xl bg-[#F4F6FB] shadow-neu">
+      <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-neu">
         <div className="bg-gradient-to-br from-brand to-brand-light px-8 py-7 text-center text-white">
           <img src={LOGO} alt="Clínica Santa Bárbara" className="mx-auto h-14 w-auto" />
           <h1 className="mt-3 text-2xl font-bold">Control de Visitantes</h1>
@@ -53,7 +53,7 @@ export default function Login() {
           <form onSubmit={submit} className="space-y-4">
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">Correo electrónico</label>
-              <div className="flex items-center gap-2 rounded-xl bg-[#F4F6FB] px-3 shadow-neu-inset-sm transition-shadow focus-within:shadow-neu-inset">
+              <div className="flex items-center gap-2 rounded-xl bg-neu-inset px-3 shadow-neu-inset-sm transition-shadow focus-within:shadow-neu-inset">
                 <IconMail />
                 <input type="email" required value={email} onChange={e => setEmail(e.target.value)}
                   className="w-full bg-transparent py-2.5 text-sm outline-none" placeholder="correo@cacsantabarbara.co" />
@@ -61,7 +61,7 @@ export default function Login() {
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">Contraseña</label>
-              <div className="flex items-center gap-2 rounded-xl bg-[#F4F6FB] px-3 shadow-neu-inset-sm transition-shadow focus-within:shadow-neu-inset">
+              <div className="flex items-center gap-2 rounded-xl bg-neu-inset px-3 shadow-neu-inset-sm transition-shadow focus-within:shadow-neu-inset">
                 <IconLock />
                 <input type={verPass ? 'text' : 'password'} required value={password} onChange={e => setPassword(e.target.value)}
                   className="w-full bg-transparent py-2.5 text-sm outline-none" placeholder="••••••••" />
