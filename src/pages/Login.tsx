@@ -41,7 +41,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#061536] to-[#0A2356] p-4">
-      <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-white/10">
+      <div className="w-full max-w-md overflow-hidden rounded-2xl bg-[#F4F6FB] shadow-neu">
         <div className="bg-gradient-to-br from-brand to-brand-light px-8 py-7 text-center text-white">
           <img src={LOGO} alt="Clínica Santa Bárbara" className="mx-auto h-14 w-auto" />
           <h1 className="mt-3 text-2xl font-bold">Control de Visitantes</h1>
@@ -53,7 +53,7 @@ export default function Login() {
           <form onSubmit={submit} className="space-y-4">
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">Correo electrónico</label>
-              <div className="flex items-center gap-2 rounded-lg bg-brand-50 px-3 ring-1 ring-gray-200 focus-within:ring-2 focus-within:ring-brand-light">
+              <div className="flex items-center gap-2 rounded-xl bg-[#F4F6FB] px-3 shadow-neu-inset-sm transition-shadow focus-within:shadow-neu-inset">
                 <IconMail />
                 <input type="email" required value={email} onChange={e => setEmail(e.target.value)}
                   className="w-full bg-transparent py-2.5 text-sm outline-none" placeholder="correo@cacsantabarbara.co" />
@@ -61,7 +61,7 @@ export default function Login() {
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">Contraseña</label>
-              <div className="flex items-center gap-2 rounded-lg bg-brand-50 px-3 ring-1 ring-gray-200 focus-within:ring-2 focus-within:ring-brand-light">
+              <div className="flex items-center gap-2 rounded-xl bg-[#F4F6FB] px-3 shadow-neu-inset-sm transition-shadow focus-within:shadow-neu-inset">
                 <IconLock />
                 <input type={verPass ? 'text' : 'password'} required value={password} onChange={e => setPassword(e.target.value)}
                   className="w-full bg-transparent py-2.5 text-sm outline-none" placeholder="••••••••" />
@@ -75,7 +75,7 @@ export default function Login() {
             {info && <p className="text-sm text-green-600">{info}</p>}
 
             <button type="submit" disabled={loading}
-              className="w-full rounded-lg bg-brand py-2.5 font-semibold text-white shadow-md transition hover:bg-brand-light disabled:opacity-60">
+              className="w-full rounded-xl bg-brand py-2.5 font-semibold text-white shadow-neu-sm transition-all duration-150 hover:shadow-neu hover:brightness-110 active:scale-[0.98] disabled:opacity-60">
               {loading ? 'Ingresando…' : 'Ingresar'}
             </button>
           </form>

@@ -163,7 +163,7 @@ export default function CrudTable({ tabla, titulo, columnas, campos, orderBy = '
 
   return (
     <Card className="overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-2 p-4 border-b border-gray-100">
+      <div className="flex flex-wrap items-center justify-between gap-2 p-4 border-b border-black/5">
         <div>
           <div className="font-semibold text-brand">{titulo} <span className="text-gray-400 text-sm">({filtrados.length}{filtrados.length !== rows.length ? ` de ${rows.length}` : ''})</span></div>
           {subtitulo && <div className="text-xs text-gray-500">{subtitulo}</div>}
@@ -175,7 +175,7 @@ export default function CrudTable({ tabla, titulo, columnas, campos, orderBy = '
       </div>
 
       {filtros && filtros.length > 0 && (
-        <div className="flex flex-wrap items-end gap-3 border-b border-gray-100 bg-gray-50/60 px-4 py-3">
+        <div className="flex flex-wrap items-end gap-3 border-b border-black/5 px-4 py-3">
           <div className="flex items-center gap-1.5 self-center text-sm font-medium text-brand">
             <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 4h18l-7 9v6l-4 2v-8z" /></svg>
             Filtros
@@ -215,8 +215,8 @@ export default function CrudTable({ tabla, titulo, columnas, campos, orderBy = '
                     </td>
                   ))}
                   <td className="px-3 py-2 text-right whitespace-nowrap">
-                    <button onClick={() => abrirEdicion(r)} className="rounded-lg bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand hover:bg-brand-100 mr-1">Editar</button>
-                    <button onClick={() => eliminar(r)} className="rounded-lg bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700 hover:bg-rose-100">Eliminar</button>
+                    <button onClick={() => abrirEdicion(r)} className="rounded-lg bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand shadow-neu-xs transition hover:shadow-neu-sm mr-1">Editar</button>
+                    <button onClick={() => eliminar(r)} className="rounded-lg bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700 shadow-neu-xs transition hover:shadow-neu-sm">Eliminar</button>
                   </td>
                 </tr>
               ))}

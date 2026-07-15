@@ -212,7 +212,7 @@ export default function Registrar() {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {TIPOS.map((t) => (
             <button key={t.v} onClick={() => { reset(); setTipo(t.v) }}
-              className={`flex items-center gap-3 rounded-xl border-2 p-3 text-left transition ${tipo === t.v ? 'border-brand bg-brand-50' : 'border-gray-200 hover:border-brand-light'}`}>
+              className={`flex items-center gap-3 rounded-xl p-3 text-left transition-all duration-150 ${tipo === t.v ? 'bg-brand-50 shadow-neu-inset' : 'bg-[#F4F6FB] shadow-neu-sm hover:shadow-neu'}`}>
               <span className={`grid h-10 w-10 place-items-center rounded-lg ${tipo === t.v ? 'bg-brand text-white' : 'bg-gray-100 text-brand'}`}>
                 <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d={t.icon} /></svg>
               </span>
@@ -266,7 +266,7 @@ export default function Registrar() {
           )}
 
           {/* Formulario — resaltado para que destaque */}
-          <Card className={`relative overflow-hidden border-2 border-brand-light/50 shadow-lg p-5 ${tipo === 'familiar' ? 'lg:col-span-2' : 'lg:col-span-5 mx-auto w-full max-w-xl'}`}>
+          <Card className={`relative overflow-hidden ring-2 ring-brand-light/30 p-5 ${tipo === 'familiar' ? 'lg:col-span-2' : 'lg:col-span-5 mx-auto w-full max-w-xl'}`}>
             <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-brand to-brand-light" />
             <div className="mt-1 mb-3 inline-flex items-center gap-2 rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-white">
               <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
@@ -347,7 +347,7 @@ export default function Registrar() {
                     <div className="flex gap-2">
                       {(['permanente', 'visita'] as const).map((t) => (
                         <button key={t} onClick={() => setTipoAcomp(t)}
-                          className={`flex-1 rounded-lg border-2 px-3 py-2 text-sm capitalize ${tipoAcomp === t ? 'border-brand bg-brand-50 text-brand font-medium' : 'border-gray-200 text-gray-600'}`}>{t}</button>
+                          className={`flex-1 rounded-lg px-3 py-2 text-sm capitalize transition-all duration-150 ${tipoAcomp === t ? 'bg-brand-50 text-brand font-medium shadow-neu-inset-sm' : 'bg-[#F4F6FB] text-gray-600 shadow-neu-xs hover:shadow-neu-sm'}`}>{t}</button>
                       ))}
                     </div>
                   </div>

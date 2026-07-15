@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { PageHeader, Card, Btn } from '../../components/ui'
+import { PageHeader, Card, Btn, inputCls } from '../../components/ui'
 import CrudTable from '../../components/CrudTable'
 import { supabase } from '../../lib/supabase'
 import { festivosColombia } from '../../lib/festivosColombia'
@@ -22,7 +22,7 @@ export default function Festivos() {
       <Card className="p-4 mb-5">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm text-gray-600">Generar festivos del año</span>
-          <input type="number" className="rounded-lg border border-gray-300 px-3 py-2 text-sm w-28" value={anio} onChange={(e) => setAnio(Number(e.target.value))} />
+          <input type="number" className={`${inputCls} w-28`} value={anio} onChange={(e) => setAnio(Number(e.target.value))} />
           <Btn onClick={generar}>Generar automáticamente</Btn>
           {msg && <span className="text-sm text-emerald-600">{msg}</span>}
         </div>
