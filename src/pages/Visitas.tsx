@@ -8,7 +8,7 @@ import type { Sede, Piso, Ubicacion } from '../lib/types'
 function horaCO(iso: string) {
   return new Date(new Date(iso).getTime() - 5 * 3_600_000).toISOString().replace('T', ' ').substring(0, 16)
 }
-const TIPO_LABEL: Record<string, string> = { familiar: 'Familiar', proveedor: 'Proveedor', colaborador: 'Colaborador' }
+const TIPO_LABEL: Record<string, string> = { familiar: 'Familiar', proveedor: 'Proveedor', colaborador: 'Colaborador', sin_tarjeta: 'Sin tarjeta' }
 
 const COLS: Columna<VisitaListado>[] = [
   { header: 'Fecha/hora', get: (r) => horaCO(r.created_at) },

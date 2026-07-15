@@ -4,7 +4,7 @@ import { listVisitas, listSedes, listPisos, listUbicaciones, describirFiltros, t
 import { exportarExcel, exportarPDF, type Columna } from '../lib/exportar'
 import type { Sede, Piso, Ubicacion } from '../lib/types'
 
-const TIPO_LABEL: Record<string, string> = { familiar: 'Familiar', proveedor: 'Proveedor', colaborador: 'Colaborador' }
+const TIPO_LABEL: Record<string, string> = { familiar: 'Familiar', proveedor: 'Proveedor', colaborador: 'Colaborador', sin_tarjeta: 'Sin tarjeta' }
 function horaCO(iso: string) { return new Date(new Date(iso).getTime() - 5 * 3_600_000).toISOString().replace('T', ' ').substring(0, 16) }
 
 const COLS: Columna<VisitaListado>[] = [
@@ -35,7 +35,7 @@ export default function Historico() {
   useEffect(() => { if (f.pisoId) listUbicaciones(f.pisoId).then(setUbicaciones); else setUbicaciones([]) }, [f.pisoId])
   useEffect(() => {
     setLoading(true)
-    listVisitas(f).then((r) => { setRows(r); setLoading(false) })
+    listVisitas(f, { excluirSinTarjeta: true }).then((r) => { setRows(r); setLoading(false) })
   }, [f.estado, f.tipo, f.sedeId, f.pisoId, f.ubicacionId, f.desde, f.hasta])
 
   const filtrados = useMemo(() => {

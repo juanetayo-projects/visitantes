@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '../lib/supabase'
-import { Card, Btn, inputCls, selectCls, Badge, Modal, SearchableSelect } from './ui'
+import { Card, Btn, inputCls, textareaCls, selectCls, Badge, Modal, SearchableSelect } from './ui'
 
 export type Lookups = Record<string, Map<string, string>>
 
 export interface CrudField {
   key: string
   label: string
-  type: 'text' | 'number' | 'email' | 'checkbox' | 'select' | 'date' | 'time'
+  type: 'text' | 'number' | 'email' | 'checkbox' | 'select' | 'date' | 'time' | 'textarea'
   required?: boolean
   options?: { value: string; label: string }[]
   optionsTable?: { tabla: string; labelKey: string; order?: string; filterActive?: boolean }
@@ -37,9 +37,12 @@ interface Props {
   orderBy?: string
   subtitulo?: string
   filtros?: CrudFiltro[]
+  // Se invoca antes de insertar/actualizar; puede completar/validar el formulario.
+  // Si retorna { error }, se muestra el mensaje y no se guarda.
+  onBeforeSave?: (form: Record<string, any>, editing: boolean) => Promise<Record<string, any> | { error: string }>
 }
 
-export default function CrudTable({ tabla, titulo, columnas, campos, orderBy = 'created_at', subtitulo, filtros }: Props) {
+export default function CrudTable({ tabla, titulo, columnas, campos, orderBy = 'created_at', subtitulo, filtros, onBeforeSave }: Props) {
   const [filtroVals, setFiltroVals] = useState<Record<string, string>>({})
   const [rows, setRows] = useState<any[]>([])
   const [lookups, setLookups] = useState<Lookups>({})
@@ -98,14 +101,19 @@ export default function CrudTable({ tabla, titulo, columnas, campos, orderBy = '
     for (const c of campos) {
       if (c.required && (form[c.key] === '' || form[c.key] == null)) { setError(`«${c.label}» es obligatorio.`); return }
     }
-    const payload: Record<string, any> = {}
+    let payload: Record<string, any> = {}
     campos.forEach((c) => {
       let v = form[c.key]
       if (c.type === 'number') v = v === '' ? null : Number(v)
       if (c.type === 'select' && v === '') v = null
-      if ((c.type === 'text' || c.type === 'email' || c.type === 'time' || c.type === 'date') && v === '') v = null
+      if ((c.type === 'text' || c.type === 'email' || c.type === 'time' || c.type === 'date' || c.type === 'textarea') && v === '') v = null
       payload[c.key] = v
     })
+    if (onBeforeSave) {
+      const res = await onBeforeSave(payload, !!editing)
+      if ('error' in res) { setError(res.error); return }
+      payload = res
+    }
     const res = editing
       ? await supabase.from(tabla).update(payload).eq('id', editing.id)
       : await supabase.from(tabla).insert(payload)
@@ -228,6 +236,8 @@ export default function CrudTable({ tabla, titulo, columnas, campos, orderBy = '
                         <label className="block text-xs font-medium text-gray-500 mb-1">{c.label}{c.required && ' *'}</label>
                         {c.type === 'select'
                           ? <SearchableSelect value={form[c.key] ?? ''} onChange={(v) => setForm({ ...form, [c.key]: v })} options={optionsMap[c.key] ?? []} />
+                          : c.type === 'textarea'
+                          ? <textarea className={textareaCls} rows={3} value={form[c.key] ?? ''} onChange={(e) => setForm({ ...form, [c.key]: e.target.value })} />
                           : <input className={inputCls} type={c.type === 'number' ? 'number' : c.type === 'email' ? 'email' : c.type === 'date' ? 'date' : c.type === 'time' ? 'time' : 'text'} step={c.step}
                               value={form[c.key] ?? ''} onChange={(e) => setForm({ ...form, [c.key]: e.target.value })} />}
                       </>}

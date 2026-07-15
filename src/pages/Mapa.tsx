@@ -1,16 +1,38 @@
 import { useEffect, useMemo, useState } from 'react'
-import { PageHeader, Card, selectCls } from '../components/ui'
+import { PageHeader, Card, Btn, Modal, selectCls, inputCls, textareaCls } from '../components/ui'
 import MapaHabitaciones from '../components/MapaHabitaciones'
-import { listSedes, listPisos, listUbicaciones, ordenarAreas } from '../lib/data'
-import type { Sede, Piso } from '../lib/types'
+import { useAuth } from '../auth/AuthProvider'
+import { listSedes, listPisos, listUbicaciones, ordenarAreas, buscarPacientePorDocumento, crearNotaAdministrativa } from '../lib/data'
+import type { Sede, Piso, OcupacionUbicacion } from '../lib/types'
+
+// Fecha/hora de app en Colombia (GMT-5), para mostrar y guardar en la nota administrativa.
+function fechaHoraCO(): string {
+  const co = new Date(Date.now() - 5 * 3_600_000)
+  const dd = String(co.getUTCDate()).padStart(2, '0'), mm = String(co.getUTCMonth() + 1).padStart(2, '0')
+  let h = co.getUTCHours(); const min = String(co.getUTCMinutes()).padStart(2, '0')
+  const ap = h < 12 ? 'a.m.' : 'p.m.'; h = h % 12 === 0 ? 12 : h % 12
+  return `${dd}/${mm}/${co.getUTCFullYear()} ${h}:${min} ${ap}`
+}
 
 export default function Mapa() {
+  const { perfil } = useAuth()
   const [sedes, setSedes] = useState<Sede[]>([])
   const [pisos, setPisos] = useState<Piso[]>([])
   const [areas, setAreas] = useState<string[]>([])
   const [sedeId, setSedeId] = useState('')
   const [pisoId, setPisoId] = useState('')
   const [area, setArea] = useState('')
+
+  // Nota administrativa: contexto (habitación seleccionada o paciente buscado por cédula)
+  const [notaFor, setNotaFor] = useState<OcupacionUbicacion | null>(null)
+  const [comentario, setComentario] = useState('')
+  const [guardando, setGuardando] = useState(false)
+  const [msg, setMsg] = useState<string | null>(null)
+
+  // Búsqueda por cédula: para casos sin cama mapeada (p.ej. Urgencias)
+  const [doc, setDoc] = useState('')
+  const [buscando, setBuscando] = useState(false)
+  const [docMsg, setDocMsg] = useState<string | null>(null)
 
   useEffect(() => { listSedes().then((s) => { setSedes(s); if (s[0]) setSedeId(s[0].id) }) }, [])
   useEffect(() => {
@@ -27,12 +49,45 @@ export default function Mapa() {
 
   const pisoSel = useMemo(() => pisos.find((p) => p.id === pisoId), [pisos, pisoId])
 
+  function abrirNota(o: OcupacionUbicacion) {
+    setNotaFor(o); setComentario(''); setMsg(null)
+  }
+
+  async function buscarPorCedula() {
+    setDocMsg(null)
+    if (!doc.trim()) return
+    setBuscando(true)
+    try {
+      const o = await buscarPacientePorDocumento(doc)
+      if (!o) { setDocMsg('No se encontró un paciente con esa identificación.'); return }
+      abrirNota(o)
+    } finally { setBuscando(false) }
+  }
+
+  async function guardarNota() {
+    if (!notaFor || !comentario.trim()) return
+    setGuardando(true)
+    try {
+      await crearNotaAdministrativa({
+        ubicacion_id: notaFor.ubicacion_id || null,
+        piso_id: notaFor.piso_id ?? null,
+        num_ingreso: notaFor.num_ingreso,
+        paciente_documento: notaFor.paciente_documento ?? null,
+        paciente_nombre: notaFor.paciente_nombre,
+        comentario: comentario.trim(),
+        registrado_por: perfil?.id ?? null,
+      })
+      setMsg('Nota administrativa guardada.')
+      setComentario('')
+    } finally { setGuardando(false) }
+  }
+
   return (
     <div>
       <PageHeader title="Mapa de habitaciones" subtitle="Vista global de ocupación y acompañantes en tiempo real" />
 
       <Card className="p-4 mb-5">
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-end gap-3">
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Sede</label>
             <select className={selectCls} value={sedeId} onChange={(e) => setSedeId(e.target.value)}>
@@ -54,15 +109,53 @@ export default function Mapa() {
               </select>
             </div>
           )}
+          <div className="flex-1 min-w-[260px]">
+            <label className="block text-xs font-medium text-gray-500 mb-1">Nota administrativa por cédula (sin cama asignada)</label>
+            <div className="flex gap-2">
+              <input className={inputCls} value={doc} placeholder="N° identificación del paciente" inputMode="numeric" autoComplete="off"
+                onChange={(e) => setDoc(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') buscarPorCedula() }} />
+              <Btn variant="light" onClick={buscarPorCedula} disabled={buscando}>{buscando ? 'Buscando…' : 'Buscar'}</Btn>
+            </div>
+            {docMsg && <p className="mt-1 text-xs text-rose-600">{docMsg}</p>}
+          </div>
         </div>
       </Card>
 
       <Card className="p-5">
         {pisoSel && <div className="mb-4 text-lg font-semibold text-brand">{pisoSel.nombre}{area ? ` · ${area}` : ''}</div>}
         {pisoId
-          ? <MapaHabitaciones pisoId={pisoId} area={area || undefined} />
+          ? <MapaHabitaciones pisoId={pisoId} area={area || undefined} onSelect={abrirNota} />
           : <div className="py-16 text-center text-gray-400 text-sm">Selecciona un piso</div>}
       </Card>
+
+      {/* Nota administrativa: fecha/hora de la app + comentario libre */}
+      <Modal open={!!notaFor} onClose={() => setNotaFor(null)} title="Nota administrativa">
+        {notaFor && (
+          <>
+            <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Contexto</div>
+              <div className="text-base font-semibold text-gray-800">{notaFor.paciente_nombre ?? notaFor.etiqueta}</div>
+              <div className="text-sm text-gray-500">
+                {notaFor.num_ingreso ? `# ingreso ${notaFor.num_ingreso} · ` : ''}{notaFor.etiqueta}
+                {notaFor.paciente_documento ? ` · ID ${notaFor.paciente_documento}` : ''}
+              </div>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+              <div><span className="text-gray-400 text-xs">Fecha y hora</span><div className="font-medium text-gray-700">{fechaHoraCO()}</div></div>
+              <div><span className="text-gray-400 text-xs">Registrado por</span><div className="font-medium text-gray-700">{perfil?.nombre ?? perfil?.email}</div></div>
+            </div>
+            <div className="mt-3">
+              <label className="block text-xs font-medium text-gray-500 mb-1">Comentario *</label>
+              <textarea className={textareaCls} rows={4} value={comentario} onChange={(e) => setComentario(e.target.value)} placeholder="Describe la novedad administrativa…" />
+            </div>
+            {msg && <div className="mt-2 rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-700">{msg}</div>}
+            <div className="mt-4 flex gap-2">
+              <Btn onClick={guardarNota} disabled={guardando || !comentario.trim()} className="flex-1">{guardando ? 'Guardando…' : 'Guardar nota'}</Btn>
+              <Btn variant="ghost" onClick={() => setNotaFor(null)}>Cerrar</Btn>
+            </div>
+          </>
+        )}
+      </Modal>
     </div>
   )
 }

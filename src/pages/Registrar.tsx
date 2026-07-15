@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { PageHeader, Card, Btn, selectCls, inputCls, Badge, Modal } from '../components/ui'
+import { PageHeader, Card, Btn, selectCls, inputCls, textareaCls, Badge, Modal } from '../components/ui'
 import MapaHabitaciones from '../components/MapaHabitaciones'
 import { useAuth } from '../auth/AuthProvider'
 import {
@@ -37,6 +37,7 @@ const TIPOS: { v: TipoVisitante; label: string; icon: string; desc: string }[] =
   { v: 'familiar', label: 'Familiar', icon: 'M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4z', desc: 'Acompañante de un paciente' },
   { v: 'proveedor', label: 'Proveedor', icon: 'M3 7h13v8H3zM16 10h3l2 2v3h-5M5.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM18.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z', desc: 'Acompañado por responsable' },
   { v: 'colaborador', label: 'Colaborador', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z', desc: 'Personal interno' },
+  { v: 'sin_tarjeta', label: 'Sin tarjeta', icon: 'M12 9v2m0 4h.01M10.3 3.9l-8 14A2 2 0 004 21h16a2 2 0 001.7-3.1l-8-14a2 2 0 00-3.4 0z', desc: 'Familiar sin ubicación/tarjeta asignada' },
 ]
 
 export default function Registrar() {
@@ -145,7 +146,7 @@ export default function Registrar() {
     if (!cedula.trim() || !nombres.trim()) { setMsg({ ok: false, texto: 'Cédula y nombres son obligatorios.' }); return }
     if (tipo === 'familiar' && !sel?.num_ingreso) { setMsg({ ok: false, texto: 'Selecciona la habitación del paciente en el mapa.' }); return }
     if (tipo === 'proveedor' && !responsableId) { setMsg({ ok: false, texto: 'Selecciona la persona responsable que acompaña.' }); return }
-    if (!tarjetaId) { setAviso({ tipo: tarjetas.length === 0 ? 'sinTarjetas' : 'tarjeta' }); return }
+    if (tipo !== 'sin_tarjeta' && !tarjetaId) { setAviso({ tipo: tarjetas.length === 0 ? 'sinTarjetas' : 'tarjeta' }); return }
     // Fuera de horario o excede el cupo ⇒ pedir autorización (permite continuar)
     if (tipo === 'familiar' && restriccionActiva && !autorizadoPorId) { setAviso({ tipo: 'autorizacion', o: sel ?? undefined }); return }
     doGuardar()
@@ -169,7 +170,7 @@ export default function Registrar() {
       await registrarVisita({
         tipo_visitante: tipo!,
         visitante_id: visitanteId,
-        tipo_acompanante: tipo === 'familiar' ? tipoAcomp : null,
+        tipo_acompanante: (tipo === 'familiar' || tipo === 'sin_tarjeta') ? tipoAcomp : null,
         paciente_documento: sel?.num_ingreso ? (sel as any).paciente_documento ?? null : null,
         paciente_nombre: sel?.paciente_nombre ?? null,
         num_ingreso: sel?.num_ingreso ?? null,
@@ -185,7 +186,7 @@ export default function Registrar() {
         servicio_paciente: tipo === 'colaborador' ? servicioVisita || null : sel?.servicio ?? sel?.area ?? null,
         sede_id: sedeId || null,
         puerta_id: puertaId || null,
-        tarjeta_id: tarjetaId || null,
+        tarjeta_id: tipo === 'sin_tarjeta' ? null : (tarjetaId || null),
         registrado_por: perfil?.id ?? null,
       })
       setMsg({ ok: true, texto: `Visita registrada para ${nombres}.${autorizado ? ' (ingreso autorizado excepcionalmente)' : ''}` })
@@ -208,7 +209,7 @@ export default function Registrar() {
       {/* Paso 1: tipo */}
       <Card className="p-5 mb-5">
         <div className="text-sm font-semibold text-brand mb-3">1. Tipo de visitante</div>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {TIPOS.map((t) => (
             <button key={t.v} onClick={() => { reset(); setTipo(t.v) }}
               className={`flex items-center gap-3 rounded-xl border-2 p-3 text-left transition ${tipo === t.v ? 'border-brand bg-brand-50' : 'border-gray-200 hover:border-brand-light'}`}>
@@ -338,8 +339,8 @@ export default function Registrar() {
                 </div>
               </div>
 
-              {/* Familiar */}
-              {tipo === 'familiar' && (
+              {/* Familiar / sin tarjeta */}
+              {(tipo === 'familiar' || tipo === 'sin_tarjeta') && (
                 <>
                   <div>
                     <label className="block text-xs font-medium text-gray-500 mb-1">Tipo de acompañante</label>
@@ -350,7 +351,7 @@ export default function Registrar() {
                       ))}
                     </div>
                   </div>
-                  <input className={inputCls} value={permisoOtros} onChange={(e) => setPermisoOtros(e.target.value)} placeholder="Elementos / permisos autorizados (opcional)" />
+                  <textarea className={textareaCls} rows={3} value={permisoOtros} onChange={(e) => setPermisoOtros(e.target.value)} placeholder="Elementos / permisos autorizados (opcional)" />
                 </>
               )}
 
@@ -378,21 +379,23 @@ export default function Registrar() {
               )}
 
               {/* Acceso */}
-              <div className="grid grid-cols-2 gap-2 pt-1">
+              <div className={`grid gap-2 pt-1 ${tipo === 'sin_tarjeta' ? '' : 'grid-cols-2'}`}>
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1">Puerta de ingreso</label>
                   <select className={inputCls} value={puertaId} onChange={(e) => setPuertaId(e.target.value)}>
                     {puertas.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
                   </select>
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Tarjeta de acceso *</label>
-                  <select className={`${inputCls} ${!tarjetaId ? 'border-rose-300' : ''}`} value={tarjetaId} onChange={(e) => setTarjetaId(e.target.value)}>
-                    <option value="">— Selecciona tarjeta —</option>
-                    {tarjetas.map((t) => <option key={t.id} value={t.id}>{t.codigo}</option>)}
-                  </select>
-                  {tarjetas.length === 0 && <p className="text-xs text-amber-600 mt-1">No hay tarjetas disponibles en esta sede.</p>}
-                </div>
+                {tipo !== 'sin_tarjeta' && (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Tarjeta de acceso *</label>
+                    <select className={`${inputCls} ${!tarjetaId ? 'border-rose-300' : ''}`} value={tarjetaId} onChange={(e) => setTarjetaId(e.target.value)}>
+                      <option value="">— Selecciona tarjeta —</option>
+                      {tarjetas.map((t) => <option key={t.id} value={t.id}>{t.codigo}</option>)}
+                    </select>
+                    {tarjetas.length === 0 && <p className="text-xs text-amber-600 mt-1">No hay tarjetas disponibles en esta sede.</p>}
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-2 pt-2">

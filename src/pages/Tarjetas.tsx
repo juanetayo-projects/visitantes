@@ -5,7 +5,7 @@ import { inventarioTarjetas, listTarjetasDetalle, listSedes, listPisos, listUbic
 import { exportarExcel, exportarPDF, type Columna } from '../lib/exportar'
 import type { Sede, Piso, Ubicacion } from '../lib/types'
 
-const TIPO_LABEL: Record<string, string> = { familiar: 'Familiar', proveedor: 'Proveedor', colaborador: 'Colaborador' }
+const TIPO_LABEL: Record<string, string> = { familiar: 'Familiar', proveedor: 'Proveedor', colaborador: 'Colaborador', sin_tarjeta: 'Sin tarjeta' }
 const ESTADO_LABEL: Record<string, string> = { disponible: 'Disponible', en_uso: 'En uso', inactiva: 'Inactiva' }
 const ESTADO_COLOR: Record<string, any> = { disponible: 'green', en_uso: 'amber', inactiva: 'gray' }
 function horaCO(iso: string | null) {
@@ -74,7 +74,7 @@ export default function Tarjetas() {
       </div>
 
       {/* Filtros completos */}
-      <FilterBar onClear={() => setF({ estado: 'en_uso' })}>
+      <FilterBar onClear={() => setF({})}>
         <select className={selectCls} value={f.estado ?? ''} onChange={(e) => setF({ ...f, estado: e.target.value })}>
           <option value="">Todos los estados</option>
           <option value="disponible">Disponibles</option>

@@ -19,9 +19,11 @@ export default function Ubicaciones() {
         <CrudTable
           key={`sedes-${recarga}`}
           tabla="sedes" titulo="Sedes" orderBy="orden"
-          columnas={[{ key: 'nombre', label: 'Sede' }, { key: 'orden', label: 'Orden' }, { key: 'activo', label: 'Activo' }]}
+          subtitulo="El prefijo de tarjeta se usa para autogenerar el código (p.ej. T- → T-051) en Tarjetas (catálogo)"
+          columnas={[{ key: 'nombre', label: 'Sede' }, { key: 'prefijo_tarjeta', label: 'Prefijo tarjeta' }, { key: 'orden', label: 'Orden' }, { key: 'activo', label: 'Activo' }]}
           campos={[
             { key: 'nombre', label: 'Nombre', type: 'text', required: true },
+            { key: 'prefijo_tarjeta', label: 'Prefijo de tarjeta (ej. T, U)', type: 'text' },
             { key: 'orden', label: 'Orden', type: 'number', default: 0 },
             { key: 'activo', label: 'Activo', type: 'checkbox', default: true },
           ]}

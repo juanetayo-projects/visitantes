@@ -12,10 +12,14 @@ const TOP: Item[] = [
   { to: '/registrar', label: 'Registrar visita', icon: 'M12 5v14M5 12h14', roles: ['admin', 'orientador'] },
   { to: '/visitas', label: 'Visitas', icon: 'M4 6h16M4 12h16M4 18h16', roles: ['admin', 'orientador', 'coordinador'] },
   { to: '/historico', label: 'Histórico', icon: 'M3 12a9 9 0 109-9 9 9 0 00-9 9zm9-5v5l3 2M3 12H1m2-4l-1.5-1', roles: ['admin', 'orientador', 'coordinador'] },
+  { to: '/sin-tarjeta', label: 'Ingresos sin tarjeta', icon: 'M12 9v2m0 4h.01M10.3 3.9l-8 14A2 2 0 004 21h16a2 2 0 001.7-3.1l-8-14a2 2 0 00-3.4 0z', roles: ['admin', 'orientador', 'coordinador'] },
+  { to: '/notas-administrativas', label: 'Notas administrativas', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V19a2 2 0 01-2 2z', roles: ['admin', 'orientador', 'coordinador'] },
   { to: '/mapa', label: 'Mapa de habitaciones', icon: 'M9 20l-5-2V6l5 2m0 12l6-2m-6 2V8m6 10l5-2V4l-5 2m0 12V6', roles: ['admin', 'orientador', 'coordinador'] },
   { to: '/tarjetas', label: 'Tarjetas de acceso', icon: 'M3 10h18M3 7a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2z', roles: ['admin', 'orientador', 'coordinador'] },
   { to: '/estadisticas', label: 'Mapa de calor', icon: 'M3 3v18h18M7 14l3-3 3 3 5-5', roles: ['admin', 'coordinador'] },
   { to: '/monitoreo', label: 'Centro de monitoreo', icon: 'M3 5h18v12H3zM8 21h8M12 17v4', roles: ['admin', 'coordinador'] },
+  { to: '/cirugia', label: 'Cirugía', icon: 'M9 3v4M15 3v4M4 11h16M5 7h14a1 1 0 011 1v11a2 2 0 01-2 2H6a2 2 0 01-2-2V8a1 1 0 011-1z', roles: ['admin', 'orientador', 'coordinador', 'cirugia'] },
+  { to: '/hemodinamia', label: 'Hemodinamia', icon: 'M3 12h4l2-7 4 14 2-7h6', roles: ['admin', 'orientador', 'coordinador', 'hemodinamia'] },
 ]
 
 const ADMIN: Item[] = [

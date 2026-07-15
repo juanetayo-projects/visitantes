@@ -65,6 +65,7 @@ export function FilterBar({ children, onClear }: { children: ReactNode; onClear?
 
 export const selectCls = 'rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-brand-light focus:ring-1 focus:ring-brand-light outline-none min-w-[140px] shrink-0'
 export const inputCls = 'rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-brand-light focus:ring-1 focus:ring-brand-light outline-none w-full'
+export const textareaCls = inputCls + ' resize-none'
 
 // Combobox con buscador. Escribes para filtrar; teclado ↑↓/Enter/Esc. El panel
 // se renderiza en portal con posición fija para que el modal no lo recorte.

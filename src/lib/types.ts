@@ -1,5 +1,5 @@
 // ─── Usuarios / roles ───────────────────────────────────────────────
-export type Rol = 'admin' | 'orientador' | 'coordinador'
+export type Rol = 'admin' | 'orientador' | 'coordinador' | 'cirugia' | 'hemodinamia'
 
 export interface Perfil {
   id: string
@@ -13,13 +13,15 @@ export const ROL_LABEL: Record<Rol, string> = {
   admin: 'Administrador',
   orientador: 'Orientador',
   coordinador: 'Coordinador',
+  cirugia: 'Cirugía',
+  hemodinamia: 'Hemodinamia',
 }
 
 // ─── Catálogos institucionales ──────────────────────────────────────
 export interface Servicio { id: string; nombre: string; activo: boolean }
 export interface Cargo { id: string; nombre: string; activo: boolean }
 
-export interface Sede { id: string; nombre: string; orden: number; activo: boolean }
+export interface Sede { id: string; nombre: string; orden: number; activo: boolean; prefijo_tarjeta: string | null }
 
 export interface Puerta {
   id: string
@@ -136,7 +138,7 @@ export interface Tarjeta {
 }
 
 // ─── Control de ingreso (visita) ────────────────────────────────────
-export type TipoVisitante = 'familiar' | 'proveedor' | 'colaborador'
+export type TipoVisitante = 'familiar' | 'proveedor' | 'colaborador' | 'sin_tarjeta'
 export type TipoAcompanante = 'permanente' | 'visita'
 export type EstadoVisita = 'activa' | 'finalizada'
 
@@ -207,4 +209,63 @@ export interface VisitaResumen {
   tipo_visitante: TipoVisitante
   tarjeta_codigo: string | null
   hora_ingreso: string | null
+}
+
+// ─── Notas administrativas ──────────────────────────────────────────
+export interface NotaAdministrativa {
+  id: string
+  ubicacion_id: string | null
+  piso_id: string | null
+  num_ingreso: string | null
+  paciente_documento: string | null
+  paciente_nombre: string | null
+  comentario: string
+  registrado_por: string | null
+  created_at: string
+}
+
+// ─── Cirugía: solicitudes de información en recepción ───────────────
+export interface SolicitudCirugia {
+  id: string
+  fecha: string
+  nombre_paciente: string
+  documento_paciente: string
+  eps: string | null
+  persona_solicita: string | null
+  procedimiento: string | null
+  celular: string | null
+  observaciones: string | null
+  atendido_por: string | null
+  revisado_por_cirugia: string | null
+  observacion_cirugia: string | null
+  revisado_at: string | null
+  registrado_por: string | null
+  created_at: string
+}
+
+// ─── Hemodinamia: solicitudes de información / documentos ───────────
+export type EstadoHemodinamia = 'recibido' | 'atendido' | 'revisado' | 'pendiente'
+
+export const ESTADO_HEMODINAMIA_LABEL: Record<EstadoHemodinamia, string> = {
+  recibido: 'Recibido', atendido: 'Atendido', revisado: 'Revisado', pendiente: 'Pendiente',
+}
+
+export interface SolicitudHemodinamia {
+  id: string
+  fecha_hora: string
+  cedula_paciente: string
+  nombre_paciente: string
+  procedimiento: string
+  documentos: string | null
+  estado: EstadoHemodinamia
+  registrado_por: string | null
+  created_at: string
+}
+
+export interface ComentarioHemodinamia {
+  id: string
+  solicitud_id: string
+  autor_id: string | null
+  comentario: string
+  created_at: string
 }

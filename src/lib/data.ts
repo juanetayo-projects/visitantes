@@ -2,6 +2,7 @@ import { supabase } from './supabase'
 import type {
   Sede, Piso, Ubicacion, Servicio, Cargo, Puerta, Tarjeta, Responsable, HorarioVisita,
   OcupacionUbicacion, VisitaResumen, TipoAislamiento, TipoUbicacion, TipoAcompanante,
+  NotaAdministrativa, SolicitudCirugia, SolicitudHemodinamia, ComentarioHemodinamia, EstadoHemodinamia,
 } from './types'
 
 // Normaliza texto para comparaciones (sin acentos, mayúsculas, espacios colapsados).
@@ -43,6 +44,17 @@ export async function tarjetasDisponibles(sedeId?: string): Promise<Tarjeta[]> {
   let q = supabase.from('tarjetas').select('*').eq('estado', 'disponible').is('visita_id', null).order('codigo')
   if (sedeId) q = q.eq('sede_id', sedeId)
   return (await q).data ?? []
+}
+
+// Calcula el próximo código consecutivo de tarjeta para una sede, según su prefijo (T-/U-).
+export async function siguienteCodigoTarjeta(sedeId: string): Promise<string> {
+  const { data: sede } = await supabase.from('sedes').select('prefijo_tarjeta').eq('id', sedeId).maybeSingle()
+  const prefijo = sede?.prefijo_tarjeta
+  if (!prefijo) throw new Error('Esta sede no tiene un prefijo de tarjeta configurado (ver catálogo de Sedes).')
+  const { data } = await supabase.from('tarjetas').select('codigo').eq('sede_id', sedeId).ilike('codigo', `${prefijo}-%`).order('codigo', { ascending: false }).limit(1)
+  const ultimo = data?.[0]?.codigo as string | undefined
+  const n = ultimo ? parseInt(ultimo.slice(prefijo.length + 1), 10) || 0 : 0
+  return `${prefijo}-${String(n + 1).padStart(3, '0')}`
 }
 
 // ─── Importación de estructura (Pisos / Ubicaciones) ────────
@@ -357,7 +369,7 @@ const ESTADO_LBL: Record<string, string> = {
   activa: 'Activas (dentro)', finalizada: 'Finalizadas',
   disponible: 'Disponibles', en_uso: 'En uso', inactiva: 'Inactivas',
 }
-const TIPO_LBL: Record<string, string> = { familiar: 'Familiar', proveedor: 'Proveedor', colaborador: 'Colaborador' }
+const TIPO_LBL: Record<string, string> = { familiar: 'Familiar', proveedor: 'Proveedor', colaborador: 'Colaborador', sin_tarjeta: 'Sin tarjeta' }
 
 export function describirFiltros(
   f: { estado?: string; tipo?: string; sedeId?: string; pisoId?: string; ubicacionId?: string; desde?: string; hasta?: string; texto?: string; numIngreso?: string },
@@ -407,10 +419,11 @@ export interface FiltrosVisita {
   texto?: string
 }
 
-export async function listVisitas(f: FiltrosVisita = {}): Promise<VisitaListado[]> {
+export async function listVisitas(f: FiltrosVisita = {}, opts: { excluirSinTarjeta?: boolean } = {}): Promise<VisitaListado[]> {
   let q = supabase.from('visitas')
     .select('id, tipo_visitante, tipo_acompanante, paciente_nombre, num_ingreso, ubicacion_etiqueta, aislamiento, permiso_alimentos, estado, created_at, sede_id, visitante:visitantes(nombres_completos, cedula, celular), tarjeta:tarjetas!visitas_tarjeta_id_fkey(codigo), responsable:responsables!visitas_responsable_id_fkey(nombre_completo), sede:sedes(nombre), eventos:visita_eventos(tipo, hora)')
     .order('created_at', { ascending: false }).limit(500)
+  if (opts.excluirSinTarjeta) q = q.neq('tipo_visitante', 'sin_tarjeta')
   if (f.estado) q = q.eq('estado', f.estado)
   if (f.tipo) q = q.eq('tipo_visitante', f.tipo)
   if (f.sedeId) q = q.eq('sede_id', f.sedeId)
@@ -681,7 +694,7 @@ export async function upsertVisitante(v: { cedula: string; nombres_completos: st
 
 // ─── Registro de visita ─────────────────────────────────────
 export interface NuevaVisita {
-  tipo_visitante: 'familiar' | 'proveedor' | 'colaborador'
+  tipo_visitante: 'familiar' | 'proveedor' | 'colaborador' | 'sin_tarjeta'
   visitante_id: string
   tipo_acompanante?: TipoAcompanante | null
   paciente_documento?: string | null
@@ -733,4 +746,148 @@ export function estadoCelda(o: OcupacionUbicacion): EstadoCelda {
   if (o.visitas.some((v) => v.tipo_acompanante === 'permanente')) return 'permanente'
   if (o.visitas.length > 0) return 'visita'
   return 'solo'
+}
+
+// ─── Notas administrativas ───────────────────────────────────
+export interface NuevaNotaAdministrativa {
+  ubicacion_id?: string | null
+  piso_id?: string | null
+  num_ingreso?: string | null
+  paciente_documento?: string | null
+  paciente_nombre?: string | null
+  comentario: string
+  registrado_por?: string | null
+}
+export async function crearNotaAdministrativa(n: NuevaNotaAdministrativa): Promise<string> {
+  const { data, error } = await supabase.from('notas_administrativas').insert(n).select('id').single()
+  if (error) throw error
+  return data.id as string
+}
+
+export interface FiltrosNota {
+  desde?: string
+  hasta?: string
+  usuarioId?: string
+  texto?: string
+}
+export async function listNotasAdministrativas(f: FiltrosNota = {}): Promise<(NotaAdministrativa & { usuario_nombre: string | null })[]> {
+  let q = supabase.from('notas_administrativas')
+    .select('*, registrado:perfiles!notas_administrativas_registrado_por_fkey(nombre)')
+    .order('created_at', { ascending: false }).limit(500)
+  if (f.desde) q = q.gte('created_at', f.desde + 'T00:00:00-05:00')
+  if (f.hasta) q = q.lte('created_at', f.hasta + 'T23:59:59-05:00')
+  if (f.usuarioId) q = q.eq('registrado_por', f.usuarioId)
+  const { data } = await q
+  let rows = ((data ?? []) as any[]).map((r) => ({ ...r, usuario_nombre: r.registrado?.nombre ?? null }))
+  if (f.texto) {
+    const t = f.texto.toLowerCase()
+    rows = rows.filter((r) => r.comentario?.toLowerCase().includes(t) || r.paciente_nombre?.toLowerCase().includes(t) || r.paciente_documento?.includes(t))
+  }
+  return rows
+}
+
+// Actividad administrativa (notas) vs. gestión operativa (visitas registradas), por usuario.
+export interface ActividadUsuario { usuario_id: string; nombre: string; notas: number; visitas: number }
+export async function metricasNotasPorUsuario(): Promise<ActividadUsuario[]> {
+  const [{ data: perfiles }, { data: notas }, { data: visitas }] = await Promise.all([
+    supabase.from('perfiles').select('id, nombre'),
+    supabase.from('notas_administrativas').select('registrado_por'),
+    supabase.from('visitas').select('registrado_por'),
+  ])
+  const nombreDe = new Map((perfiles ?? []).map((p: any) => [p.id, p.nombre]))
+  const notasPor = new Map<string, number>()
+  ;(notas ?? []).forEach((n: any) => { if (n.registrado_por) notasPor.set(n.registrado_por, (notasPor.get(n.registrado_por) ?? 0) + 1) })
+  const visitasPor = new Map<string, number>()
+  ;(visitas ?? []).forEach((v: any) => { if (v.registrado_por) visitasPor.set(v.registrado_por, (visitasPor.get(v.registrado_por) ?? 0) + 1) })
+  const usuarios = new Set([...notasPor.keys(), ...visitasPor.keys()])
+  return Array.from(usuarios).map((id) => ({
+    usuario_id: id, nombre: nombreDe.get(id) ?? 'Usuario eliminado',
+    notas: notasPor.get(id) ?? 0, visitas: visitasPor.get(id) ?? 0,
+  })).sort((a, b) => (b.notas + b.visitas) - (a.notas + a.visitas))
+}
+
+// ─── Cirugía: solicitudes de información en recepción ────────
+export interface NuevaSolicitudCirugia {
+  fecha?: string
+  nombre_paciente: string
+  documento_paciente: string
+  eps?: string | null
+  persona_solicita?: string | null
+  procedimiento?: string | null
+  celular?: string | null
+  observaciones?: string | null
+  atendido_por?: string | null
+  registrado_por?: string | null
+}
+export async function crearSolicitudCirugia(s: NuevaSolicitudCirugia): Promise<string> {
+  const { data, error } = await supabase.from('solicitudes_cirugia').insert(s).select('id').single()
+  if (error) throw error
+  return data.id as string
+}
+
+export interface FiltrosCirugia { desde?: string; hasta?: string; texto?: string; revisadas?: '' | 'si' | 'no' }
+export async function listSolicitudesCirugia(f: FiltrosCirugia = {}): Promise<SolicitudCirugia[]> {
+  let q = supabase.from('solicitudes_cirugia').select('*').order('fecha', { ascending: false }).order('created_at', { ascending: false }).limit(500)
+  if (f.desde) q = q.gte('fecha', f.desde)
+  if (f.hasta) q = q.lte('fecha', f.hasta)
+  if (f.revisadas === 'si') q = q.not('revisado_por_cirugia', 'is', null)
+  if (f.revisadas === 'no') q = q.is('revisado_por_cirugia', null)
+  const { data } = await q
+  let rows = (data ?? []) as SolicitudCirugia[]
+  if (f.texto) {
+    const t = f.texto.toLowerCase()
+    rows = rows.filter((r) => r.nombre_paciente.toLowerCase().includes(t) || r.documento_paciente.includes(t) || r.procedimiento?.toLowerCase().includes(t))
+  }
+  return rows
+}
+
+// Registra (o actualiza) la revisión de Cirugía sobre una solicitud existente.
+export async function revisarSolicitudCirugia(id: string, revisadoPorId: string, observacion: string) {
+  const { error } = await supabase.from('solicitudes_cirugia')
+    .update({ revisado_por_cirugia: revisadoPorId, observacion_cirugia: observacion, revisado_at: new Date().toISOString() })
+    .eq('id', id)
+  if (error) throw error
+}
+
+// ─── Hemodinamia: solicitudes de información / documentos ────
+export interface NuevaSolicitudHemodinamia {
+  cedula_paciente: string
+  nombre_paciente: string
+  procedimiento: string
+  documentos?: string | null
+  registrado_por?: string | null
+}
+export async function crearSolicitudHemodinamia(s: NuevaSolicitudHemodinamia): Promise<string> {
+  const { data, error } = await supabase.from('solicitudes_hemodinamia').insert(s).select('id').single()
+  if (error) throw error
+  return data.id as string
+}
+
+export interface FiltrosHemodinamia { estado?: EstadoHemodinamia | ''; desde?: string; hasta?: string; texto?: string }
+export async function listSolicitudesHemodinamia(f: FiltrosHemodinamia = {}): Promise<SolicitudHemodinamia[]> {
+  let q = supabase.from('solicitudes_hemodinamia').select('*').order('fecha_hora', { ascending: false }).limit(500)
+  if (f.estado) q = q.eq('estado', f.estado)
+  if (f.desde) q = q.gte('fecha_hora', f.desde + 'T00:00:00-05:00')
+  if (f.hasta) q = q.lte('fecha_hora', f.hasta + 'T23:59:59-05:00')
+  const { data } = await q
+  let rows = (data ?? []) as SolicitudHemodinamia[]
+  if (f.texto) {
+    const t = f.texto.toLowerCase()
+    rows = rows.filter((r) => r.nombre_paciente.toLowerCase().includes(t) || r.cedula_paciente.includes(t) || r.procedimiento?.toLowerCase().includes(t))
+  }
+  return rows
+}
+export async function cambiarEstadoHemodinamia(id: string, estado: EstadoHemodinamia) {
+  const { error } = await supabase.from('solicitudes_hemodinamia').update({ estado }).eq('id', id)
+  if (error) throw error
+}
+export async function listComentariosHemodinamia(solicitudId: string): Promise<(ComentarioHemodinamia & { autor_nombre: string | null })[]> {
+  const { data } = await supabase.from('comentarios_hemodinamia')
+    .select('*, autor:perfiles!comentarios_hemodinamia_autor_id_fkey(nombre)')
+    .eq('solicitud_id', solicitudId).order('created_at')
+  return ((data ?? []) as any[]).map((r) => ({ ...r, autor_nombre: r.autor?.nombre ?? null }))
+}
+export async function comentarHemodinamia(solicitudId: string, autorId: string | null, comentario: string) {
+  const { error } = await supabase.from('comentarios_hemodinamia').insert({ solicitud_id: solicitudId, autor_id: autorId, comentario })
+  if (error) throw error
 }

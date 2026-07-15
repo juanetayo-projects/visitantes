@@ -1,0 +1,176 @@
+import { useEffect, useState } from 'react'
+import { PageHeader, Card, MetricCard, FilterBar, selectCls, inputCls, textareaCls, Btn, Badge, Modal } from '../components/ui'
+import { useAuth } from '../auth/AuthProvider'
+import {
+  listSolicitudesHemodinamia, crearSolicitudHemodinamia, cambiarEstadoHemodinamia,
+  listComentariosHemodinamia, comentarHemodinamia, type FiltrosHemodinamia,
+} from '../lib/data'
+import { exportarExcel, exportarPDF, type Columna } from '../lib/exportar'
+import { ESTADO_HEMODINAMIA_LABEL, type SolicitudHemodinamia, type EstadoHemodinamia, type ComentarioHemodinamia } from '../lib/types'
+
+function fechaCO(iso: string) { return new Date(new Date(iso).getTime() - 5 * 3_600_000).toISOString().replace('T', ' ').substring(0, 16) }
+
+const ESTADO_COLOR: Record<EstadoHemodinamia, any> = { recibido: 'blue', atendido: 'green', revisado: 'purple', pendiente: 'amber' }
+
+const COLS: Columna<SolicitudHemodinamia>[] = [
+  { header: 'Fecha/hora', get: (r) => fechaCO(r.fecha_hora) },
+  { header: 'Paciente', get: (r) => r.nombre_paciente },
+  { header: 'Cédula', get: (r) => r.cedula_paciente },
+  { header: 'Procedimiento', get: (r) => r.procedimiento },
+  { header: 'Documentos', get: (r) => r.documentos ?? '' },
+  { header: 'Estado', get: (r) => ESTADO_HEMODINAMIA_LABEL[r.estado] },
+]
+
+const vacio = { cedula_paciente: '', nombre_paciente: '', procedimiento: '', documentos: '' }
+
+export default function Hemodinamia() {
+  const { perfil } = useAuth()
+  const esStaff = perfil?.rol === 'admin' || perfil?.rol === 'orientador'
+  const esHemodinamia = perfil?.rol === 'hemodinamia' || perfil?.rol === 'admin'
+  const [rows, setRows] = useState<SolicitudHemodinamia[]>([])
+  const [loading, setLoading] = useState(false)
+  const [f, setF] = useState<FiltrosHemodinamia>({})
+  const [abrirNueva, setAbrirNueva] = useState(false)
+  const [form, setForm] = useState(vacio)
+  const [msg, setMsg] = useState<string | null>(null)
+
+  const [comentar, setComentar] = useState<SolicitudHemodinamia | null>(null)
+  const [comentarios, setComentarios] = useState<(ComentarioHemodinamia & { autor_nombre: string | null })[]>([])
+  const [nuevoComentario, setNuevoComentario] = useState('')
+
+  async function cargar() { setLoading(true); setRows(await listSolicitudesHemodinamia(f)); setLoading(false) }
+  useEffect(() => { cargar() }, [f.estado, f.desde, f.hasta, f.texto])
+
+  async function guardarNueva() {
+    if (!form.cedula_paciente.trim() || !form.nombre_paciente.trim() || !form.procedimiento.trim()) { setMsg('Cédula, nombre y procedimiento son obligatorios.'); return }
+    await crearSolicitudHemodinamia({ ...form, registrado_por: perfil?.id ?? null })
+    setAbrirNueva(false); setForm(vacio); setMsg(null); cargar()
+  }
+
+  async function abrirComentarios(r: SolicitudHemodinamia) {
+    setComentar(r); setNuevoComentario('')
+    setComentarios(await listComentariosHemodinamia(r.id))
+  }
+  async function enviarComentario() {
+    if (!comentar || !nuevoComentario.trim()) return
+    await comentarHemodinamia(comentar.id, perfil?.id ?? null, nuevoComentario.trim())
+    setNuevoComentario('')
+    setComentarios(await listComentariosHemodinamia(comentar.id))
+  }
+  async function setEstado(r: SolicitudHemodinamia, estado: EstadoHemodinamia) {
+    await cambiarEstadoHemodinamia(r.id, estado)
+    cargar()
+  }
+
+  return (
+    <div>
+      <PageHeader title="Hemodinamia — solicitudes de información" subtitle="Documentos y solicitudes que traen los pacientes/familiares para Hemodinamia"
+        action={<div className="flex gap-2">
+          {esStaff && <Btn onClick={() => setAbrirNueva(true)}>+ Nueva solicitud</Btn>}
+          <Btn variant="light" onClick={() => exportarExcel('Solicitudes de Hemodinamia', COLS, rows)}>Excel</Btn>
+          <Btn variant="light" onClick={() => exportarPDF('Solicitudes de Hemodinamia', COLS, rows)}>PDF</Btn>
+        </div>} />
+
+      <div className="grid gap-4 sm:grid-cols-4 mb-5">
+        <MetricCard label="Total (filtro)" value={rows.length} color="blue" />
+        <MetricCard label="Recibidos" value={rows.filter((r) => r.estado === 'recibido').length} color="blue" />
+        <MetricCard label="Atendidos" value={rows.filter((r) => r.estado === 'atendido').length} color="green" />
+        <MetricCard label="Pendientes" value={rows.filter((r) => r.estado === 'pendiente').length} color="amber" />
+      </div>
+
+      <FilterBar onClear={() => setF({})}>
+        <select className={selectCls} value={f.estado ?? ''} onChange={(e) => setF({ ...f, estado: e.target.value as any })}>
+          <option value="">Todos los estados</option>
+          {(Object.keys(ESTADO_HEMODINAMIA_LABEL) as EstadoHemodinamia[]).map((e) => <option key={e} value={e}>{ESTADO_HEMODINAMIA_LABEL[e]}</option>)}
+        </select>
+        <input type="date" className={selectCls} value={f.desde ?? ''} onChange={(e) => setF({ ...f, desde: e.target.value })} />
+        <input type="date" className={selectCls} value={f.hasta ?? ''} onChange={(e) => setF({ ...f, hasta: e.target.value })} />
+        <input className={selectCls} placeholder="Paciente, cédula, procedimiento…" value={f.texto ?? ''} onChange={(e) => setF({ ...f, texto: e.target.value })} />
+      </FilterBar>
+
+      <Card className="overflow-hidden">
+        <div className="px-4 py-2.5 border-b border-gray-100 text-sm text-gray-500">{rows.length} solicitud(es)</div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-brand text-white"><tr>
+              {['Fecha/hora', 'Paciente', 'Procedimiento', 'Documentos', 'Estado', ''].map((h) => <th key={h} className="px-3 py-2.5 text-left font-medium whitespace-nowrap">{h}</th>)}
+            </tr></thead>
+            <tbody className="divide-y divide-gray-100">
+              {loading ? <tr><td colSpan={6} className="py-10 text-center text-gray-400">Cargando…</td></tr>
+                : rows.length === 0 ? <tr><td colSpan={6} className="py-10 text-center text-gray-400">Sin registros</td></tr>
+                : rows.map((r) => (
+                  <tr key={r.id} className="hover:bg-brand-50/40">
+                    <td className="px-3 py-2 whitespace-nowrap text-gray-600">{fechaCO(r.fecha_hora)}</td>
+                    <td className="px-3 py-2"><div className="font-medium text-gray-800">{r.nombre_paciente}</div><div className="text-xs text-gray-500">{r.cedula_paciente}</div></td>
+                    <td className="px-3 py-2 text-gray-600">{r.procedimiento}</td>
+                    <td className="px-3 py-2 text-gray-600 max-w-xs truncate" title={r.documentos ?? ''}>{r.documentos ?? '—'}</td>
+                    <td className="px-3 py-2">
+                      {esHemodinamia
+                        ? <select className={`${selectCls} min-w-0`} value={r.estado} onChange={(e) => setEstado(r, e.target.value as EstadoHemodinamia)}>
+                            {(Object.keys(ESTADO_HEMODINAMIA_LABEL) as EstadoHemodinamia[]).map((e) => <option key={e} value={e}>{ESTADO_HEMODINAMIA_LABEL[e]}</option>)}
+                          </select>
+                        : <Badge color={ESTADO_COLOR[r.estado]}>{ESTADO_HEMODINAMIA_LABEL[r.estado]}</Badge>}
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      <button onClick={() => abrirComentarios(r)} className="rounded-lg bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand hover:bg-brand-100 whitespace-nowrap">Comentarios</button>
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      {/* Nueva solicitud (staff) */}
+      <Modal open={abrirNueva} onClose={() => setAbrirNueva(false)} title="Nueva solicitud — Hemodinamia">
+        <div className="space-y-3">
+          <div><label className="block text-xs font-medium text-gray-500 mb-1">Cédula del paciente *</label>
+            <input className={inputCls} value={form.cedula_paciente} onChange={(e) => setForm({ ...form, cedula_paciente: e.target.value })} inputMode="numeric" /></div>
+          <div><label className="block text-xs font-medium text-gray-500 mb-1">Nombres del paciente *</label>
+            <input className={inputCls} value={form.nombre_paciente} onChange={(e) => setForm({ ...form, nombre_paciente: e.target.value })} /></div>
+          <div><label className="block text-xs font-medium text-gray-500 mb-1">Nombre del procedimiento *</label>
+            <input className={inputCls} value={form.procedimiento} onChange={(e) => setForm({ ...form, procedimiento: e.target.value })} /></div>
+          <div><label className="block text-xs font-medium text-gray-500 mb-1">Documentos que trae</label>
+            <textarea className={textareaCls} rows={3} value={form.documentos} onChange={(e) => setForm({ ...form, documentos: e.target.value })} /></div>
+          {msg && <p className="text-sm text-rose-600">{msg}</p>}
+          <div className="flex gap-2 pt-1">
+            <Btn onClick={guardarNueva} className="flex-1">Registrar solicitud</Btn>
+            <Btn variant="ghost" onClick={() => setAbrirNueva(false)}>Cancelar</Btn>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Comentarios (hilo, visible para todos los roles del módulo) */}
+      <Modal open={!!comentar} onClose={() => setComentar(null)} title="Comentarios">
+        {comentar && (
+          <>
+            <div className="rounded-xl border border-gray-100 bg-gray-50 p-3 text-sm mb-3">
+              <div className="font-semibold text-gray-800">{comentar.nombre_paciente} · {comentar.cedula_paciente}</div>
+              <div className="text-gray-500">{comentar.procedimiento}</div>
+            </div>
+            <div className="max-h-56 overflow-y-auto space-y-2">
+              {comentarios.length === 0
+                ? <p className="text-sm text-gray-400">Sin comentarios todavía.</p>
+                : comentarios.map((c) => (
+                  <div key={c.id} className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                      <span className="font-medium text-gray-700">{c.autor_nombre ?? 'Usuario'}</span>
+                      <span>{fechaCO(c.created_at)}</span>
+                    </div>
+                    <div className="mt-1 text-sm text-gray-700">{c.comentario}</div>
+                  </div>
+                ))}
+            </div>
+            <div className="mt-3">
+              <textarea className={textareaCls} rows={3} value={nuevoComentario} onChange={(e) => setNuevoComentario(e.target.value)} placeholder="Agregar comentario…" />
+            </div>
+            <div className="mt-3 flex gap-2">
+              <Btn onClick={enviarComentario} disabled={!nuevoComentario.trim()} className="flex-1">Comentar</Btn>
+              <Btn variant="ghost" onClick={() => setComentar(null)}>Cerrar</Btn>
+            </div>
+          </>
+        )}
+      </Modal>
+    </div>
+  )
+}

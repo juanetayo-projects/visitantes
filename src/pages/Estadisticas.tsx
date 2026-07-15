@@ -8,7 +8,7 @@ import type { Sede, Piso } from '../lib/types'
 
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 const HORAS = Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2, '0')}h`)
-const TIPO_LABEL: Record<string, string> = { familiar: 'Familiar', proveedor: 'Proveedor', colaborador: 'Colaborador' }
+const TIPO_LABEL: Record<string, string> = { familiar: 'Familiar', proveedor: 'Proveedor', colaborador: 'Colaborador', sin_tarjeta: 'Sin tarjeta' }
 
 function partesCO(iso: string) {
   const co = new Date(new Date(iso).getTime() - 5 * 3_600_000)
