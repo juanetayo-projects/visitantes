@@ -851,10 +851,11 @@ export async function crearSolicitudCirugia(s: NuevaSolicitudCirugia): Promise<s
   return data.id as string
 }
 
-export interface FiltrosCirugia { estado?: EstadoHemodinamia | ''; desde?: string; hasta?: string; texto?: string }
+export interface FiltrosCirugia { estado?: EstadoHemodinamia | ''; atendidoPor?: string; desde?: string; hasta?: string; texto?: string }
 export async function listSolicitudesCirugia(f: FiltrosCirugia = {}): Promise<SolicitudCirugia[]> {
   let q = supabase.from('solicitudes_cirugia').select('*').order('fecha', { ascending: false }).order('created_at', { ascending: false }).limit(1000)
   if (f.estado) q = q.eq('estado', f.estado)
+  if (f.atendidoPor) q = q.eq('atendido_por_nombre', f.atendidoPor)
   if (f.desde) q = q.gte('fecha', f.desde)
   if (f.hasta) q = q.lte('fecha', f.hasta)
   const { data } = await q
@@ -864,6 +865,15 @@ export async function listSolicitudesCirugia(f: FiltrosCirugia = {}): Promise<So
     rows = rows.filter((r) => r.nombre_paciente.toLowerCase().includes(t) || r.documento_paciente.includes(t) || r.procedimiento?.toLowerCase().includes(t))
   }
   return rows
+}
+
+// Nombres distintos de "atendido por" ya usados en Cirugía, para poblar el filtro (dato
+// histórico en texto libre: no todos corresponden a una cuenta/perfil del sistema).
+export async function listAtendidoPorCirugia(): Promise<string[]> {
+  const { data } = await supabase.from('solicitudes_cirugia').select('atendido_por_nombre')
+  const set = new Set<string>()
+  ;(data ?? []).forEach((r: any) => { if (r.atendido_por_nombre) set.add(r.atendido_por_nombre) })
+  return Array.from(set).sort((a, b) => a.localeCompare(b, 'es'))
 }
 export async function cambiarEstadoCirugia(id: string, estado: EstadoHemodinamia) {
   const { error } = await supabase.from('solicitudes_cirugia').update({ estado }).eq('id', id)

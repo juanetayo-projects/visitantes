@@ -187,28 +187,47 @@ function fechaCortaCO(iso: string): string {
 }
 
 // Badge con la cantidad de comentarios/notas de un registro; al pasar el mouse muestra
-// un tooltip con el detalle (autor, fecha, texto) de cada uno.
+// un tooltip con el detalle (autor, fecha, texto) de cada uno. El tooltip se pinta en un
+// portal con posición fija (mismo truco que SearchableSelect) para que el overflow-x-auto
+// de la tabla contenedora no lo recorte, especialmente en las últimas filas.
 export function ComentariosBadge({ items }: { items: ComentarioResumen[] }) {
+  const ref = useRef<HTMLSpanElement>(null)
+  const [pos, setPos] = useState<{ left: number; top: number; arriba: boolean } | null>(null)
+
   if (!items.length) return null
+
+  function mostrar() {
+    const el = ref.current
+    if (!el) return
+    const r = el.getBoundingClientRect()
+    const arriba = window.innerHeight - r.bottom < 220
+    let left = r.left
+    if (left + 288 > window.innerWidth) left = Math.max(4, window.innerWidth - 292)
+    setPos({ left, top: arriba ? r.top - 6 : r.bottom + 6, arriba })
+  }
+
   return (
-    <span className="group relative inline-flex align-middle">
-      <span className="inline-flex cursor-default items-center gap-1 rounded-full bg-brand px-1.5 py-0.5 text-[10px] font-semibold text-white">
+    <>
+      <span ref={ref} onMouseEnter={mostrar} onMouseLeave={() => setPos(null)}
+        className="inline-flex cursor-default items-center gap-1 rounded-full bg-brand px-1.5 py-0.5 text-[10px] font-semibold text-white align-middle">
         <svg className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8-1.06 0-2.077-.163-3.02-.463L3 21l1.395-3.72C3.512 16.132 3 14.62 3 13c0-4.418 4.03-8 9-8s9 3.582 9 7z" /></svg>
         {items.length}
       </span>
-      <div className="invisible absolute left-0 top-full z-30 mt-1.5 w-72 -translate-x-1 rounded-xl bg-white p-2 opacity-0 shadow-neu ring-1 ring-brand/20 transition-opacity group-hover:visible group-hover:opacity-100">
-        <div className="max-h-56 space-y-1.5 overflow-y-auto pr-0.5 text-left">
-          {items.map((c, i) => (
-            <div key={i} className="rounded-lg border-l-4 border-brand-light bg-brand-50/60 px-2 py-1.5">
-              <div className="flex items-center justify-between gap-2 text-[10px] text-gray-500">
-                <span className="font-medium text-gray-700">{c.autor_nombre ?? 'Usuario'}</span>
-                <span className="whitespace-nowrap">{fechaCortaCO(c.created_at)}</span>
+      {pos && createPortal(
+        <div style={{ position: 'fixed', left: pos.left, top: pos.top, transform: pos.arriba ? 'translateY(-100%)' : undefined, zIndex: 60 }}
+          className="pointer-events-none w-72 rounded-xl bg-white p-2 shadow-neu ring-1 ring-brand/20">
+          <div className="max-h-56 space-y-1.5 overflow-y-auto pr-0.5 text-left">
+            {items.map((c, i) => (
+              <div key={i} className="rounded-lg border-l-4 border-brand-light bg-brand-50/60 px-2 py-1.5">
+                <div className="flex items-center justify-between gap-2 text-[10px] text-gray-500">
+                  <span className="font-medium text-gray-700">{c.autor_nombre ?? 'Usuario'}</span>
+                  <span className="whitespace-nowrap">{fechaCortaCO(c.created_at)}</span>
+                </div>
+                <div className="mt-0.5 text-xs text-gray-700">{c.comentario}</div>
               </div>
-              <div className="mt-0.5 text-xs text-gray-700">{c.comentario}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </span>
+            ))}
+          </div>
+        </div>, document.body)}
+    </>
   )
 }

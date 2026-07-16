@@ -123,7 +123,9 @@ export default function Hemodinamia() {
                         : <Badge color={ESTADO_COLOR[r.estado]}>{ESTADO_HEMODINAMIA_LABEL[r.estado]}</Badge>}
                     </td>
                     <td className="px-3 py-2 text-right">
-                      <button onClick={() => abrirComentarios(r)} className="rounded-lg bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand hover:bg-brand-100 whitespace-nowrap">Comentarios</button>
+                      <button onClick={() => abrirComentarios(r)} title="Comentarios" className="grid h-8 w-8 place-items-center rounded-lg bg-brand-50 text-brand hover:bg-brand-100">
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8-1.06 0-2.077-.163-3.02-.463L3 21l1.395-3.72C3.512 16.132 3 14.62 3 13c0-4.418 4.03-8 9-8s9 3.582 9 7z" /></svg>
+                      </button>
                     </td>
                   </tr>
                 ))}

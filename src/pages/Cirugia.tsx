@@ -3,7 +3,7 @@ import { PageHeader, Card, MetricCard, FilterBar, selectCls, inputCls, textareaC
 import { useAuth } from '../auth/AuthProvider'
 import {
   listSolicitudesCirugia, crearSolicitudCirugia, cambiarEstadoCirugia,
-  listComentariosCirugia, comentarCirugia, listComentariosCirugiaPorSolicitud, type FiltrosCirugia,
+  listComentariosCirugia, comentarCirugia, listComentariosCirugiaPorSolicitud, listAtendidoPorCirugia, type FiltrosCirugia,
 } from '../lib/data'
 import { exportarExcel, exportarPDF, type Columna } from '../lib/exportar'
 import { ESTADO_HEMODINAMIA_LABEL, type SolicitudCirugia, type EstadoHemodinamia, type ComentarioCirugia } from '../lib/types'
@@ -43,13 +43,15 @@ export default function Cirugia() {
   const [comentarios, setComentarios] = useState<(ComentarioCirugia & { autor_nombre: string | null })[]>([])
   const [nuevoComentario, setNuevoComentario] = useState('')
   const [comentariosPorSolicitud, setComentariosPorSolicitud] = useState<Map<string, (ComentarioCirugia & { autor_nombre: string | null })[]>>(new Map())
+  const [atendidoPorOpciones, setAtendidoPorOpciones] = useState<string[]>([])
 
   async function cargar() {
     setLoading(true)
     const [r, cm] = await Promise.all([listSolicitudesCirugia(f), listComentariosCirugiaPorSolicitud()])
     setRows(r); setComentariosPorSolicitud(cm); setLoading(false)
   }
-  useEffect(() => { cargar() }, [f.estado, f.desde, f.hasta, f.texto])
+  useEffect(() => { cargar() }, [f.estado, f.atendidoPor, f.desde, f.hasta, f.texto])
+  useEffect(() => { listAtendidoPorCirugia().then(setAtendidoPorOpciones) }, [])
 
   function abrirModalNueva() { setForm({ ...vacio, fecha: hoyCO() }); setMsg(null); setAbrirNueva(true) }
 
@@ -97,6 +99,10 @@ export default function Cirugia() {
           <option value="">Todos los estados</option>
           {(Object.keys(ESTADO_HEMODINAMIA_LABEL) as EstadoHemodinamia[]).map((e) => <option key={e} value={e}>{ESTADO_HEMODINAMIA_LABEL[e]}</option>)}
         </select>
+        <select className={selectCls} value={f.atendidoPor ?? ''} onChange={(e) => setF({ ...f, atendidoPor: e.target.value })}>
+          <option value="">Todos (atendido por)</option>
+          {atendidoPorOpciones.map((n) => <option key={n} value={n}>{n}</option>)}
+        </select>
         <input type="date" className={selectCls} value={f.desde ?? ''} onChange={(e) => setF({ ...f, desde: e.target.value })} />
         <input type="date" className={selectCls} value={f.hasta ?? ''} onChange={(e) => setF({ ...f, hasta: e.target.value })} />
         <input className={selectCls} placeholder="Paciente, documento, procedimiento…" value={f.texto ?? ''} onChange={(e) => setF({ ...f, texto: e.target.value })} />
@@ -138,7 +144,9 @@ export default function Cirugia() {
                         : <Badge color={ESTADO_COLOR[r.estado]}>{ESTADO_HEMODINAMIA_LABEL[r.estado]}</Badge>}
                     </td>
                     <td className="sticky right-0 z-10 bg-white px-3 py-2 text-right shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.15)] group-hover:bg-brand-50">
-                      <button onClick={() => abrirComentarios(r)} className="rounded-lg bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand hover:bg-brand-100 whitespace-nowrap">Comentarios</button>
+                      <button onClick={() => abrirComentarios(r)} title="Comentarios" className="grid h-8 w-8 place-items-center rounded-lg bg-brand-50 text-brand hover:bg-brand-100">
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8-1.06 0-2.077-.163-3.02-.463L3 21l1.395-3.72C3.512 16.132 3 14.62 3 13c0-4.418 4.03-8 9-8s9 3.582 9 7z" /></svg>
+                      </button>
                     </td>
                   </tr>
                 ))}
