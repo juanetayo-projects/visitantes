@@ -5,7 +5,7 @@ import { ROL_LABEL, type Rol } from '../lib/types'
 
 const LOGO = `${import.meta.env.BASE_URL}images/logo_cacsb_blanc.png`
 
-interface Item { to: string; label: string; icon: string; roles: Rol[] }
+interface Item { to: string; label: string; icon: string; roles: Rol[]; soloTorre?: boolean }
 
 const TOP: Item[] = [
   { to: '/', label: 'Inicio', icon: 'M3 12l9-9 9 9M5 10v10h14V10', roles: ['admin', 'orientador', 'coordinador'] },
@@ -18,8 +18,8 @@ const TOP: Item[] = [
   { to: '/tarjetas', label: 'Tarjetas de acceso', icon: 'M3 10h18M3 7a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2z', roles: ['admin', 'orientador', 'coordinador'] },
   { to: '/estadisticas', label: 'Mapa de calor', icon: 'M3 3v18h18M7 14l3-3 3 3 5-5', roles: ['admin', 'coordinador'] },
   { to: '/monitoreo', label: 'Centro de monitoreo', icon: 'M3 5h18v12H3zM8 21h8M12 17v4', roles: ['admin', 'coordinador'] },
-  { to: '/cirugia', label: 'Cirugía', icon: 'M9 3v4M15 3v4M4 11h16M5 7h14a1 1 0 011 1v11a2 2 0 01-2 2H6a2 2 0 01-2-2V8a1 1 0 011-1z', roles: ['admin', 'orientador', 'coordinador', 'cirugia'] },
-  { to: '/hemodinamia', label: 'Hemodinamia', icon: 'M3 12h4l2-7 4 14 2-7h6', roles: ['admin', 'orientador', 'coordinador', 'hemodinamia'] },
+  { to: '/cirugia', label: 'Cirugía', icon: 'M9 3v4M15 3v4M4 11h16M5 7h14a1 1 0 011 1v11a2 2 0 01-2 2H6a2 2 0 01-2-2V8a1 1 0 011-1z', roles: ['admin', 'orientador', 'coordinador', 'cirugia'], soloTorre: true },
+  { to: '/hemodinamia', label: 'Hemodinamia', icon: 'M3 12h4l2-7 4 14 2-7h6', roles: ['admin', 'orientador', 'coordinador', 'hemodinamia'], soloTorre: true },
 ]
 
 const ADMIN: Item[] = [
@@ -39,11 +39,14 @@ const linkCls = (isActive: boolean, sub = false) =>
   `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition ${sub ? 'pl-7 ' : ''}${isActive ? 'bg-white/15 font-medium' : 'hover:bg-white/10'}`
 
 export default function Layout() {
-  const { perfil, signOut } = useAuth()
+  const { perfil, signOut, sedeTrabajo, limpiarSedeTrabajo } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
   const rol = perfil?.rol ?? 'orientador'
-  const top = TOP.filter(i => i.roles.includes(rol))
+  // Cirugía/Hemodinamia solo aplican a Torre de Salud: si el orientador identificó
+  // Urgencias como su sede de trabajo, esos módulos no le aplican hoy.
+  const esOrientadorFueraDeTorre = rol === 'orientador' && sedeTrabajo?.nombre !== 'Torre de Salud'
+  const top = TOP.filter(i => i.roles.includes(rol) && !(i.soloTorre && esOrientadorFueraDeTorre))
   const esAdmin = rol === 'admin'
   const adminActivo = ADMIN.some(i => location.pathname === i.to)
   const [abierto, setAbierto] = useState(adminActivo)
@@ -98,6 +101,12 @@ export default function Layout() {
       <main className="flex-1 overflow-auto">
         {/* Header azul (mismo tono que el menú lateral) */}
         <header className="sticky top-0 z-20 flex items-center justify-end gap-3 bg-brand px-6 py-2.5 shadow-sm">
+          {rol === 'orientador' && sedeTrabajo && (
+            <button onClick={limpiarSedeTrabajo}
+              className="mr-1 rounded-lg border border-white/30 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-white/15" title="Cambiar sede de trabajo">
+              Sede: {sedeTrabajo.nombre} <span className="text-brand-100">· cambiar</span>
+            </button>
+          )}
           <div className="grid h-9 w-9 place-items-center rounded-full bg-white/15 text-sm font-semibold text-white ring-1 ring-white/30">{iniciales}</div>
           <div className="leading-tight">
             <div className="text-sm font-medium text-white">{perfil?.nombre || perfil?.email}</div>

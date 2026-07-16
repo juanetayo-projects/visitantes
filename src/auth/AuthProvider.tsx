@@ -3,20 +3,44 @@ import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import type { Perfil } from '../lib/types'
 
+// Sede en la que el orientador va a trabajar durante esta sesión (se pregunta al
+// iniciar sesión porque Cirugía/Hemodinamia solo aplican a Torre de Salud, y
+// "sin tarjeta" en Registrar solo aplica a Urgencias). No es un dato persistente
+// del perfil: se guarda en sessionStorage y se vuelve a preguntar en cada login.
+export interface SedeTrabajo { id: string; nombre: string }
+const SEDE_TRABAJO_KEY = 'visitantes_sede_trabajo'
+
 interface AuthCtx {
   session: Session | null
   perfil: Perfil | null
   loading: boolean
   signOut: () => Promise<void>
+  sedeTrabajo: SedeTrabajo | null
+  setSedeTrabajo: (s: SedeTrabajo) => void
+  limpiarSedeTrabajo: () => void
 }
 
-const Ctx = createContext<AuthCtx>({ session: null, perfil: null, loading: true, signOut: async () => {} })
+const Ctx = createContext<AuthCtx>({
+  session: null, perfil: null, loading: true, signOut: async () => {},
+  sedeTrabajo: null, setSedeTrabajo: () => {}, limpiarSedeTrabajo: () => {},
+})
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [perfil, setPerfil] = useState<Perfil | null>(null)
   const [loading, setLoading] = useState(true)
   const uidCargado = useRef<string | null>(null)
+  const [sedeTrabajo, setSedeTrabajoState] = useState<SedeTrabajo | null>(() => {
+    try { const raw = sessionStorage.getItem(SEDE_TRABAJO_KEY); return raw ? JSON.parse(raw) : null } catch { return null }
+  })
+  const setSedeTrabajo = (s: SedeTrabajo) => {
+    setSedeTrabajoState(s)
+    sessionStorage.setItem(SEDE_TRABAJO_KEY, JSON.stringify(s))
+  }
+  const limpiarSedeTrabajo = () => {
+    setSedeTrabajoState(null)
+    sessionStorage.removeItem(SEDE_TRABAJO_KEY)
+  }
 
   async function cargarPerfil(uid: string) {
     if (uidCargado.current === uid) return // evita recargas redundantes (token refresh, etc.)
@@ -47,9 +71,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => sub.subscription.unsubscribe()
   }, [])
 
-  const signOut = async () => { await supabase.auth.signOut() }
+  const signOut = async () => {
+    await supabase.auth.signOut()
+    limpiarSedeTrabajo()
+  }
 
-  return <Ctx.Provider value={{ session, perfil, loading, signOut }}>{children}</Ctx.Provider>
+  return <Ctx.Provider value={{ session, perfil, loading, signOut, sedeTrabajo, setSedeTrabajo, limpiarSedeTrabajo }}>{children}</Ctx.Provider>
 }
 
 export const useAuth = () => useContext(Ctx)

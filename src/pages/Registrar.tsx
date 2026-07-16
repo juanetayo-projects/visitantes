@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { PageHeader, Card, Btn, selectCls, inputCls, textareaCls, Badge, Modal } from '../components/ui'
 import MapaHabitaciones from '../components/MapaHabitaciones'
 import { useAuth } from '../auth/AuthProvider'
@@ -41,7 +41,7 @@ const TIPOS: { v: TipoVisitante; label: string; icon: string; desc: string }[] =
 ]
 
 export default function Registrar() {
-  const { perfil } = useAuth()
+  const { perfil, sedeTrabajo } = useAuth()
   const [tipo, setTipo] = useState<TipoVisitante | null>(null)
   const [msg, setMsg] = useState<{ ok: boolean; texto: string } | null>(null)
   const [guardando, setGuardando] = useState(false)
@@ -74,6 +74,10 @@ export default function Registrar() {
   const [docPaciente, setDocPaciente] = useState('')
   const [buscandoDoc, setBuscandoDoc] = useState(false)
   const [docMsg, setDocMsg] = useState<string | null>(null)
+
+  // "Sin tarjeta" solo aplica a la sede de Urgencias (no hay ubicación/cama que vincular).
+  const esUrgencias = useMemo(() => sedes.find((s) => s.id === sedeId)?.nombre === 'Urgencias', [sedes, sedeId])
+  const tiposDisponibles = useMemo(() => TIPOS.filter((t) => t.v !== 'sin_tarjeta' || esUrgencias), [esUrgencias])
 
   // Maneja el clic en una habitación del mapa: valida paciente y evalúa horario/cupos.
   function seleccionar(o: OcupacionUbicacion) {
@@ -110,13 +114,17 @@ export default function Registrar() {
   const [responsableId, setResponsableId] = useState('')
   const [servicioVisita, setServicioVisita] = useState('')
 
-  useEffect(() => { listSedes().then((s) => { setSedes(s); if (s[0]) setSedeId(s[0].id) }) }, [])
+  // Si el orientador ya identificó su sede de trabajo al iniciar sesión, se usa como
+  // punto de partida (sigue siendo editable acá).
+  useEffect(() => { listSedes().then((s) => { setSedes(s); const preferida = sedeTrabajo && s.find((x) => x.id === sedeTrabajo.id); setSedeId((preferida ?? s[0])?.id ?? '') }) }, [])
   useEffect(() => {
     if (!sedeId) return
     listPisos(sedeId).then((p) => { setPisos(p); setPisoId(p[0]?.id ?? '') })
     listPuertas(sedeId).then((p) => { setPuertas(p); setPuertaId(p[0]?.id ?? '') })
     tarjetasDisponibles(sedeId).then(setTarjetas)
   }, [sedeId])
+  // "Sin tarjeta" deja de aplicar si se cambia a una sede distinta de Urgencias.
+  useEffect(() => { if (tipo === 'sin_tarjeta' && !esUrgencias) reset() }, [esUrgencias])
   useEffect(() => { listResponsables().then(setResponsables); listServicios().then(setServicios) }, [])
   useEffect(() => {
     setArea(''); setSel(null)
@@ -206,11 +214,23 @@ export default function Registrar() {
         <div className={`mb-4 rounded-lg px-4 py-3 text-sm ${msg.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>{msg.texto}</div>
       )}
 
+      {/* Sede: siempre visible — determina si "Sin tarjeta" aplica (solo Urgencias) */}
+      <Card className="p-4 mb-5">
+        <div className="flex items-end gap-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Sede</label>
+            <select className={selectCls} value={sedeId} onChange={(e) => setSedeId(e.target.value)}>
+              {sedes.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+            </select>
+          </div>
+        </div>
+      </Card>
+
       {/* Paso 1: tipo */}
       <Card className="p-5 mb-5">
         <div className="text-sm font-semibold text-brand mb-3">1. Tipo de visitante</div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {TIPOS.map((t) => (
+          {tiposDisponibles.map((t) => (
             <button key={t.v} onClick={() => { reset(); setTipo(t.v) }}
               className={`flex items-center gap-3 rounded-xl p-3 text-left transition-all duration-150 ${tipo === t.v ? 'bg-brand-50 shadow-neu-inset' : 'bg-white shadow-neu-sm hover:shadow-neu'}`}>
               <span className={`grid h-10 w-10 place-items-center rounded-lg ${tipo === t.v ? 'bg-brand text-white' : 'bg-gray-100 text-brand'}`}>
@@ -223,6 +243,7 @@ export default function Registrar() {
             </button>
           ))}
         </div>
+        {!esUrgencias && <p className="mt-2 text-xs text-gray-400">"Sin tarjeta" solo está disponible para la sede Urgencias.</p>}
       </Card>
 
       {tipo && (
@@ -232,9 +253,6 @@ export default function Registrar() {
             <Card className="p-5 lg:col-span-3">
               <div className="text-sm font-semibold text-brand mb-3">2. Selecciona la habitación del paciente</div>
               <div className="flex flex-wrap gap-3 mb-4">
-                <select className={selectCls} value={sedeId} onChange={(e) => setSedeId(e.target.value)}>
-                  {sedes.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
-                </select>
                 <select className={selectCls} value={pisoId} onChange={(e) => { setPisoId(e.target.value); setSel(null) }}>
                   {pisos.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
                 </select>

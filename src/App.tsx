@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth/AuthProvider'
 import Layout from './components/Layout'
+import SedeGate from './components/SedeGate'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Registrar from './pages/Registrar'
@@ -26,9 +27,13 @@ import HorariosVisita from './pages/admin/HorariosVisita'
 import SincronizacionCenso from './pages/admin/SincronizacionCenso'
 
 function Protegido({ children }: { children: React.ReactNode }) {
-  const { session, loading } = useAuth()
+  const { session, perfil, loading, sedeTrabajo } = useAuth()
   if (loading) return <div className="min-h-screen grid place-items-center text-brand">Cargando…</div>
   if (!session) return <Login />
+  if (!perfil) return <div className="min-h-screen grid place-items-center text-brand">Cargando…</div>
+  // Solo el orientador necesita identificar la sede: de eso depende si ve Cirugía/
+  // Hemodinamia (solo Torre) y si puede registrar "sin tarjeta" (solo Urgencias).
+  if (perfil.rol === 'orientador' && !sedeTrabajo) return <SedeGate />
   return <>{children}</>
 }
 
