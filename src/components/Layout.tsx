@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthProvider'
 import { ROL_LABEL, type Rol } from '../lib/types'
 
@@ -41,12 +41,20 @@ const linkCls = (isActive: boolean, sub = false) =>
 export default function Layout() {
   const { perfil, signOut } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
   const rol = perfil?.rol ?? 'orientador'
   const top = TOP.filter(i => i.roles.includes(rol))
   const esAdmin = rol === 'admin'
   const adminActivo = ADMIN.some(i => location.pathname === i.to)
   const [abierto, setAbierto] = useState(adminActivo)
   const iniciales = (perfil?.nombre || perfil?.email || '?').split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join('')
+
+  // Al cerrar sesión, vuelve siempre a la raíz — si no, el próximo usuario que
+  // inicie sesión aterriza en la última ruta visitada (p.ej. Usuarios) en vez del Inicio.
+  async function cerrarSesion() {
+    await signOut()
+    navigate('/', { replace: true })
+  }
 
   return (
     <div className="min-h-screen flex">
@@ -95,7 +103,7 @@ export default function Layout() {
             <div className="text-sm font-medium text-white">{perfil?.nombre || perfil?.email}</div>
             <div className="text-xs text-brand-100">{ROL_LABEL[rol]}{perfil?.email ? ` · ${perfil.email}` : ''}</div>
           </div>
-          <button onClick={signOut} className="ml-2 inline-flex items-center gap-1.5 rounded-lg border border-white/30 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-white/15">
+          <button onClick={cerrarSesion} className="ml-2 inline-flex items-center gap-1.5 rounded-lg border border-white/30 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-white/15">
             <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7M13 16v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
             Cerrar sesión
           </button>

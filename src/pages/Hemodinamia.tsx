@@ -54,8 +54,8 @@ export default function Hemodinamia() {
   async function enviarComentario() {
     if (!comentar || !nuevoComentario.trim()) return
     await comentarHemodinamia(comentar.id, perfil?.id ?? null, nuevoComentario.trim())
-    setNuevoComentario('')
-    setComentarios(await listComentariosHemodinamia(comentar.id))
+    setComentar(null); setNuevoComentario('')
+    cargar()
   }
   async function setEstado(r: SolicitudHemodinamia, estado: EstadoHemodinamia) {
     await cambiarEstadoHemodinamia(r.id, estado)

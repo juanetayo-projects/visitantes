@@ -2,12 +2,15 @@ import { useEffect, useMemo, useState } from 'react'
 import { PageHeader, Card, Btn, Modal, selectCls, inputCls, textareaCls } from '../components/ui'
 import MapaHabitaciones from '../components/MapaHabitaciones'
 import { useAuth } from '../auth/AuthProvider'
-import { listSedes, listPisos, listUbicaciones, ordenarAreas, buscarPacientePorDocumento, crearNotaAdministrativa } from '../lib/data'
-import type { Sede, Piso, OcupacionUbicacion } from '../lib/types'
+import { listSedes, listPisos, listUbicaciones, ordenarAreas, buscarPacientePorDocumento, crearNotaAdministrativa, listNotasContexto } from '../lib/data'
+import type { Sede, Piso, OcupacionUbicacion, NotaAdministrativa } from '../lib/types'
 
 // Fecha/hora de app en Colombia (GMT-5), para mostrar y guardar en la nota administrativa.
-function fechaHoraCO(): string {
-  const co = new Date(Date.now() - 5 * 3_600_000)
+function fechaHoraCO(): string { return fechaHoraNota(new Date().toISOString()) }
+
+// Formatea una marca de tiempo ISO (created_at de una nota previa) en hora Colombia.
+function fechaHoraNota(iso: string): string {
+  const co = new Date(new Date(iso).getTime() - 5 * 3_600_000)
   const dd = String(co.getUTCDate()).padStart(2, '0'), mm = String(co.getUTCMonth() + 1).padStart(2, '0')
   let h = co.getUTCHours(); const min = String(co.getUTCMinutes()).padStart(2, '0')
   const ap = h < 12 ? 'a.m.' : 'p.m.'; h = h % 12 === 0 ? 12 : h % 12
@@ -27,6 +30,7 @@ export default function Mapa() {
   const [notaFor, setNotaFor] = useState<OcupacionUbicacion | null>(null)
   const [comentario, setComentario] = useState('')
   const [guardando, setGuardando] = useState(false)
+  const [historial, setHistorial] = useState<NotaAdministrativa[]>([])
   const [msg, setMsg] = useState<string | null>(null)
 
   // Búsqueda por cédula: para casos sin cama mapeada (p.ej. Urgencias)
@@ -50,7 +54,8 @@ export default function Mapa() {
   const pisoSel = useMemo(() => pisos.find((p) => p.id === pisoId), [pisos, pisoId])
 
   function abrirNota(o: OcupacionUbicacion) {
-    setNotaFor(o); setComentario(''); setMsg(null)
+    setNotaFor(o); setComentario(''); setHistorial([])
+    listNotasContexto({ pacienteDocumento: o.paciente_documento ?? null, ubicacionId: o.ubicacion_id || null }).then(setHistorial)
   }
 
   async function buscarPorCedula() {
@@ -77,14 +82,23 @@ export default function Mapa() {
         comentario: comentario.trim(),
         registrado_por: perfil?.id ?? null,
       })
+      setNotaFor(null); setComentario('')
       setMsg('Nota administrativa guardada.')
-      setComentario('')
     } finally { setGuardando(false) }
   }
+
+  // El aviso de guardado se muestra a nivel de página (el modal ya se cerró) y se autolimpia.
+  useEffect(() => {
+    if (!msg) return
+    const t = setTimeout(() => setMsg(null), 4000)
+    return () => clearTimeout(t)
+  }, [msg])
 
   return (
     <div>
       <PageHeader title="Mapa de habitaciones" subtitle="Vista global de ocupación y acompañantes en tiempo real" />
+
+      {msg && <div className="mb-4 rounded-xl bg-emerald-50 px-4 py-2.5 text-sm text-emerald-700">{msg}</div>}
 
       <Card className="p-4 mb-5">
         <div className="flex flex-wrap items-end gap-3">
@@ -148,7 +162,24 @@ export default function Mapa() {
               <label className="block text-xs font-medium text-gray-500 mb-1">Comentario *</label>
               <textarea className={textareaCls} rows={4} value={comentario} onChange={(e) => setComentario(e.target.value)} placeholder="Describe la novedad administrativa…" />
             </div>
-            {msg && <div className="mt-2 rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-700">{msg}</div>}
+
+            {historial.length > 0 && (
+              <div className="mt-4">
+                <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-400">Notas anteriores ({historial.length})</div>
+                <div className="max-h-44 overflow-y-auto space-y-1.5 pr-1">
+                  {historial.map((n, i) => (
+                    <div key={n.id} className="rounded-lg bg-gray-50 px-3 py-2 text-xs">
+                      <div className="flex items-center justify-between text-gray-500">
+                        <span className="font-semibold text-brand">#{historial.length - i}</span>
+                        <span>{fechaHoraNota(n.created_at)}</span>
+                      </div>
+                      <div className="mt-0.5 text-gray-700">{n.comentario}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="mt-4 flex gap-2">
               <Btn onClick={guardarNota} disabled={guardando || !comentario.trim()} className="flex-1">{guardando ? 'Guardando…' : 'Guardar nota'}</Btn>
               <Btn variant="ghost" onClick={() => setNotaFor(null)}>Cerrar</Btn>

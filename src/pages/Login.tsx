@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
 const LOGO = `${import.meta.env.BASE_URL}images/logo_cacsb_blanc.png`
@@ -16,6 +17,7 @@ function IconEye({ off }: { off?: boolean }) {
 }
 
 export default function Login() {
+  const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [verPass, setVerPass] = useState(false)
@@ -29,6 +31,8 @@ export default function Login() {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     setLoading(false)
     if (error) setError('Credenciales inválidas. Verifica correo y contraseña.')
+    // Aterriza siempre en el Inicio, sin importar qué ruta quedó cargada de una sesión anterior.
+    else navigate('/', { replace: true })
   }
 
   async function olvido() {

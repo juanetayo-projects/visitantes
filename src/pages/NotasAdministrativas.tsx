@@ -5,7 +5,7 @@ import { exportarExcel, exportarPDF, type Columna } from '../lib/exportar'
 import { supabase } from '../lib/supabase'
 import type { NotaAdministrativa } from '../lib/types'
 
-type Fila = NotaAdministrativa & { usuario_nombre: string | null }
+type Fila = NotaAdministrativa & { usuario_nombre: string | null; ubicacion_etiqueta: string | null }
 
 function horaCO(iso: string) { return new Date(new Date(iso).getTime() - 5 * 3_600_000).toISOString().replace('T', ' ').substring(0, 16) }
 
@@ -13,6 +13,8 @@ const COLS: Columna<Fila>[] = [
   { header: 'Fecha/hora', get: (r) => horaCO(r.created_at) },
   { header: 'Usuario', get: (r) => r.usuario_nombre ?? '' },
   { header: 'Paciente', get: (r) => r.paciente_nombre ?? '' },
+  { header: 'Cédula', get: (r) => r.paciente_documento ?? '' },
+  { header: 'Ubicación', get: (r) => r.ubicacion_etiqueta ?? '' },
   { header: '# Ingreso', get: (r) => r.num_ingreso ?? '' },
   { header: 'Comentario', get: (r) => r.comentario },
 ]
@@ -88,16 +90,18 @@ export default function NotasAdministrativas() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-brand text-white"><tr>
-              {['Fecha/hora', 'Usuario', 'Paciente', '# Ingreso', 'Comentario'].map((h) => <th key={h} className="px-3 py-2.5 text-left font-medium whitespace-nowrap">{h}</th>)}
+              {['Fecha/hora', 'Usuario', 'Paciente', 'Cédula', 'Ubicación', '# Ingreso', 'Comentario'].map((h) => <th key={h} className="px-3 py-2.5 text-left font-medium whitespace-nowrap">{h}</th>)}
             </tr></thead>
             <tbody className="divide-y divide-gray-100">
-              {loading ? <tr><td colSpan={5} className="py-10 text-center text-gray-400">Cargando…</td></tr>
-                : rows.length === 0 ? <tr><td colSpan={5} className="py-10 text-center text-gray-400">Sin registros</td></tr>
+              {loading ? <tr><td colSpan={7} className="py-10 text-center text-gray-400">Cargando…</td></tr>
+                : rows.length === 0 ? <tr><td colSpan={7} className="py-10 text-center text-gray-400">Sin registros</td></tr>
                 : rows.map((r) => (
                   <tr key={r.id} className="hover:bg-brand-50/40">
                     <td className="px-3 py-2 whitespace-nowrap text-gray-600">{horaCO(r.created_at)}</td>
                     <td className="px-3 py-2 text-gray-700">{r.usuario_nombre ?? '—'}</td>
                     <td className="px-3 py-2 text-gray-700">{r.paciente_nombre ?? '—'}</td>
+                    <td className="px-3 py-2 text-gray-600">{r.paciente_documento ?? '—'}</td>
+                    <td className="px-3 py-2 text-gray-600">{r.ubicacion_etiqueta ?? '—'}</td>
                     <td className="px-3 py-2 text-gray-600">{r.num_ingreso ?? '—'}</td>
                     <td className="px-3 py-2 text-gray-700 max-w-md">{r.comentario}</td>
                   </tr>

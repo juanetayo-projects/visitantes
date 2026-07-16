@@ -2,7 +2,7 @@ import { supabase } from './supabase'
 import type {
   Sede, Piso, Ubicacion, Servicio, Cargo, Puerta, Tarjeta, Responsable, HorarioVisita,
   OcupacionUbicacion, VisitaResumen, TipoAislamiento, TipoUbicacion, TipoAcompanante,
-  NotaAdministrativa, SolicitudCirugia, SolicitudHemodinamia, ComentarioHemodinamia, EstadoHemodinamia,
+  NotaAdministrativa, SolicitudCirugia, ComentarioCirugia, SolicitudHemodinamia, ComentarioHemodinamia, EstadoHemodinamia,
 } from './types'
 
 // Normaliza texto para comparaciones (sin acentos, mayúsculas, espacios colapsados).
@@ -770,20 +770,31 @@ export interface FiltrosNota {
   usuarioId?: string
   texto?: string
 }
-export async function listNotasAdministrativas(f: FiltrosNota = {}): Promise<(NotaAdministrativa & { usuario_nombre: string | null })[]> {
+export async function listNotasAdministrativas(f: FiltrosNota = {}): Promise<(NotaAdministrativa & { usuario_nombre: string | null; ubicacion_etiqueta: string | null })[]> {
   let q = supabase.from('notas_administrativas')
-    .select('*, registrado:perfiles!notas_administrativas_registrado_por_fkey(nombre)')
+    .select('*, registrado:perfiles!notas_administrativas_registrado_por_fkey(nombre), ubicacion:ubicaciones(etiqueta)')
     .order('created_at', { ascending: false }).limit(500)
   if (f.desde) q = q.gte('created_at', f.desde + 'T00:00:00-05:00')
   if (f.hasta) q = q.lte('created_at', f.hasta + 'T23:59:59-05:00')
   if (f.usuarioId) q = q.eq('registrado_por', f.usuarioId)
   const { data } = await q
-  let rows = ((data ?? []) as any[]).map((r) => ({ ...r, usuario_nombre: r.registrado?.nombre ?? null }))
+  let rows = ((data ?? []) as any[]).map((r) => ({ ...r, usuario_nombre: r.registrado?.nombre ?? null, ubicacion_etiqueta: r.ubicacion?.etiqueta ?? null }))
   if (f.texto) {
     const t = f.texto.toLowerCase()
     rows = rows.filter((r) => r.comentario?.toLowerCase().includes(t) || r.paciente_nombre?.toLowerCase().includes(t) || r.paciente_documento?.includes(t))
   }
   return rows
+}
+
+// Historial de notas previas para el mismo contexto (paciente por cédula, o misma
+// habitación si aún no hay documento): se muestra al abrir el formulario de nota nueva.
+export async function listNotasContexto(f: { pacienteDocumento?: string | null; ubicacionId?: string | null }): Promise<NotaAdministrativa[]> {
+  let q = supabase.from('notas_administrativas').select('*').order('created_at', { ascending: false }).limit(50)
+  if (f.pacienteDocumento) q = q.eq('paciente_documento', f.pacienteDocumento)
+  else if (f.ubicacionId) q = q.eq('ubicacion_id', f.ubicacionId)
+  else return []
+  const { data } = await q
+  return data ?? []
 }
 
 // Actividad administrativa (notas) vs. gestión operativa (visitas registradas), por usuario.
@@ -825,13 +836,12 @@ export async function crearSolicitudCirugia(s: NuevaSolicitudCirugia): Promise<s
   return data.id as string
 }
 
-export interface FiltrosCirugia { desde?: string; hasta?: string; texto?: string; revisadas?: '' | 'si' | 'no' }
+export interface FiltrosCirugia { estado?: EstadoHemodinamia | ''; desde?: string; hasta?: string; texto?: string }
 export async function listSolicitudesCirugia(f: FiltrosCirugia = {}): Promise<SolicitudCirugia[]> {
   let q = supabase.from('solicitudes_cirugia').select('*').order('fecha', { ascending: false }).order('created_at', { ascending: false }).limit(500)
+  if (f.estado) q = q.eq('estado', f.estado)
   if (f.desde) q = q.gte('fecha', f.desde)
   if (f.hasta) q = q.lte('fecha', f.hasta)
-  if (f.revisadas === 'si') q = q.not('revisado_por_cirugia', 'is', null)
-  if (f.revisadas === 'no') q = q.is('revisado_por_cirugia', null)
   const { data } = await q
   let rows = (data ?? []) as SolicitudCirugia[]
   if (f.texto) {
@@ -840,12 +850,18 @@ export async function listSolicitudesCirugia(f: FiltrosCirugia = {}): Promise<So
   }
   return rows
 }
-
-// Registra (o actualiza) la revisión de Cirugía sobre una solicitud existente.
-export async function revisarSolicitudCirugia(id: string, revisadoPorId: string, observacion: string) {
-  const { error } = await supabase.from('solicitudes_cirugia')
-    .update({ revisado_por_cirugia: revisadoPorId, observacion_cirugia: observacion, revisado_at: new Date().toISOString() })
-    .eq('id', id)
+export async function cambiarEstadoCirugia(id: string, estado: EstadoHemodinamia) {
+  const { error } = await supabase.from('solicitudes_cirugia').update({ estado }).eq('id', id)
+  if (error) throw error
+}
+export async function listComentariosCirugia(solicitudId: string): Promise<(ComentarioCirugia & { autor_nombre: string | null })[]> {
+  const { data } = await supabase.from('comentarios_cirugia')
+    .select('*, autor:perfiles!comentarios_cirugia_autor_id_fkey(nombre)')
+    .eq('solicitud_id', solicitudId).order('created_at')
+  return ((data ?? []) as any[]).map((r) => ({ ...r, autor_nombre: r.autor?.nombre ?? null }))
+}
+export async function comentarCirugia(solicitudId: string, autorId: string | null, comentario: string) {
+  const { error } = await supabase.from('comentarios_cirugia').insert({ solicitud_id: solicitudId, autor_id: autorId, comentario })
   if (error) throw error
 }
 

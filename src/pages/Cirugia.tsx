@@ -1,11 +1,16 @@
 import { useEffect, useState } from 'react'
 import { PageHeader, Card, MetricCard, FilterBar, selectCls, inputCls, textareaCls, Btn, Badge, Modal } from '../components/ui'
 import { useAuth } from '../auth/AuthProvider'
-import { listSolicitudesCirugia, crearSolicitudCirugia, revisarSolicitudCirugia, type FiltrosCirugia } from '../lib/data'
+import {
+  listSolicitudesCirugia, crearSolicitudCirugia, cambiarEstadoCirugia,
+  listComentariosCirugia, comentarCirugia, type FiltrosCirugia,
+} from '../lib/data'
 import { exportarExcel, exportarPDF, type Columna } from '../lib/exportar'
-import type { SolicitudCirugia } from '../lib/types'
+import { ESTADO_HEMODINAMIA_LABEL, type SolicitudCirugia, type EstadoHemodinamia, type ComentarioCirugia } from '../lib/types'
 
-function fechaCO(iso: string | null) { return iso ? new Date(new Date(iso).getTime() - 5 * 3_600_000).toISOString().replace('T', ' ').substring(0, 16) : '—' }
+function fechaCO(iso: string) { return new Date(new Date(iso).getTime() - 5 * 3_600_000).toISOString().replace('T', ' ').substring(0, 16) }
+
+const ESTADO_COLOR: Record<EstadoHemodinamia, any> = { recibido: 'blue', atendido: 'green', revisado: 'purple', pendiente: 'amber' }
 
 const COLS: Columna<SolicitudCirugia>[] = [
   { header: 'Fecha', get: (r) => r.fecha },
@@ -16,8 +21,7 @@ const COLS: Columna<SolicitudCirugia>[] = [
   { header: 'Procedimiento', get: (r) => r.procedimiento ?? '' },
   { header: 'Celular', get: (r) => r.celular ?? '' },
   { header: 'Observaciones', get: (r) => r.observaciones ?? '' },
-  { header: 'Revisado por Cirugía', get: (r) => (r.revisado_por_cirugia ? 'Sí' : 'No') },
-  { header: 'Observación Cirugía', get: (r) => r.observacion_cirugia ?? '' },
+  { header: 'Estado', get: (r) => ESTADO_HEMODINAMIA_LABEL[r.estado] },
 ]
 
 const vacio = { nombre_paciente: '', documento_paciente: '', eps: '', persona_solicita: '', procedimiento: '', celular: '', observaciones: '' }
@@ -32,12 +36,13 @@ export default function Cirugia() {
   const [abrirNueva, setAbrirNueva] = useState(false)
   const [form, setForm] = useState(vacio)
   const [msg, setMsg] = useState<string | null>(null)
-  const [revisar, setRevisar] = useState<SolicitudCirugia | null>(null)
-  const [obsCirugia, setObsCirugia] = useState('')
-  const [guardando, setGuardando] = useState(false)
+
+  const [comentar, setComentar] = useState<SolicitudCirugia | null>(null)
+  const [comentarios, setComentarios] = useState<(ComentarioCirugia & { autor_nombre: string | null })[]>([])
+  const [nuevoComentario, setNuevoComentario] = useState('')
 
   async function cargar() { setLoading(true); setRows(await listSolicitudesCirugia(f)); setLoading(false) }
-  useEffect(() => { cargar() }, [f.desde, f.hasta, f.texto, f.revisadas])
+  useEffect(() => { cargar() }, [f.estado, f.desde, f.hasta, f.texto])
 
   async function guardarNueva() {
     if (!form.nombre_paciente.trim() || !form.documento_paciente.trim()) { setMsg('Nombre y documento del paciente son obligatorios.'); return }
@@ -45,17 +50,20 @@ export default function Cirugia() {
     setAbrirNueva(false); setForm(vacio); setMsg(null); cargar()
   }
 
-  function abrirRevision(r: SolicitudCirugia) { setRevisar(r); setObsCirugia(r.observacion_cirugia ?? '') }
-  async function guardarRevision() {
-    if (!revisar || !perfil?.id) return
-    setGuardando(true)
-    try {
-      await revisarSolicitudCirugia(revisar.id, perfil.id, obsCirugia)
-      setRevisar(null); cargar()
-    } finally { setGuardando(false) }
+  async function abrirComentarios(r: SolicitudCirugia) {
+    setComentar(r); setNuevoComentario('')
+    setComentarios(await listComentariosCirugia(r.id))
   }
-
-  const pendientes = rows.filter((r) => !r.revisado_por_cirugia).length
+  async function enviarComentario() {
+    if (!comentar || !nuevoComentario.trim()) return
+    await comentarCirugia(comentar.id, perfil?.id ?? null, nuevoComentario.trim())
+    setComentar(null); setNuevoComentario('')
+    cargar()
+  }
+  async function setEstado(r: SolicitudCirugia, estado: EstadoHemodinamia) {
+    await cambiarEstadoCirugia(r.id, estado)
+    cargar()
+  }
 
   return (
     <div>
@@ -66,15 +74,17 @@ export default function Cirugia() {
           <Btn variant="light" onClick={() => exportarPDF('Solicitudes de Cirugía', COLS, rows)}>PDF</Btn>
         </div>} />
 
-      <div className="grid gap-4 sm:grid-cols-3 mb-5">
+      <div className="grid gap-4 sm:grid-cols-4 mb-5">
         <MetricCard label="Total (filtro)" value={rows.length} color="blue" />
-        <MetricCard label="Pendientes de revisión" value={pendientes} color="amber" />
-        <MetricCard label="Revisadas" value={rows.length - pendientes} color="green" />
+        <MetricCard label="Recibidos" value={rows.filter((r) => r.estado === 'recibido').length} color="blue" />
+        <MetricCard label="Atendidos" value={rows.filter((r) => r.estado === 'atendido').length} color="green" />
+        <MetricCard label="Pendientes" value={rows.filter((r) => r.estado === 'pendiente').length} color="amber" />
       </div>
 
       <FilterBar onClear={() => setF({})}>
-        <select className={selectCls} value={f.revisadas ?? ''} onChange={(e) => setF({ ...f, revisadas: e.target.value as any })}>
-          <option value="">Todas</option><option value="no">Pendientes de revisión</option><option value="si">Revisadas</option>
+        <select className={selectCls} value={f.estado ?? ''} onChange={(e) => setF({ ...f, estado: e.target.value as any })}>
+          <option value="">Todos los estados</option>
+          {(Object.keys(ESTADO_HEMODINAMIA_LABEL) as EstadoHemodinamia[]).map((e) => <option key={e} value={e}>{ESTADO_HEMODINAMIA_LABEL[e]}</option>)}
         </select>
         <input type="date" className={selectCls} value={f.desde ?? ''} onChange={(e) => setF({ ...f, desde: e.target.value })} />
         <input type="date" className={selectCls} value={f.hasta ?? ''} onChange={(e) => setF({ ...f, hasta: e.target.value })} />
@@ -99,11 +109,15 @@ export default function Cirugia() {
                     <td className="px-3 py-2 text-gray-600">{r.procedimiento ?? '—'}</td>
                     <td className="px-3 py-2 text-gray-600">{r.persona_solicita ?? '—'}</td>
                     <td className="px-3 py-2 text-gray-600">{r.celular ?? '—'}</td>
-                    <td className="px-3 py-2">{r.revisado_por_cirugia ? <Badge color="green">Revisada</Badge> : <Badge color="amber">Pendiente</Badge>}</td>
+                    <td className="px-3 py-2">
+                      {esCirugia
+                        ? <select className={`${selectCls} min-w-0`} value={r.estado} onChange={(e) => setEstado(r, e.target.value as EstadoHemodinamia)}>
+                            {(Object.keys(ESTADO_HEMODINAMIA_LABEL) as EstadoHemodinamia[]).map((e) => <option key={e} value={e}>{ESTADO_HEMODINAMIA_LABEL[e]}</option>)}
+                          </select>
+                        : <Badge color={ESTADO_COLOR[r.estado]}>{ESTADO_HEMODINAMIA_LABEL[r.estado]}</Badge>}
+                    </td>
                     <td className="px-3 py-2 text-right">
-                      {esCirugia && <button onClick={() => abrirRevision(r)} className="rounded-lg bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand hover:bg-brand-100">
-                        {r.revisado_por_cirugia ? 'Ver revisión' : 'Revisar'}
-                      </button>}
+                      <button onClick={() => abrirComentarios(r)} className="rounded-lg bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand hover:bg-brand-100 whitespace-nowrap">Comentarios</button>
                     </td>
                   </tr>
                 ))}
@@ -139,23 +153,33 @@ export default function Cirugia() {
         </div>
       </Modal>
 
-      {/* Revisión de Cirugía: no edita los campos originales, solo su observación */}
-      <Modal open={!!revisar} onClose={() => setRevisar(null)} title="Revisión — Cirugía">
-        {revisar && (
+      {/* Comentarios (hilo, visible para todos los roles del módulo, incl. orientador) */}
+      <Modal open={!!comentar} onClose={() => setComentar(null)} title="Comentarios">
+        {comentar && (
           <>
-            <div className="rounded-xl border border-gray-100 bg-gray-50 p-3 text-sm">
-              <div className="font-semibold text-gray-800">{revisar.nombre_paciente} · {revisar.documento_paciente}</div>
-              <div className="text-gray-500">{fechaCO(revisar.created_at)} · {revisar.procedimiento ?? 'Sin procedimiento indicado'}</div>
-              {revisar.observaciones && <div className="mt-1 text-gray-600">Obs. orientador: {revisar.observaciones}</div>}
+            <div className="rounded-xl border border-gray-100 bg-gray-50 p-3 text-sm mb-3">
+              <div className="font-semibold text-gray-800">{comentar.nombre_paciente} · {comentar.documento_paciente}</div>
+              <div className="text-gray-500">{comentar.procedimiento ?? 'Sin procedimiento indicado'}</div>
+            </div>
+            <div className="max-h-56 overflow-y-auto space-y-2">
+              {comentarios.length === 0
+                ? <p className="text-sm text-gray-400">Sin comentarios todavía.</p>
+                : comentarios.map((c) => (
+                  <div key={c.id} className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                      <span className="font-medium text-gray-700">{c.autor_nombre ?? 'Usuario'}</span>
+                      <span>{fechaCO(c.created_at)}</span>
+                    </div>
+                    <div className="mt-1 text-sm text-gray-700">{c.comentario}</div>
+                  </div>
+                ))}
             </div>
             <div className="mt-3">
-              <label className="block text-xs font-medium text-gray-500 mb-1">Observación de Cirugía</label>
-              <textarea className={textareaCls} rows={4} value={obsCirugia} onChange={(e) => setObsCirugia(e.target.value)} />
-              {revisar.revisado_at && <p className="mt-1 text-xs text-gray-400">Última revisión: {fechaCO(revisar.revisado_at)}</p>}
+              <textarea className={textareaCls} rows={3} value={nuevoComentario} onChange={(e) => setNuevoComentario(e.target.value)} placeholder="Agregar comentario…" />
             </div>
-            <div className="mt-4 flex gap-2">
-              <Btn onClick={guardarRevision} disabled={guardando} className="flex-1">{guardando ? 'Guardando…' : 'Guardar revisión'}</Btn>
-              <Btn variant="ghost" onClick={() => setRevisar(null)}>Cerrar</Btn>
+            <div className="mt-3 flex gap-2">
+              <Btn onClick={enviarComentario} disabled={!nuevoComentario.trim()} className="flex-1">Comentar</Btn>
+              <Btn variant="ghost" onClick={() => setComentar(null)}>Cerrar</Btn>
             </div>
           </>
         )}

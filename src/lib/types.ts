@@ -224,6 +224,13 @@ export interface NotaAdministrativa {
   created_at: string
 }
 
+// ─── Estados compartidos por Cirugía y Hemodinamia (recepción → gestión) ───
+export type EstadoHemodinamia = 'recibido' | 'atendido' | 'revisado' | 'pendiente'
+
+export const ESTADO_HEMODINAMIA_LABEL: Record<EstadoHemodinamia, string> = {
+  recibido: 'Recibido', atendido: 'Atendido', revisado: 'Revisado', pendiente: 'Pendiente',
+}
+
 // ─── Cirugía: solicitudes de información en recepción ───────────────
 export interface SolicitudCirugia {
   id: string
@@ -236,20 +243,20 @@ export interface SolicitudCirugia {
   celular: string | null
   observaciones: string | null
   atendido_por: string | null
-  revisado_por_cirugia: string | null
-  observacion_cirugia: string | null
-  revisado_at: string | null
+  estado: EstadoHemodinamia
   registrado_por: string | null
   created_at: string
 }
 
-// ─── Hemodinamia: solicitudes de información / documentos ───────────
-export type EstadoHemodinamia = 'recibido' | 'atendido' | 'revisado' | 'pendiente'
-
-export const ESTADO_HEMODINAMIA_LABEL: Record<EstadoHemodinamia, string> = {
-  recibido: 'Recibido', atendido: 'Atendido', revisado: 'Revisado', pendiente: 'Pendiente',
+export interface ComentarioCirugia {
+  id: string
+  solicitud_id: string
+  autor_id: string | null
+  comentario: string
+  created_at: string
 }
 
+// ─── Hemodinamia: solicitudes de información / documentos ───────────
 export interface SolicitudHemodinamia {
   id: string
   fecha_hora: string
