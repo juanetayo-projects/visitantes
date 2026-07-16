@@ -9,6 +9,7 @@ import { exportarExcel, exportarPDF, type Columna } from '../lib/exportar'
 import { ESTADO_HEMODINAMIA_LABEL, type SolicitudCirugia, type EstadoHemodinamia, type ComentarioCirugia } from '../lib/types'
 
 function fechaCO(iso: string) { return new Date(new Date(iso).getTime() - 5 * 3_600_000).toISOString().replace('T', ' ').substring(0, 16) }
+function hoyCO() { return new Date(Date.now() - 5 * 3_600_000).toISOString().substring(0, 10) }
 
 const ESTADO_COLOR: Record<EstadoHemodinamia, any> = { recibido: 'blue', atendido: 'green', revisado: 'purple', pendiente: 'amber' }
 
@@ -21,10 +22,11 @@ const COLS: Columna<SolicitudCirugia>[] = [
   { header: 'Procedimiento', get: (r) => r.procedimiento ?? '' },
   { header: 'Celular', get: (r) => r.celular ?? '' },
   { header: 'Observaciones', get: (r) => r.observaciones ?? '' },
+  { header: 'Atendido por', get: (r) => r.atendido_por_nombre ?? '' },
   { header: 'Estado', get: (r) => ESTADO_HEMODINAMIA_LABEL[r.estado] },
 ]
 
-const vacio = { nombre_paciente: '', documento_paciente: '', eps: '', persona_solicita: '', procedimiento: '', celular: '', observaciones: '' }
+const vacio = { fecha: hoyCO(), nombre_paciente: '', documento_paciente: '', eps: '', persona_solicita: '', procedimiento: '', celular: '', observaciones: '' }
 
 export default function Cirugia() {
   const { perfil } = useAuth()
@@ -44,9 +46,13 @@ export default function Cirugia() {
   async function cargar() { setLoading(true); setRows(await listSolicitudesCirugia(f)); setLoading(false) }
   useEffect(() => { cargar() }, [f.estado, f.desde, f.hasta, f.texto])
 
+  function abrirModalNueva() { setForm({ ...vacio, fecha: hoyCO() }); setMsg(null); setAbrirNueva(true) }
+
   async function guardarNueva() {
     if (!form.nombre_paciente.trim() || !form.documento_paciente.trim()) { setMsg('Nombre y documento del paciente son obligatorios.'); return }
-    await crearSolicitudCirugia({ ...form, atendido_por: perfil?.id ?? null, registrado_por: perfil?.id ?? null })
+    await crearSolicitudCirugia({
+      ...form, atendido_por: perfil?.id ?? null, atendido_por_nombre: perfil?.nombre ?? perfil?.email ?? null, registrado_por: perfil?.id ?? null,
+    })
     setAbrirNueva(false); setForm(vacio); setMsg(null); cargar()
   }
 
@@ -69,7 +75,7 @@ export default function Cirugia() {
     <div>
       <PageHeader title="Cirugía — solicitudes de información" subtitle="Información que solicitan pacientes/familiares en recepción sobre Cirugía"
         action={<div className="flex gap-2">
-          {esStaff && <Btn onClick={() => setAbrirNueva(true)}>+ Nueva solicitud</Btn>}
+          {esStaff && <Btn onClick={abrirModalNueva}>+ Nueva solicitud</Btn>}
           <Btn variant="light" onClick={() => exportarExcel('Solicitudes de Cirugía', COLS, rows)}>Excel</Btn>
           <Btn variant="light" onClick={() => exportarPDF('Solicitudes de Cirugía', COLS, rows)}>PDF</Btn>
         </div>} />
@@ -96,11 +102,11 @@ export default function Cirugia() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-brand text-white"><tr>
-              {['Fecha', 'Paciente', 'EPS', 'Procedimiento', 'Solicita', 'Celular', 'Estado', ''].map((h) => <th key={h} className="px-3 py-2.5 text-left font-medium whitespace-nowrap">{h}</th>)}
+              {['Fecha', 'Paciente', 'EPS', 'Procedimiento', 'Solicita', 'Celular', 'Atendido por', 'Estado', ''].map((h) => <th key={h} className="px-3 py-2.5 text-left font-medium whitespace-nowrap">{h}</th>)}
             </tr></thead>
             <tbody className="divide-y divide-gray-100">
-              {loading ? <tr><td colSpan={8} className="py-10 text-center text-gray-400">Cargando…</td></tr>
-                : rows.length === 0 ? <tr><td colSpan={8} className="py-10 text-center text-gray-400">Sin registros</td></tr>
+              {loading ? <tr><td colSpan={9} className="py-10 text-center text-gray-400">Cargando…</td></tr>
+                : rows.length === 0 ? <tr><td colSpan={9} className="py-10 text-center text-gray-400">Sin registros</td></tr>
                 : rows.map((r) => (
                   <tr key={r.id} className="hover:bg-brand-50/40">
                     <td className="px-3 py-2 whitespace-nowrap text-gray-600">{r.fecha}</td>
@@ -109,6 +115,7 @@ export default function Cirugia() {
                     <td className="px-3 py-2 text-gray-600">{r.procedimiento ?? '—'}</td>
                     <td className="px-3 py-2 text-gray-600">{r.persona_solicita ?? '—'}</td>
                     <td className="px-3 py-2 text-gray-600">{r.celular ?? '—'}</td>
+                    <td className="px-3 py-2 text-gray-600">{r.atendido_por_nombre ?? '—'}</td>
                     <td className="px-3 py-2">
                       {esCirugia
                         ? <select className={`${selectCls} min-w-0`} value={r.estado} onChange={(e) => setEstado(r, e.target.value as EstadoHemodinamia)}>
@@ -129,6 +136,8 @@ export default function Cirugia() {
       {/* Nueva solicitud (staff) */}
       <Modal open={abrirNueva} onClose={() => setAbrirNueva(false)} title="Nueva solicitud de información — Cirugía">
         <div className="space-y-3">
+          <div><label className="block text-xs font-medium text-gray-500 mb-1">Fecha *</label>
+            <input type="date" className={inputCls} value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })} /></div>
           <div><label className="block text-xs font-medium text-gray-500 mb-1">Nombre del paciente *</label>
             <input className={inputCls} value={form.nombre_paciente} onChange={(e) => setForm({ ...form, nombre_paciente: e.target.value })} /></div>
           <div><label className="block text-xs font-medium text-gray-500 mb-1">Documento del paciente *</label>

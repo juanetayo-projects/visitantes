@@ -828,6 +828,7 @@ export interface NuevaSolicitudCirugia {
   celular?: string | null
   observaciones?: string | null
   atendido_por?: string | null
+  atendido_por_nombre?: string | null
   registrado_por?: string | null
 }
 export async function crearSolicitudCirugia(s: NuevaSolicitudCirugia): Promise<string> {
@@ -838,7 +839,7 @@ export async function crearSolicitudCirugia(s: NuevaSolicitudCirugia): Promise<s
 
 export interface FiltrosCirugia { estado?: EstadoHemodinamia | ''; desde?: string; hasta?: string; texto?: string }
 export async function listSolicitudesCirugia(f: FiltrosCirugia = {}): Promise<SolicitudCirugia[]> {
-  let q = supabase.from('solicitudes_cirugia').select('*').order('fecha', { ascending: false }).order('created_at', { ascending: false }).limit(500)
+  let q = supabase.from('solicitudes_cirugia').select('*').order('fecha', { ascending: false }).order('created_at', { ascending: false }).limit(1000)
   if (f.estado) q = q.eq('estado', f.estado)
   if (f.desde) q = q.gte('fecha', f.desde)
   if (f.hasta) q = q.lte('fecha', f.hasta)

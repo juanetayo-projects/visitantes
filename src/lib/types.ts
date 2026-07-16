@@ -243,6 +243,7 @@ export interface SolicitudCirugia {
   celular: string | null
   observaciones: string | null
   atendido_por: string | null
+  atendido_por_nombre: string | null
   estado: EstadoHemodinamia
   registrado_por: string | null
   created_at: string
