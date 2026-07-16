@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
-import { PageHeader, Card, MetricCard, FilterBar, selectCls, inputCls, textareaCls, Btn, Badge, Modal } from '../components/ui'
+import { PageHeader, Card, MetricCard, FilterBar, selectCls, inputCls, textareaCls, Btn, Badge, Modal, ComentariosBadge } from '../components/ui'
 import { useAuth } from '../auth/AuthProvider'
 import {
   listSolicitudesCirugia, crearSolicitudCirugia, cambiarEstadoCirugia,
-  listComentariosCirugia, comentarCirugia, type FiltrosCirugia,
+  listComentariosCirugia, comentarCirugia, listComentariosCirugiaPorSolicitud, type FiltrosCirugia,
 } from '../lib/data'
 import { exportarExcel, exportarPDF, type Columna } from '../lib/exportar'
 import { ESTADO_HEMODINAMIA_LABEL, type SolicitudCirugia, type EstadoHemodinamia, type ComentarioCirugia } from '../lib/types'
@@ -42,8 +42,13 @@ export default function Cirugia() {
   const [comentar, setComentar] = useState<SolicitudCirugia | null>(null)
   const [comentarios, setComentarios] = useState<(ComentarioCirugia & { autor_nombre: string | null })[]>([])
   const [nuevoComentario, setNuevoComentario] = useState('')
+  const [comentariosPorSolicitud, setComentariosPorSolicitud] = useState<Map<string, (ComentarioCirugia & { autor_nombre: string | null })[]>>(new Map())
 
-  async function cargar() { setLoading(true); setRows(await listSolicitudesCirugia(f)); setLoading(false) }
+  async function cargar() {
+    setLoading(true)
+    const [r, cm] = await Promise.all([listSolicitudesCirugia(f), listComentariosCirugiaPorSolicitud()])
+    setRows(r); setComentariosPorSolicitud(cm); setLoading(false)
+  }
   useEffect(() => { cargar() }, [f.estado, f.desde, f.hasta, f.texto])
 
   function abrirModalNueva() { setForm({ ...vacio, fecha: hoyCO() }); setMsg(null); setAbrirNueva(true) }
@@ -102,20 +107,28 @@ export default function Cirugia() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-brand text-white"><tr>
-              {['Fecha', 'Paciente', 'EPS', 'Procedimiento', 'Solicita', 'Celular', 'Atendido por', 'Estado'].map((h) => <th key={h} className="px-3 py-2.5 text-left font-medium whitespace-nowrap">{h}</th>)}
+              {['Fecha', 'Paciente', 'EPS', 'Procedimiento', 'Solicita', 'Atendido por', 'Estado'].map((h) => <th key={h} className="px-3 py-2.5 text-left font-medium whitespace-nowrap">{h}</th>)}
               <th className="sticky right-0 z-10 bg-brand px-3 py-2.5 text-left font-medium whitespace-nowrap shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.25)]"></th>
             </tr></thead>
             <tbody className="divide-y divide-gray-100">
-              {loading ? <tr><td colSpan={9} className="py-10 text-center text-gray-400">Cargando…</td></tr>
-                : rows.length === 0 ? <tr><td colSpan={9} className="py-10 text-center text-gray-400">Sin registros</td></tr>
+              {loading ? <tr><td colSpan={8} className="py-10 text-center text-gray-400">Cargando…</td></tr>
+                : rows.length === 0 ? <tr><td colSpan={8} className="py-10 text-center text-gray-400">Sin registros</td></tr>
                 : rows.map((r) => (
                   <tr key={r.id} className="group hover:bg-brand-50/40">
                     <td className="px-3 py-2 whitespace-nowrap text-gray-600">{r.fecha}</td>
-                    <td className="px-3 py-2"><div className="font-medium text-gray-800">{r.nombre_paciente}</div><div className="text-xs text-gray-500">{r.documento_paciente}</div></td>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-medium text-gray-800">{r.nombre_paciente}</span>
+                        <ComentariosBadge items={comentariosPorSolicitud.get(r.id) ?? []} />
+                      </div>
+                      <div className="text-xs text-gray-500">{r.documento_paciente}</div>
+                    </td>
                     <td className="px-3 py-2 text-gray-600">{r.eps ?? '—'}</td>
                     <td className="px-3 py-2 text-gray-600">{r.procedimiento ?? '—'}</td>
-                    <td className="px-3 py-2 text-gray-600">{r.persona_solicita ?? '—'}</td>
-                    <td className="px-3 py-2 text-gray-600">{r.celular ?? '—'}</td>
+                    <td className="px-3 py-2 text-gray-600">
+                      <div>{r.persona_solicita ?? '—'}</div>
+                      {r.celular && <div className="text-xs text-gray-500">{r.celular}</div>}
+                    </td>
                     <td className="px-3 py-2 text-gray-600">{r.atendido_por_nombre ?? '—'}</td>
                     <td className="px-3 py-2">
                       {esCirugia

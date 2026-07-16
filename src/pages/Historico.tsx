@@ -6,6 +6,8 @@ import type { Sede, Piso, Ubicacion } from '../lib/types'
 
 const TIPO_LABEL: Record<string, string> = { familiar: 'Familiar', proveedor: 'Proveedor', colaborador: 'Colaborador', sin_tarjeta: 'Sin tarjeta' }
 function horaCO(iso: string) { return new Date(new Date(iso).getTime() - 5 * 3_600_000).toISOString().replace('T', ' ').substring(0, 16) }
+function fechaSolaCO(iso: string) { return horaCO(iso).substring(0, 10) }
+function horaSolaCO(iso: string) { return horaCO(iso).substring(11, 16) }
 
 const COLS: Columna<VisitaListado>[] = [
   { header: 'Fecha/hora ingreso', get: (r) => horaCO(r.created_at) },
@@ -87,8 +89,15 @@ export default function Historico() {
                 : filtrados.length === 0 ? <tr><td colSpan={10} className="py-10 text-center text-gray-400">Sin registros — ajusta los filtros</td></tr>
                 : filtrados.map((r) => (
                   <tr key={r.id} className="hover:bg-brand-50/40">
-                    <td className="px-3 py-2 whitespace-nowrap text-gray-600">{horaCO(r.created_at)}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-gray-600">{r.salida_at ? horaCO(r.salida_at) : <span className="text-gray-300">— dentro —</span>}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-gray-600">
+                      <div>{fechaSolaCO(r.created_at)}</div>
+                      <div className="text-xs text-gray-400">{horaSolaCO(r.created_at)}</div>
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-gray-600">
+                      {r.salida_at
+                        ? <><div>{fechaSolaCO(r.salida_at)}</div><div className="text-xs text-gray-400">{horaSolaCO(r.salida_at)}</div></>
+                        : <span className="text-gray-300">— dentro —</span>}
+                    </td>
                     <td className="px-3 py-2">
                       <div className="font-medium text-gray-800">{r.visitante?.nombres_completos}</div>
                       <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-500">

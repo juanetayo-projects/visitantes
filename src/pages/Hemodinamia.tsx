@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
-import { PageHeader, Card, MetricCard, FilterBar, selectCls, inputCls, textareaCls, Btn, Badge, Modal } from '../components/ui'
+import { PageHeader, Card, MetricCard, FilterBar, selectCls, inputCls, textareaCls, Btn, Badge, Modal, ComentariosBadge } from '../components/ui'
 import { useAuth } from '../auth/AuthProvider'
 import {
   listSolicitudesHemodinamia, crearSolicitudHemodinamia, cambiarEstadoHemodinamia,
-  listComentariosHemodinamia, comentarHemodinamia, type FiltrosHemodinamia,
+  listComentariosHemodinamia, comentarHemodinamia, listComentariosHemodinamiaPorSolicitud, type FiltrosHemodinamia,
 } from '../lib/data'
 import { exportarExcel, exportarPDF, type Columna } from '../lib/exportar'
 import { ESTADO_HEMODINAMIA_LABEL, type SolicitudHemodinamia, type EstadoHemodinamia, type ComentarioHemodinamia } from '../lib/types'
@@ -37,8 +37,13 @@ export default function Hemodinamia() {
   const [comentar, setComentar] = useState<SolicitudHemodinamia | null>(null)
   const [comentarios, setComentarios] = useState<(ComentarioHemodinamia & { autor_nombre: string | null })[]>([])
   const [nuevoComentario, setNuevoComentario] = useState('')
+  const [comentariosPorSolicitud, setComentariosPorSolicitud] = useState<Map<string, (ComentarioHemodinamia & { autor_nombre: string | null })[]>>(new Map())
 
-  async function cargar() { setLoading(true); setRows(await listSolicitudesHemodinamia(f)); setLoading(false) }
+  async function cargar() {
+    setLoading(true)
+    const [r, cm] = await Promise.all([listSolicitudesHemodinamia(f), listComentariosHemodinamiaPorSolicitud()])
+    setRows(r); setComentariosPorSolicitud(cm); setLoading(false)
+  }
   useEffect(() => { cargar() }, [f.estado, f.desde, f.hasta, f.texto])
 
   async function guardarNueva() {
@@ -101,7 +106,13 @@ export default function Hemodinamia() {
                 : rows.map((r) => (
                   <tr key={r.id} className="hover:bg-brand-50/40">
                     <td className="px-3 py-2 whitespace-nowrap text-gray-600">{fechaCO(r.fecha_hora)}</td>
-                    <td className="px-3 py-2"><div className="font-medium text-gray-800">{r.nombre_paciente}</div><div className="text-xs text-gray-500">{r.cedula_paciente}</div></td>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-medium text-gray-800">{r.nombre_paciente}</span>
+                        <ComentariosBadge items={comentariosPorSolicitud.get(r.id) ?? []} />
+                      </div>
+                      <div className="text-xs text-gray-500">{r.cedula_paciente}</div>
+                    </td>
                     <td className="px-3 py-2 text-gray-600">{r.procedimiento}</td>
                     <td className="px-3 py-2 text-gray-600 max-w-xs truncate" title={r.documentos ?? ''}>{r.documentos ?? '—'}</td>
                     <td className="px-3 py-2">

@@ -880,6 +880,21 @@ export async function comentarCirugia(solicitudId: string, autorId: string | nul
   if (error) throw error
 }
 
+// Todos los comentarios de Cirugía agrupados por solicitud (tabla pequeña: se trae completa
+// para alimentar el badge + tooltip de la tabla de solicitudes sin una consulta por fila).
+export async function listComentariosCirugiaPorSolicitud(): Promise<Map<string, (ComentarioCirugia & { autor_nombre: string | null })[]>> {
+  const { data } = await supabase.from('comentarios_cirugia')
+    .select('*, autor:perfiles!comentarios_cirugia_autor_id_fkey(nombre)')
+    .order('created_at')
+  const map = new Map<string, (ComentarioCirugia & { autor_nombre: string | null })[]>()
+  ;(data ?? []).forEach((r: any) => {
+    const arr = map.get(r.solicitud_id) ?? []
+    arr.push({ ...r, autor_nombre: r.autor?.nombre ?? null })
+    map.set(r.solicitud_id, arr)
+  })
+  return map
+}
+
 // ─── Hemodinamia: solicitudes de información / documentos ────
 export interface NuevaSolicitudHemodinamia {
   cedula_paciente: string
@@ -921,4 +936,18 @@ export async function listComentariosHemodinamia(solicitudId: string): Promise<(
 export async function comentarHemodinamia(solicitudId: string, autorId: string | null, comentario: string) {
   const { error } = await supabase.from('comentarios_hemodinamia').insert({ solicitud_id: solicitudId, autor_id: autorId, comentario })
   if (error) throw error
+}
+
+// Todos los comentarios de Hemodinamia agrupados por solicitud (mismo criterio que Cirugía).
+export async function listComentariosHemodinamiaPorSolicitud(): Promise<Map<string, (ComentarioHemodinamia & { autor_nombre: string | null })[]>> {
+  const { data } = await supabase.from('comentarios_hemodinamia')
+    .select('*, autor:perfiles!comentarios_hemodinamia_autor_id_fkey(nombre)')
+    .order('created_at')
+  const map = new Map<string, (ComentarioHemodinamia & { autor_nombre: string | null })[]>()
+  ;(data ?? []).forEach((r: any) => {
+    const arr = map.get(r.solicitud_id) ?? []
+    arr.push({ ...r, autor_nombre: r.autor?.nombre ?? null })
+    map.set(r.solicitud_id, arr)
+  })
+  return map
 }
