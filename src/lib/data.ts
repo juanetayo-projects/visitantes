@@ -258,6 +258,16 @@ interface VisitaRow {
 }
 
 // Compone la ocupación de un piso: ubicaciones + paciente (espejo) + visitas activas.
+// Cuenta las notas administrativas del ingreso actual de cada paciente (no del histórico completo:
+// las notas quedan ligadas al num_ingreso, que cambia si el paciente reingresa más adelante).
+async function contarNotasPorIngresos(numIngresos: string[]): Promise<Map<string, number>> {
+  const map = new Map<string, number>()
+  if (!numIngresos.length) return map
+  const { data } = await supabase.from('notas_administrativas').select('num_ingreso').in('num_ingreso', numIngresos)
+  ;(data ?? []).forEach((r: any) => { if (r.num_ingreso) map.set(r.num_ingreso, (map.get(r.num_ingreso) ?? 0) + 1) })
+  return map
+}
+
 export async function getOcupacionPiso(pisoId: string): Promise<OcupacionUbicacion[]> {
   const [ubicRes, pacRes, visRes] = await Promise.all([
     supabase.from('ubicaciones').select('*').eq('piso_id', pisoId).eq('activo', true).order('orden'),
@@ -277,6 +287,7 @@ export async function getOcupacionPiso(pisoId: string): Promise<OcupacionUbicaci
     const { data: ais } = await supabase.from('aislamientos').select('num_ingreso, tipo').in('num_ingreso', ingresos).eq('vigente', true)
     ais?.forEach((a: any) => aislMap.set(a.num_ingreso, a.tipo))
   }
+  const notasMap = await contarNotasPorIngresos(ingresos)
 
   const pacByUbic = new Map<string, any>()
   pacientes.forEach((p: any) => { if (p.ubicacion_id) pacByUbic.set(p.ubicacion_id, p) })
@@ -313,6 +324,7 @@ export async function getOcupacionPiso(pisoId: string): Promise<OcupacionUbicaci
       edad: pac?.edad ?? null,
       aislamiento: pac ? aislMap.get(pac.num_ingreso) ?? null : null,
       visitas: visByUbic.get(u.id) ?? [],
+      notas_count: pac ? notasMap.get(pac.num_ingreso) ?? 0 : 0,
     }
   })
 }
@@ -332,9 +344,10 @@ export async function visitasActivasPorIngreso(numIngreso: string): Promise<Visi
 export async function buscarPacientePorDocumento(doc: string): Promise<OcupacionUbicacion | null> {
   const { data: pac } = await supabase.from('pacientes_ubicacion').select('*').eq('documento', doc.trim()).maybeSingle()
   if (!pac) return null
-  const [{ data: ais }, visitas] = await Promise.all([
+  const [{ data: ais }, visitas, notasMap] = await Promise.all([
     supabase.from('aislamientos').select('tipo').eq('num_ingreso', pac.num_ingreso).eq('vigente', true).maybeSingle(),
     visitasActivasPorIngreso(pac.num_ingreso),
+    contarNotasPorIngresos([pac.num_ingreso]),
   ])
   let cupo = 2
   if (pac.ubicacion_id) { const { data: u } = await supabase.from('ubicaciones').select('cupo_default').eq('id', pac.ubicacion_id).maybeSingle(); if (u) cupo = u.cupo_default }
@@ -344,6 +357,7 @@ export async function buscarPacientePorDocumento(doc: string): Promise<Ocupacion
     tipo: 'cama' as TipoUbicacion, area: null, servicio: pac.servicio ?? null, cupo, piso_id: pac.piso_id ?? null,
     num_ingreso: pac.num_ingreso, paciente_nombre: pac.nombre ?? null, paciente_documento: pac.documento ?? null,
     edad: pac.edad ?? null, aislamiento: (ais?.tipo as TipoAislamiento) ?? null, visitas,
+    notas_count: notasMap.get(pac.num_ingreso) ?? 0,
   }
 }
 

@@ -79,6 +79,10 @@ export default function Registrar() {
   const esUrgencias = useMemo(() => sedes.find((s) => s.id === sedeId)?.nombre === 'Urgencias', [sedes, sedeId])
   const tiposDisponibles = useMemo(() => TIPOS.filter((t) => t.v !== 'sin_tarjeta' || esUrgencias), [esUrgencias])
 
+  // La puerta de ingreso decide si se pide tarjeta (p.ej. Urgencias/Puerta Pacientes no la exige).
+  const puertaSel = useMemo(() => puertas.find((p) => p.id === puertaId), [puertas, puertaId])
+  const requiereTarjeta = tipo !== 'sin_tarjeta' && (puertaSel?.requiere_tarjeta ?? true)
+
   // Maneja el clic en una habitación del mapa: valida paciente y evalúa horario/cupos.
   function seleccionar(o: OcupacionUbicacion) {
     if (!o.num_ingreso) { setAviso({ tipo: 'sinPaciente' }); return }
@@ -125,6 +129,8 @@ export default function Registrar() {
   }, [sedeId])
   // "Sin tarjeta" deja de aplicar si se cambia a una sede distinta de Urgencias.
   useEffect(() => { if (tipo === 'sin_tarjeta' && !esUrgencias) reset() }, [esUrgencias])
+  // Si la puerta seleccionada deja de requerir tarjeta (o cambia), se limpia la selección previa.
+  useEffect(() => { if (!requiereTarjeta) setTarjetaId('') }, [requiereTarjeta])
   useEffect(() => { listResponsables().then(setResponsables); listServicios().then(setServicios) }, [])
   useEffect(() => {
     setArea(''); setSel(null)
@@ -154,7 +160,7 @@ export default function Registrar() {
     if (!cedula.trim() || !nombres.trim()) { setMsg({ ok: false, texto: 'Cédula y nombres son obligatorios.' }); return }
     if (tipo === 'familiar' && !sel?.num_ingreso) { setMsg({ ok: false, texto: 'Selecciona la habitación del paciente en el mapa.' }); return }
     if (tipo === 'proveedor' && !responsableId) { setMsg({ ok: false, texto: 'Selecciona la persona responsable que acompaña.' }); return }
-    if (tipo !== 'sin_tarjeta' && !tarjetaId) { setAviso({ tipo: tarjetas.length === 0 ? 'sinTarjetas' : 'tarjeta' }); return }
+    if (requiereTarjeta && !tarjetaId) { setAviso({ tipo: tarjetas.length === 0 ? 'sinTarjetas' : 'tarjeta' }); return }
     // Fuera de horario o excede el cupo ⇒ pedir autorización (permite continuar)
     if (tipo === 'familiar' && restriccionActiva && !autorizadoPorId) { setAviso({ tipo: 'autorizacion', o: sel ?? undefined }); return }
     doGuardar()
@@ -194,7 +200,7 @@ export default function Registrar() {
         servicio_paciente: tipo === 'colaborador' ? servicioVisita || null : sel?.servicio ?? sel?.area ?? null,
         sede_id: sedeId || null,
         puerta_id: puertaId || null,
-        tarjeta_id: tipo === 'sin_tarjeta' ? null : (tarjetaId || null),
+        tarjeta_id: requiereTarjeta ? (tarjetaId || null) : null,
         registrado_por: perfil?.id ?? null,
       })
       setMsg({ ok: true, texto: `Visita registrada para ${nombres}.${autorizado ? ' (ingreso autorizado excepcionalmente)' : ''}` })
@@ -397,14 +403,14 @@ export default function Registrar() {
               )}
 
               {/* Acceso */}
-              <div className={`grid gap-2 pt-1 ${tipo === 'sin_tarjeta' ? '' : 'grid-cols-2'}`}>
+              <div className={`grid gap-2 pt-1 ${requiereTarjeta ? 'grid-cols-2' : ''}`}>
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1">Puerta de ingreso</label>
                   <select className={inputCls} value={puertaId} onChange={(e) => setPuertaId(e.target.value)}>
                     {puertas.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
                   </select>
                 </div>
-                {tipo !== 'sin_tarjeta' && (
+                {requiereTarjeta && (
                   <div>
                     <label className="block text-xs font-medium text-gray-500 mb-1">Tarjeta de acceso *</label>
                     <select className={`${inputCls} ${!tarjetaId ? 'border-rose-300' : ''}`} value={tarjetaId} onChange={(e) => setTarjetaId(e.target.value)}>
@@ -415,6 +421,9 @@ export default function Registrar() {
                   </div>
                 )}
               </div>
+              {tipo !== 'sin_tarjeta' && !requiereTarjeta && puertaSel && (
+                <p className="text-xs text-gray-500">Ingreso sin tarjeta: <b>{puertaSel.nombre}</b> no requiere tarjeta de acceso.</p>
+              )}
 
               <div className="flex gap-2 pt-2">
                 <Btn onClick={guardar} disabled={guardando} className="flex-1">{guardando ? 'Registrando…' : 'Registrar ingreso'}</Btn>

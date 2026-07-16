@@ -25,6 +25,7 @@ function Icono({ d, className }: { d: string; className?: string }) {
 }
 
 const ICON_VIRUS = 'M12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10l2 2m0-14l-2 2M7 17l-2 2M12 8a4 4 0 100 8 4 4 0 000-8z'
+const ICON_NOTA = 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 7h6m-6 4h6'
 
 export default function MapaHabitaciones({ pisoId, onSelect, refreshKey = 0, area }: {
   pisoId: string
@@ -98,6 +99,12 @@ export default function MapaHabitaciones({ pisoId, onSelect, refreshKey = 0, are
                   onClick={() => onSelect?.(o)}
                   className={`relative text-left rounded-lg border-2 ${s.bg} ${s.bd} px-2.5 py-2 transition hover:-translate-y-0.5 hover:shadow-card ${o.aislamiento ? 'ring-2 ring-rose-500 ring-offset-1' : ''}`}
                 >
+                  {!!o.notas_count && (
+                    <span className="absolute -top-1.5 -right-1.5 z-10 flex items-center gap-0.5 rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white shadow" title={`${o.notas_count} nota(s) administrativa(s)`}>
+                      <Icono d={ICON_NOTA} className="h-2.5 w-2.5" />
+                      {o.notas_count}
+                    </span>
+                  )}
                   <div className="flex items-center justify-between gap-1">
                     <span className={`min-w-0 truncate text-[13px] font-semibold ${s.tx}`} title={o.etiqueta}>{o.etiqueta}</span>
                     {o.aislamiento
@@ -143,6 +150,11 @@ export default function MapaHabitaciones({ pisoId, onSelect, refreshKey = 0, are
               <div className="text-[10px] font-semibold uppercase tracking-wide text-brand-light">Paciente</div>
               <div className="text-[15px] font-bold leading-tight text-brand">{tip.o.paciente_nombre}{tip.o.edad ? ` · ${tip.o.edad} a.` : ''}</div>
               <div className="text-[11px] text-gray-500">{tip.o.paciente_documento ? `ID ${tip.o.paciente_documento} · ` : ''}# ingreso {tip.o.num_ingreso}</div>
+              {!!tip.o.notas_count && (
+                <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-800">
+                  <Icono d={ICON_NOTA} className="h-3 w-3" /> {tip.o.notas_count} nota(s) administrativa(s)
+                </div>
+              )}
             </div>
             {/* Visitantes — bloque diferenciado */}
             <div className="mt-2.5">

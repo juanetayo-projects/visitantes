@@ -102,13 +102,14 @@ export default function Cirugia() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-brand text-white"><tr>
-              {['Fecha', 'Paciente', 'EPS', 'Procedimiento', 'Solicita', 'Celular', 'Atendido por', 'Estado', ''].map((h) => <th key={h} className="px-3 py-2.5 text-left font-medium whitespace-nowrap">{h}</th>)}
+              {['Fecha', 'Paciente', 'EPS', 'Procedimiento', 'Solicita', 'Celular', 'Atendido por', 'Estado'].map((h) => <th key={h} className="px-3 py-2.5 text-left font-medium whitespace-nowrap">{h}</th>)}
+              <th className="sticky right-0 z-10 bg-brand px-3 py-2.5 text-left font-medium whitespace-nowrap shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.25)]"></th>
             </tr></thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? <tr><td colSpan={9} className="py-10 text-center text-gray-400">Cargando…</td></tr>
                 : rows.length === 0 ? <tr><td colSpan={9} className="py-10 text-center text-gray-400">Sin registros</td></tr>
                 : rows.map((r) => (
-                  <tr key={r.id} className="hover:bg-brand-50/40">
+                  <tr key={r.id} className="group hover:bg-brand-50/40">
                     <td className="px-3 py-2 whitespace-nowrap text-gray-600">{r.fecha}</td>
                     <td className="px-3 py-2"><div className="font-medium text-gray-800">{r.nombre_paciente}</div><div className="text-xs text-gray-500">{r.documento_paciente}</div></td>
                     <td className="px-3 py-2 text-gray-600">{r.eps ?? '—'}</td>
@@ -123,7 +124,7 @@ export default function Cirugia() {
                           </select>
                         : <Badge color={ESTADO_COLOR[r.estado]}>{ESTADO_HEMODINAMIA_LABEL[r.estado]}</Badge>}
                     </td>
-                    <td className="px-3 py-2 text-right">
+                    <td className="sticky right-0 z-10 bg-white px-3 py-2 text-right shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.15)] group-hover:bg-brand-50">
                       <button onClick={() => abrirComentarios(r)} className="rounded-lg bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand hover:bg-brand-100 whitespace-nowrap">Comentarios</button>
                     </td>
                   </tr>
@@ -173,10 +174,13 @@ export default function Cirugia() {
             <div className="max-h-56 overflow-y-auto space-y-2">
               {comentarios.length === 0
                 ? <p className="text-sm text-gray-400">Sin comentarios todavía.</p>
-                : comentarios.map((c) => (
-                  <div key={c.id} className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
+                : comentarios.map((c, i) => (
+                  <div key={c.id} className="rounded-lg border-l-4 border-brand-light bg-brand-50/60 px-3 py-2">
                     <div className="flex items-center justify-between text-xs text-gray-500">
-                      <span className="font-medium text-gray-700">{c.autor_nombre ?? 'Usuario'}</span>
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="rounded-full bg-brand px-2 py-0.5 text-[10px] font-semibold text-white">ID #{i + 1}</span>
+                        <span className="font-medium text-gray-700">{c.autor_nombre ?? 'Usuario'}</span>
+                      </span>
                       <span>{fechaCO(c.created_at)}</span>
                     </div>
                     <div className="mt-1 text-sm text-gray-700">{c.comentario}</div>

@@ -151,10 +151,13 @@ export default function Hemodinamia() {
             <div className="max-h-56 overflow-y-auto space-y-2">
               {comentarios.length === 0
                 ? <p className="text-sm text-gray-400">Sin comentarios todavía.</p>
-                : comentarios.map((c) => (
-                  <div key={c.id} className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
+                : comentarios.map((c, i) => (
+                  <div key={c.id} className="rounded-lg border-l-4 border-brand-light bg-brand-50/60 px-3 py-2">
                     <div className="flex items-center justify-between text-xs text-gray-500">
-                      <span className="font-medium text-gray-700">{c.autor_nombre ?? 'Usuario'}</span>
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="rounded-full bg-brand px-2 py-0.5 text-[10px] font-semibold text-white">ID #{i + 1}</span>
+                        <span className="font-medium text-gray-700">{c.autor_nombre ?? 'Usuario'}</span>
+                      </span>
                       <span>{fechaCO(c.created_at)}</span>
                     </div>
                     <div className="mt-1 text-sm text-gray-700">{c.comentario}</div>

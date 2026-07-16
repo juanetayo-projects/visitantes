@@ -28,6 +28,7 @@ export interface Puerta {
   sede_id: string
   nombre: string
   activo: boolean
+  requiere_tarjeta: boolean
 }
 
 export interface Piso {
@@ -199,6 +200,8 @@ export interface OcupacionUbicacion {
   aislamiento: TipoAislamiento | null
   // visitas activas
   visitas: VisitaResumen[]
+  // cantidad de notas administrativas del ingreso actual (0 si no aplica)
+  notas_count?: number
 }
 
 export interface VisitaResumen {

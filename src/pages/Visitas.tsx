@@ -18,6 +18,7 @@ const COLS: Columna<VisitaListado>[] = [
   { header: 'Acompañante', get: (r) => r.tipo_acompanante ?? '' },
   { header: 'Paciente', get: (r) => r.paciente_nombre ?? '' },
   { header: 'Ubicación', get: (r) => r.ubicacion_etiqueta ?? '' },
+  { header: 'Sede', get: (r) => r.sede?.nombre ?? '' },
   { header: 'Responsable', get: (r) => r.responsable?.nombre_completo ?? '' },
   { header: 'Tarjeta', get: (r) => r.tarjeta?.codigo ?? '' },
   { header: 'Aislamiento', get: (r) => r.aislamiento ?? '' },
@@ -99,14 +100,14 @@ export default function Visitas() {
           <table className="w-full text-sm">
             <thead className="bg-brand text-white">
               <tr>
-                {['Ingreso', 'Visitante', 'Tipo', 'Paciente / ubicación', 'Tarjeta', 'Estado', ''].map((h) => (
+                {['Ingreso', 'Visitante', 'Tipo', 'Paciente / ubicación', 'Sede', 'Tarjeta', 'Estado', ''].map((h) => (
                   <th key={h} className="px-3 py-2.5 text-left font-medium whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {loading ? <tr><td colSpan={7} className="py-10 text-center text-gray-400">Cargando…</td></tr>
-                : filtrados.length === 0 ? <tr><td colSpan={7} className="py-10 text-center text-gray-400">Sin registros</td></tr>
+              {loading ? <tr><td colSpan={8} className="py-10 text-center text-gray-400">Cargando…</td></tr>
+                : filtrados.length === 0 ? <tr><td colSpan={8} className="py-10 text-center text-gray-400">Sin registros</td></tr>
                 : filtrados.map((r) => (
                   <tr key={r.id} className="hover:bg-brand-50/40">
                     <td className="px-3 py-2 whitespace-nowrap text-gray-600">{horaCO(r.created_at)}</td>
@@ -126,6 +127,7 @@ export default function Visitas() {
                           ? <span className="text-xs text-gray-500">Resp.: {r.responsable.nombre_completo}</span>
                           : <span className="text-gray-300">—</span>}
                     </td>
+                    <td className="px-3 py-2 text-gray-600">{r.sede?.nombre ?? '—'}</td>
                     <td className="px-3 py-2">{r.tarjeta?.codigo ? <Badge color="blue">{r.tarjeta.codigo}</Badge> : <span className="text-gray-300">—</span>}</td>
                     <td className="px-3 py-2">{r.estado === 'activa' ? <Badge color="green">Dentro</Badge> : <Badge>Finalizada</Badge>}</td>
                     <td className="px-3 py-2 text-right">

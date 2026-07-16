@@ -30,10 +30,12 @@ export default function Ubicaciones() {
         />
         <CrudTable
           tabla="puertas" titulo="Puertas de acceso" orderBy="nombre"
-          columnas={[{ key: 'nombre', label: 'Puerta' }, { key: 'sede_id', label: 'Sede' }, { key: 'activo', label: 'Activo' }]}
+          subtitulo="«Requiere tarjeta» controla si Registrar pide tarjeta de acceso al ingresar por esa puerta"
+          columnas={[{ key: 'nombre', label: 'Puerta' }, { key: 'sede_id', label: 'Sede' }, { key: 'requiere_tarjeta', label: 'Requiere tarjeta' }, { key: 'activo', label: 'Activo' }]}
           campos={[
             { key: 'nombre', label: 'Nombre', type: 'text', required: true },
             { key: 'sede_id', label: 'Sede', type: 'select', required: true, optionsTable: { tabla: 'sedes', labelKey: 'nombre' } },
+            { key: 'requiere_tarjeta', label: 'Requiere tarjeta de acceso', type: 'checkbox', default: true },
             { key: 'activo', label: 'Activo', type: 'checkbox', default: true },
           ]}
         />

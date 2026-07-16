@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { PageHeader, Card, MetricCard, FilterBar, selectCls, Btn } from '../components/ui'
 import { listNotasAdministrativas, metricasNotasPorUsuario, type FiltrosNota, type ActividadUsuario } from '../lib/data'
 import { exportarExcel, exportarPDF, type Columna } from '../lib/exportar'
@@ -36,6 +36,19 @@ export default function NotasAdministrativas() {
   const hoyCO = new Date(Date.now() - 5 * 3_600_000).toISOString().substring(0, 10)
   const notasHoy = rows.filter((r) => r.created_at.startsWith(hoyCO)).length
   const usuarioTop = [...actividad].sort((a, b) => b.notas - a.notas)[0]
+
+  // El nombre del usuario ya queda como encabezado de cada grupo, así que la tabla
+  // de detalle no repite esa columna.
+  const grupos = useMemo(() => {
+    const m = new Map<string, { nombre: string; notas: Fila[] }>()
+    rows.forEach((r) => {
+      const key = r.registrado_por ?? '__sin_usuario__'
+      const g = m.get(key) ?? { nombre: r.usuario_nombre ?? 'Usuario desconocido', notas: [] }
+      g.notas.push(r)
+      m.set(key, g)
+    })
+    return Array.from(m.values()).sort((a, b) => b.notas.length - a.notas.length || a.nombre.localeCompare(b.nombre))
+  }, [rows])
 
   return (
     <div>
@@ -85,31 +98,41 @@ export default function NotasAdministrativas() {
         </div>
       </Card>
 
-      <Card className="overflow-hidden">
-        <div className="px-4 py-2.5 border-b border-gray-100 text-sm text-gray-500">{rows.length} nota(s)</div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-brand text-white"><tr>
-              {['Fecha/hora', 'Usuario', 'Paciente', 'Cédula', 'Ubicación', '# Ingreso', 'Comentario'].map((h) => <th key={h} className="px-3 py-2.5 text-left font-medium whitespace-nowrap">{h}</th>)}
-            </tr></thead>
-            <tbody className="divide-y divide-gray-100">
-              {loading ? <tr><td colSpan={7} className="py-10 text-center text-gray-400">Cargando…</td></tr>
-                : rows.length === 0 ? <tr><td colSpan={7} className="py-10 text-center text-gray-400">Sin registros</td></tr>
-                : rows.map((r) => (
-                  <tr key={r.id} className="hover:bg-brand-50/40">
-                    <td className="px-3 py-2 whitespace-nowrap text-gray-600">{horaCO(r.created_at)}</td>
-                    <td className="px-3 py-2 text-gray-700">{r.usuario_nombre ?? '—'}</td>
-                    <td className="px-3 py-2 text-gray-700">{r.paciente_nombre ?? '—'}</td>
-                    <td className="px-3 py-2 text-gray-600">{r.paciente_documento ?? '—'}</td>
-                    <td className="px-3 py-2 text-gray-600">{r.ubicacion_etiqueta ?? '—'}</td>
-                    <td className="px-3 py-2 text-gray-600">{r.num_ingreso ?? '—'}</td>
-                    <td className="px-3 py-2 text-gray-700 max-w-md">{r.comentario}</td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
+      {loading ? (
+        <Card className="py-10 text-center text-gray-400 text-sm">Cargando…</Card>
+      ) : rows.length === 0 ? (
+        <Card className="py-10 text-center text-gray-400 text-sm">Sin registros</Card>
+      ) : (
+        <div className="space-y-5">
+          {grupos.map((g) => (
+            <Card key={g.nombre} className="overflow-hidden">
+              <div className="flex items-center justify-between gap-2 border-b border-gray-100 bg-brand-50/60 px-4 py-2.5">
+                <div className="text-sm font-semibold text-brand">{g.nombre}</div>
+                <span className="rounded-full bg-brand px-2.5 py-0.5 text-xs font-medium text-white">{g.notas.length} nota(s)</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-brand text-white"><tr>
+                    {['Fecha/hora', 'Paciente', 'Cédula', 'Ubicación', '# Ingreso', 'Comentario'].map((h) => <th key={h} className="px-3 py-2.5 text-left font-medium whitespace-nowrap">{h}</th>)}
+                  </tr></thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {g.notas.map((r) => (
+                      <tr key={r.id} className="hover:bg-brand-50/40">
+                        <td className="px-3 py-2 whitespace-nowrap text-gray-600">{horaCO(r.created_at)}</td>
+                        <td className="px-3 py-2 text-gray-700">{r.paciente_nombre ?? '—'}</td>
+                        <td className="px-3 py-2 text-gray-600">{r.paciente_documento ?? '—'}</td>
+                        <td className="px-3 py-2 text-gray-600">{r.ubicacion_etiqueta ?? '—'}</td>
+                        <td className="px-3 py-2 text-gray-600">{r.num_ingreso ?? '—'}</td>
+                        <td className="px-3 py-2 text-gray-700 max-w-md">{r.comentario}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          ))}
         </div>
-      </Card>
+      )}
     </div>
   )
 }

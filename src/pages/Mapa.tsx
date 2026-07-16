@@ -168,12 +168,12 @@ export default function Mapa() {
                 <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-400">Notas anteriores ({historial.length})</div>
                 <div className="max-h-44 overflow-y-auto space-y-1.5 pr-1">
                   {historial.map((n, i) => (
-                    <div key={n.id} className="rounded-lg bg-gray-50 px-3 py-2 text-xs">
+                    <div key={n.id} className="rounded-lg border-l-4 border-brand-light bg-brand-50/60 px-3 py-2 text-xs">
                       <div className="flex items-center justify-between text-gray-500">
-                        <span className="font-semibold text-brand">#{historial.length - i}</span>
+                        <span className="inline-flex items-center rounded-full bg-brand px-2 py-0.5 text-[10px] font-semibold text-white">ID #{historial.length - i}</span>
                         <span>{fechaHoraNota(n.created_at)}</span>
                       </div>
-                      <div className="mt-0.5 text-gray-700">{n.comentario}</div>
+                      <div className="mt-1 text-gray-700">{n.comentario}</div>
                     </div>
                   ))}
                 </div>

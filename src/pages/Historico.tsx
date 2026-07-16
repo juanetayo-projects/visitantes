@@ -18,6 +18,7 @@ const COLS: Columna<VisitaListado>[] = [
   { header: 'Paciente', get: (r) => r.paciente_nombre ?? '' },
   { header: '# Ingreso', get: (r) => r.num_ingreso ?? '' },
   { header: 'Ubicación', get: (r) => r.ubicacion_etiqueta ?? '' },
+  { header: 'Sede', get: (r) => r.sede?.nombre ?? '' },
   { header: 'Tarjeta', get: (r) => r.tarjeta?.codigo ?? '' },
   { header: 'Estado', get: (r) => r.estado },
 ]
@@ -79,11 +80,11 @@ export default function Historico() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-brand text-white"><tr>
-              {['Ingreso', 'Salida / devolución', 'Visitante', 'Tipo', 'Paciente', '# Ingreso', 'Ubicación', 'Tarjeta', 'Estado'].map((h) => <th key={h} className="px-3 py-2.5 text-left font-medium whitespace-nowrap">{h}</th>)}
+              {['Ingreso', 'Salida / devolución', 'Visitante', 'Tipo', 'Paciente', '# Ingreso', 'Ubicación', 'Sede', 'Tarjeta', 'Estado'].map((h) => <th key={h} className="px-3 py-2.5 text-left font-medium whitespace-nowrap">{h}</th>)}
             </tr></thead>
             <tbody className="divide-y divide-gray-100">
-              {loading ? <tr><td colSpan={9} className="py-10 text-center text-gray-400">Cargando…</td></tr>
-                : filtrados.length === 0 ? <tr><td colSpan={9} className="py-10 text-center text-gray-400">Sin registros — ajusta los filtros</td></tr>
+              {loading ? <tr><td colSpan={10} className="py-10 text-center text-gray-400">Cargando…</td></tr>
+                : filtrados.length === 0 ? <tr><td colSpan={10} className="py-10 text-center text-gray-400">Sin registros — ajusta los filtros</td></tr>
                 : filtrados.map((r) => (
                   <tr key={r.id} className="hover:bg-brand-50/40">
                     <td className="px-3 py-2 whitespace-nowrap text-gray-600">{horaCO(r.created_at)}</td>
@@ -110,6 +111,7 @@ export default function Historico() {
                     <td className="px-3 py-2 text-gray-700">{r.paciente_nombre ?? <span className="text-gray-300">—</span>}</td>
                     <td className="px-3 py-2 text-gray-600">{r.num_ingreso ?? '—'}</td>
                     <td className="px-3 py-2 text-gray-600">{r.ubicacion_etiqueta ?? '—'}</td>
+                    <td className="px-3 py-2 text-gray-600">{r.sede?.nombre ?? '—'}</td>
                     <td className="px-3 py-2">{r.tarjeta?.codigo ? <Badge color="blue">{r.tarjeta.codigo}</Badge> : <span className="text-gray-300">—</span>}</td>
                     <td className="px-3 py-2">{r.estado === 'activa' ? <Badge color="green">Dentro</Badge> : <Badge>Finalizada</Badge>}</td>
                   </tr>
