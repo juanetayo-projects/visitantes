@@ -17,6 +17,33 @@ const norm = (s: unknown) => (s ?? '').toString().normalize('NFD').replace(/\p{D
 const key3 = (u: unknown, a: unknown, c: unknown) => `${norm(u)}|${norm(a)}|${norm(c)}`
 const camaDe = (r: any) => (r.Cama && String(r.Cama).trim()) || (r.UbicacionNombre && String(r.UbicacionNombre).trim()) || null
 const parseEdad = (v: unknown) => { const n = parseInt(String(v ?? '').replace(/[^\d]/g, ''), 10); return Number.isFinite(n) ? n : null }
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+// La API del CENSO a veces responde 200 sin access_token (reinicio / rate-limit del Laravel).
+// Reintenta antes de darse por vencida: el 500 resultante hacía fallar el cron de GitHub.
+async function loginCenso(base: string, user_name: string, password: string, intentos = 3): Promise<string> {
+  let ultimo = 'sin detalle'
+  for (let i = 1; i <= intentos; i++) {
+    try {
+      const lr = await fetch(`${base}/api/v1/auth/login`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ user_name, password }),
+      })
+      if (!lr.ok) {
+        ultimo = `HTTP ${lr.status}`
+      } else {
+        const body = await lr.json().catch(() => null)
+        const token = body?.access_token
+        if (token) return token
+        ultimo = `respuesta sin access_token${body?.message ? ` («${body.message}»)` : ''}`
+      }
+    } catch (e) {
+      ultimo = `error de red: ${String(e)}`
+    }
+    if (i < intentos) await sleep(3000)
+  }
+  throw new Error(`Login CENSO falló tras ${intentos} intentos · ${ultimo}`)
+}
 
 const AISL_MAP: Record<string, string | null> = {
   'CONTACTO': 'contacto', 'RESPIRATORIO': 'respiratorio', 'PROTECTOR': 'protector', 'COHORTIZACION': 'cohortizacion',
@@ -68,13 +95,7 @@ Deno.serve(async (req) => {
     if (!user_name || !password) return json({ error: 'Faltan secrets CENSO_API_USER / CENSO_API_PASSWORD en la función.' }, 500)
 
     // ── 1) Login + datos ──
-    const lr = await fetch(`${base}/api/v1/auth/login`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ user_name, password }),
-    })
-    if (!lr.ok) throw new Error(`Login CENSO HTTP ${lr.status}`)
-    const token = (await lr.json()).access_token
-    if (!token) throw new Error('Login CENSO sin access_token')
+    const token = await loginCenso(base, user_name, password)
     const cr = await fetch(`${base}/api/external/censo`, { headers: { Accept: 'application/json', Authorization: `Bearer ${token}` } })
     if (!cr.ok) throw new Error(`Censo HTTP ${cr.status}`)
     const censoJson = await cr.json()

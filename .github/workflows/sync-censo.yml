@@ -15,9 +15,12 @@ jobs:
     steps:
       # Llama a la Edge Function censo-sync (misma lógica que el botón manual de la app).
       # La función lee las credenciales del CENSO desde sus propios secrets en Supabase.
+      # --retry: la API del CENSO ocasionalmente responde sin token o cae unos segundos;
+      # el sync es idempotente (upsert + delete/insert), así que reintentar es seguro.
       - name: Ejecutar sincronización
         run: |
-          curl -fsS -X POST "${SUPABASE_URL%/}/functions/v1/censo-sync" \
+          curl -fsS --retry 3 --retry-delay 30 --retry-all-errors \
+            -X POST "${SUPABASE_URL%/}/functions/v1/censo-sync" \
             -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
             -H "Content-Type: application/json" \
             -w "\nHTTP %{http_code}\n"
