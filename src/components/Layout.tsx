@@ -20,6 +20,7 @@ const TOP: Item[] = [
   { to: '/monitoreo', label: 'Centro de monitoreo', icon: 'M3 5h18v12H3zM8 21h8M12 17v4', roles: ['admin', 'coordinador'] },
   { to: '/cirugia', label: 'Cirugía', icon: 'M9 3v4M15 3v4M4 11h16M5 7h14a1 1 0 011 1v11a2 2 0 01-2 2H6a2 2 0 01-2-2V8a1 1 0 011-1z', roles: ['admin', 'orientador', 'coordinador', 'cirugia'], soloTorre: true },
   { to: '/hemodinamia', label: 'Hemodinamia', icon: 'M3 12h4l2-7 4 14 2-7h6', roles: ['admin', 'orientador', 'coordinador', 'hemodinamia'], soloTorre: true },
+  { to: '/otro', label: 'Otro', icon: 'M12 8v4m0 4h.01M12 3a9 9 0 100 18 9 9 0 000-18z', roles: ['admin', 'orientador', 'coordinador', 'otro'], soloTorre: true },
 ]
 
 const ADMIN: Item[] = [

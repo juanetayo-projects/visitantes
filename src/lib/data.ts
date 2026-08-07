@@ -3,6 +3,7 @@ import type {
   Sede, Piso, Ubicacion, Servicio, Cargo, Puerta, Tarjeta, Responsable, HorarioVisita,
   OcupacionUbicacion, VisitaResumen, TipoAislamiento, TipoUbicacion, TipoAcompanante,
   NotaAdministrativa, SolicitudCirugia, ComentarioCirugia, SolicitudHemodinamia, ComentarioHemodinamia, EstadoHemodinamia,
+  SolicitudOtro, ComentarioOtro,
 } from './types'
 
 // Normaliza texto para comparaciones (sin acentos, mayúsculas, espacios colapsados).
@@ -954,6 +955,77 @@ export async function listComentariosHemodinamiaPorSolicitud(): Promise<Map<stri
     .select('*, autor:perfiles!comentarios_hemodinamia_autor_id_fkey(nombre)')
     .order('created_at')
   const map = new Map<string, (ComentarioHemodinamia & { autor_nombre: string | null })[]>()
+  ;(data ?? []).forEach((r: any) => {
+    const arr = map.get(r.solicitud_id) ?? []
+    arr.push({ ...r, autor_nombre: r.autor?.nombre ?? null })
+    map.set(r.solicitud_id, arr)
+  })
+  return map
+}
+
+// ─── Otro: control de conceptos aparte de Cirugía y Hemodinamia (mismo patrón) ────
+export interface NuevaSolicitudOtro {
+  fecha?: string
+  nombre_paciente: string
+  documento_paciente: string
+  eps?: string | null
+  persona_solicita?: string | null
+  concepto?: string | null
+  celular?: string | null
+  observaciones?: string | null
+  atendido_por?: string | null
+  atendido_por_nombre?: string | null
+  registrado_por?: string | null
+}
+export async function crearSolicitudOtro(s: NuevaSolicitudOtro): Promise<string> {
+  const { data, error } = await supabase.from('solicitudes_otro').insert(s).select('id').single()
+  if (error) throw error
+  return data.id as string
+}
+
+export interface FiltrosOtro { estado?: EstadoHemodinamia | ''; atendidoPor?: string; desde?: string; hasta?: string; texto?: string }
+export async function listSolicitudesOtro(f: FiltrosOtro = {}): Promise<SolicitudOtro[]> {
+  let q = supabase.from('solicitudes_otro').select('*').order('fecha', { ascending: false }).order('created_at', { ascending: false }).limit(1000)
+  if (f.estado) q = q.eq('estado', f.estado)
+  if (f.atendidoPor) q = q.eq('atendido_por_nombre', f.atendidoPor)
+  if (f.desde) q = q.gte('fecha', f.desde)
+  if (f.hasta) q = q.lte('fecha', f.hasta)
+  const { data } = await q
+  let rows = (data ?? []) as SolicitudOtro[]
+  if (f.texto) {
+    const t = f.texto.toLowerCase()
+    rows = rows.filter((r) => r.nombre_paciente.toLowerCase().includes(t) || r.documento_paciente.includes(t) || r.concepto?.toLowerCase().includes(t))
+  }
+  return rows
+}
+
+export async function listAtendidoPorOtro(): Promise<string[]> {
+  const { data } = await supabase.from('solicitudes_otro').select('atendido_por_nombre')
+  const set = new Set<string>()
+  ;(data ?? []).forEach((r: any) => { if (r.atendido_por_nombre) set.add(r.atendido_por_nombre) })
+  return Array.from(set).sort((a, b) => a.localeCompare(b, 'es'))
+}
+export async function cambiarEstadoOtro(id: string, estado: EstadoHemodinamia) {
+  const { error } = await supabase.from('solicitudes_otro').update({ estado }).eq('id', id)
+  if (error) throw error
+}
+export async function listComentariosOtro(solicitudId: string): Promise<(ComentarioOtro & { autor_nombre: string | null })[]> {
+  const { data } = await supabase.from('comentarios_otro')
+    .select('*, autor:perfiles!comentarios_otro_autor_id_fkey(nombre)')
+    .eq('solicitud_id', solicitudId).order('created_at')
+  return ((data ?? []) as any[]).map((r) => ({ ...r, autor_nombre: r.autor?.nombre ?? null }))
+}
+export async function comentarOtro(solicitudId: string, autorId: string | null, comentario: string) {
+  const { error } = await supabase.from('comentarios_otro').insert({ solicitud_id: solicitudId, autor_id: autorId, comentario })
+  if (error) throw error
+}
+
+// Todos los comentarios de Otro agrupados por solicitud (mismo criterio que Cirugía/Hemodinamia).
+export async function listComentariosOtroPorSolicitud(): Promise<Map<string, (ComentarioOtro & { autor_nombre: string | null })[]>> {
+  const { data } = await supabase.from('comentarios_otro')
+    .select('*, autor:perfiles!comentarios_otro_autor_id_fkey(nombre)')
+    .order('created_at')
+  const map = new Map<string, (ComentarioOtro & { autor_nombre: string | null })[]>()
   ;(data ?? []).forEach((r: any) => {
     const arr = map.get(r.solicitud_id) ?? []
     arr.push({ ...r, autor_nombre: r.autor?.nombre ?? null })

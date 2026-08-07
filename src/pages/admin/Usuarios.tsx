@@ -11,6 +11,11 @@ export default function Usuarios() {
   const [form, setForm] = useState({ ...vacio })
   const [msg, setMsg] = useState<{ ok: boolean; t: string } | null>(null)
   const [busy, setBusy] = useState(false)
+  const [passModal, setPassModal] = useState<Perfil | null>(null)
+  const [pass1, setPass1] = useState('')
+  const [pass2, setPass2] = useState('')
+  const [passMsg, setPassMsg] = useState<string | null>(null)
+  const [passBusy, setPassBusy] = useState(false)
 
   async function cargar() { const { data } = await supabase.from('perfiles').select('*').order('email'); setItems((data ?? []) as Perfil[]) }
   useEffect(() => { cargar() }, [])
@@ -46,11 +51,18 @@ export default function Usuarios() {
     cargar()
   }
 
-  async function resetPass(p: Perfil) {
-    const pass = prompt(`Nueva contraseña para ${p.email} (mín. 6 caracteres):`)
-    if (!pass || pass.length < 6) return
-    const r = await invoke({ action: 'password', id: p.id, password: pass })
-    alert(r.error ? r.error : 'Contraseña actualizada.')
+  function abrirResetPass(p: Perfil) { setPassModal(p); setPass1(''); setPass2(''); setPassMsg(null) }
+
+  async function confirmarResetPass() {
+    if (!passModal) return
+    if (pass1.length < 6) { setPassMsg('La contraseña debe tener mínimo 6 caracteres.'); return }
+    if (pass1 !== pass2) { setPassMsg('Las contraseñas no coinciden.'); return }
+    setPassBusy(true)
+    const r = await invoke({ action: 'password', id: passModal.id, password: pass1 })
+    setPassBusy(false)
+    if (r.error) { setPassMsg(r.error); return }
+    setMsg({ ok: true, t: `Contraseña actualizada para ${passModal.email}.` })
+    setPassModal(null)
   }
 
   return (
@@ -77,7 +89,7 @@ export default function Usuarios() {
                 </td>
                 <td className="px-3 py-2"><button onClick={() => toggle(p)}>{p.activo ? <Badge color="green">Activo</Badge> : <Badge>Inactivo</Badge>}</button></td>
                 <td className="px-3 py-2 whitespace-nowrap">
-                  <button onClick={() => resetPass(p)} className="rounded-lg bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand hover:bg-brand-100 mr-1">Contraseña</button>
+                  <button onClick={() => abrirResetPass(p)} className="rounded-lg bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand hover:bg-brand-100 mr-1">Contraseña</button>
                   <button onClick={() => eliminar(p)} className="rounded-lg bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700 hover:bg-rose-100">Eliminar</button>
                 </td>
               </tr>
@@ -100,6 +112,23 @@ export default function Usuarios() {
           <Btn onClick={crear} disabled={busy} className="flex-1">{busy ? 'Creando…' : 'Crear usuario'}</Btn>
           <Btn variant="ghost" onClick={() => setOpen(false)}>Cancelar</Btn>
         </div>
+      </Modal>
+
+      <Modal open={!!passModal} onClose={() => setPassModal(null)} title="Cambiar contraseña">
+        {passModal && (
+          <div className="space-y-3">
+            <p className="text-sm text-gray-500">Usuario: <span className="font-medium text-gray-700">{passModal.email}</span></p>
+            <div><label className="block text-xs font-medium text-gray-500 mb-1">Nueva contraseña (mín. 6)</label>
+              <input className={inputCls} type="password" value={pass1} onChange={(e) => setPass1(e.target.value)} /></div>
+            <div><label className="block text-xs font-medium text-gray-500 mb-1">Confirmar contraseña</label>
+              <input className={inputCls} type="password" value={pass2} onChange={(e) => setPass2(e.target.value)} /></div>
+            {passMsg && <p className="text-sm text-rose-600">{passMsg}</p>}
+            <div className="flex gap-2 pt-1">
+              <Btn onClick={confirmarResetPass} disabled={passBusy} className="flex-1">{passBusy ? 'Guardando…' : 'Actualizar contraseña'}</Btn>
+              <Btn variant="ghost" onClick={() => setPassModal(null)}>Cancelar</Btn>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   )

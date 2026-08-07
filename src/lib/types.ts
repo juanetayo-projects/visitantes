@@ -1,5 +1,5 @@
 // ─── Usuarios / roles ───────────────────────────────────────────────
-export type Rol = 'admin' | 'orientador' | 'coordinador' | 'cirugia' | 'hemodinamia'
+export type Rol = 'admin' | 'orientador' | 'coordinador' | 'cirugia' | 'hemodinamia' | 'otro'
 
 export interface Perfil {
   id: string
@@ -15,6 +15,7 @@ export const ROL_LABEL: Record<Rol, string> = {
   coordinador: 'Coordinador',
   cirugia: 'Cirugía',
   hemodinamia: 'Hemodinamia',
+  otro: 'Otro',
 }
 
 // ─── Catálogos institucionales ──────────────────────────────────────
@@ -274,6 +275,32 @@ export interface SolicitudHemodinamia {
 }
 
 export interface ComentarioHemodinamia {
+  id: string
+  solicitud_id: string
+  autor_id: string | null
+  comentario: string
+  created_at: string
+}
+
+// ─── Otro: control de conceptos aparte de Cirugía y Hemodinamia ─────
+export interface SolicitudOtro {
+  id: string
+  fecha: string
+  nombre_paciente: string
+  documento_paciente: string
+  eps: string | null
+  persona_solicita: string | null
+  concepto: string | null
+  celular: string | null
+  observaciones: string | null
+  atendido_por: string | null
+  atendido_por_nombre: string | null
+  estado: EstadoHemodinamia
+  registrado_por: string | null
+  created_at: string
+}
+
+export interface ComentarioOtro {
   id: string
   solicitud_id: string
   autor_id: string | null
