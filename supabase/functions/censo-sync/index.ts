@@ -14,7 +14,10 @@ const json = (o: unknown, s = 200) =>
   new Response(JSON.stringify(o), { status: s, headers: { ...cors, 'Content-Type': 'application/json' } })
 
 const norm = (s: unknown) => (s ?? '').toString().normalize('NFD').replace(/\p{Diacritic}/gu, '').toUpperCase().replace(/\s+/g, ' ').trim()
-const key3 = (u: unknown, a: unknown, c: unknown) => `${norm(u)}|${norm(a)}|${norm(c)}`
+// El CENSO empezó a mandar la cama con el piso pegado al nombre (ej. "Camilla 15 Piso 2"),
+// mientras el catálogo interno sigue guardando solo "Camilla 15" → se quita el sufijo para poder emparejar.
+const normCama = (s: unknown) => norm(s).replace(/\sPISO\s*\d+$/, '').trim()
+const key3 = (u: unknown, a: unknown, c: unknown) => `${norm(u)}|${norm(a)}|${normCama(c)}`
 const camaDe = (r: any) => (r.Cama && String(r.Cama).trim()) || (r.UbicacionNombre && String(r.UbicacionNombre).trim()) || null
 const parseEdad = (v: unknown) => { const n = parseInt(String(v ?? '').replace(/[^\d]/g, ''), 10); return Number.isFinite(n) ? n : null }
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
@@ -117,7 +120,7 @@ Deno.serve(async (req) => {
     for (const u of (ubic ?? [])) { const k = norm(u.etiqueta); const a = ubicByEtiqueta.get(k) ?? []; a.push(u); ubicByEtiqueta.set(k, a) }
     // Busca una ubicación inequívoca cuyo nombre coincida con la cama del CENSO.
     function autoMatch(unidad: unknown, area: unknown, cama: string): any | null {
-      let cands = ubicByEtiqueta.get(norm(cama)) ?? []
+      let cands = ubicByEtiqueta.get(normCama(cama)) ?? []
       if (cands.length === 0) return null
       if (cands.length === 1) return cands[0]
       if (area) { const byA = cands.filter((u) => norm(u.area) === norm(area)); if (byA.length === 1) return byA[0]; if (byA.length) cands = byA }

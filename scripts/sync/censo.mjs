@@ -35,7 +35,10 @@ const SUPA_URL = env.SUPABASE_URL || env.VITE_SUPABASE_URL
 const SUPA_KEY = env.SUPABASE_SERVICE_ROLE_KEY
 
 const norm = (s) => (s ?? '').toString().normalize('NFD').replace(/\p{Diacritic}/gu, '').toUpperCase().replace(/\s+/g, ' ').trim()
-const key3 = (u, a, c) => `${norm(u)}|${norm(a)}|${norm(c)}`
+// El CENSO empezó a mandar la cama con el piso pegado al nombre (ej. "Camilla 15 Piso 2"),
+// mientras el catálogo interno sigue guardando solo "Camilla 15" → se quita el sufijo para poder emparejar.
+const normCama = (s) => norm(s).replace(/\sPISO\s*\d+$/, '').trim()
+const key3 = (u, a, c) => `${norm(u)}|${norm(a)}|${normCama(c)}`
 
 const AISL_MAP = {
   'CONTACTO': 'contacto',
