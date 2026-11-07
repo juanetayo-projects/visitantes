@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { PageHeader, Card, Badge, Btn, FilterBar, selectCls, inputCls, Modal } from '../../components/ui'
+import { PageHeader, Card, Badge, Btn, FilterBar, selectCls, inputCls, Modal, ConLateral, PanelIndicadores, ICONOS_IND } from '../../components/ui'
 import { listInconsistencias, ultimoSync, type CensoInconsistencia, type CensoSyncLog } from '../../lib/data'
 import { exportarExcel, type Columna } from '../../lib/exportar'
 import EstadoSyncCenso from '../../components/EstadoSyncCenso'
@@ -54,7 +54,6 @@ export default function SincronizacionCenso() {
   const [confirmar, setConfirmar] = useState(false)
   const sync = useSyncCenso()
   const ejecutando = sync.corriendo
-  const [msg, setMsg] = useState<{ ok: boolean; texto: string } | null>(null)
 
   function cargar() {
     setLoading(true)
@@ -63,20 +62,19 @@ export default function SincronizacionCenso() {
   useEffect(cargar, [])
 
   async function ejecutar() {
-    setConfirmar(false); setMsg(null)
+    setConfirmar(false)
     const res = await sync.ejecutar()
-    if (res.ok) {
-      const r = res.resumen ?? {}
-      setMsg({ ok: true, texto: `Sincronización completada: ${r.total_censo} en censo · ${r.pacientes_upsert} actualizados · ${r.altas} egresos · ${r.inconsistencias} inconsistencias.` })
-      cargar()
-    } else {
-      setMsg({ ok: false, texto: 'No se pudo ejecutar: ' + (res.error ?? 'error desconocido') })
-    }
+    if (res.ok) cargar()
   }
 
   const unidades = useMemo(() => [...new Set(rows.map((r) => r.censo_unidad).filter(Boolean))].sort() as string[], [rows])
   const areas = useMemo(() => [...new Set(rows.map((r) => r.censo_area).filter(Boolean))].sort() as string[], [rows])
   const tipos = useMemo(() => [...new Set(rows.map((r) => r.tipo))].sort(), [rows])
+  const porTipo = useMemo(() => {
+    const m = new Map<string, number>()
+    rows.forEach((r) => m.set(r.tipo, (m.get(r.tipo) ?? 0) + 1))
+    return [...m.entries()].sort((x, y) => y[1] - x[1])
+  }, [rows])
 
   const filtrados = useMemo(() => {
     const t = f.texto.trim().toLowerCase()
@@ -95,53 +93,47 @@ export default function SincronizacionCenso() {
           <Btn onClick={() => setConfirmar(true)} disabled={ejecutando}>{ejecutando ? 'Sincronizando…' : '↻ Ejecutar ahora'}</Btn>
         </div>} />
 
-      {msg && <div className={`mb-4 rounded-lg px-4 py-3 text-sm ${msg.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>{msg.texto}</div>}
-
       {sync.vista}
-      <EstadoSyncCenso key={log?.run_at ?? 'sin'} soloSiDesactualizado />
-
-      {/* Estado de la última corrida */}
-      <Card className="mb-5 p-5">
-        {!log ? (
-          <div className="text-sm text-gray-500">Aún no se ha ejecutado ninguna sincronización. Usa «Ejecutar ahora» o espera la corrida automática.</div>
-        ) : (
-          <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
-            <div>
-              <div className="text-xs uppercase tracking-wide text-gray-400">Última sincronización</div>
-              <div className="flex items-center gap-2 text-lg font-semibold text-brand">
-                {fechaHoraCO(log.run_at)}
-                {log.ok ? <Badge color="green">OK</Badge> : <Badge color="red">Con errores</Badge>}
-              </div>
-              {!log.ok && log.mensaje && <div className="text-xs text-rose-600">{log.mensaje}</div>}
-            </div>
-            {[['Pacientes en censo', log.total_censo], ['Actualizados', log.pacientes_upsert], ['Egresos', log.altas],
-              ['Aislamientos', log.aislamientos], ['Inconsistencias', log.inconsistencias]].map(([k, v]) => (
-              <div key={k as string}>
-                <div className="text-xs uppercase tracking-wide text-gray-400">{k}</div>
-                <div className="text-lg font-semibold text-gray-800">{v ?? '—'}</div>
-              </div>
-            ))}
-          </div>
-        )}
-      </Card>
-
-      <FilterBar onClear={() => setF(VACIO)}>
-        <select className={selectCls} value={f.tipo} onChange={(e) => setF({ ...f, tipo: e.target.value })}>
-          <option value="">Todos los tipos</option>
-          {tipos.map((t) => <option key={t} value={t}>{TIPO_LABEL[t]?.label ?? t}</option>)}
-        </select>
-        <select className={selectCls} value={f.unidad} onChange={(e) => setF({ ...f, unidad: e.target.value })}>
-          <option value="">Todas las unidades</option>
-          {unidades.map((u) => <option key={u} value={u}>{u}</option>)}
-        </select>
-        <select className={selectCls} value={f.area} onChange={(e) => setF({ ...f, area: e.target.value })}>
-          <option value="">Todas las áreas</option>
-          {areas.map((a) => <option key={a} value={a}>{a}</option>)}
-        </select>
-        <input className={inputCls} style={{ minWidth: 220 }} placeholder="Paciente, # ingreso, cama, detalle…" value={f.texto} onChange={(e) => setF({ ...f, texto: e.target.value })} />
-      </FilterBar>
-
-      <Card className="overflow-hidden">
+      <ConLateral lateral={
+        <>
+          <EstadoSyncCenso key={log?.run_at ?? 'sin'} soloSiDesactualizado />
+          <PanelIndicadores titulo="Última sincronización" accion={log ? (log.ok ? <Badge color="green">OK</Badge> : <Badge color="red">Con errores</Badge>) : undefined} items={log ? [
+            { label: 'Pacientes en censo', value: log.total_censo ?? '—', icono: ICONOS_IND.personas, color: 'blue' },
+            { label: 'Actualizados', value: log.pacientes_upsert ?? '—', icono: ICONOS_IND.actualizar, color: 'teal' },
+            { label: 'Egresos', value: log.altas ?? '—', icono: ICONOS_IND.salida, color: 'purple' },
+            { label: 'Aislamientos', value: log.aislamientos ?? '—', icono: ICONOS_IND.alerta, color: 'red' },
+          ] : []}>
+            {log
+              ? <p className="mb-2 text-sm font-medium text-brand">{fechaHoraCO(log.run_at)}</p>
+              : <p className="text-sm text-gray-500">Aún no se ha ejecutado ninguna sincronización. Usa «Ejecutar ahora» o espera la corrida automática.</p>}
+            {log && !log.ok && log.mensaje && <p className="mb-2 break-words text-xs text-rose-600">{log.mensaje}</p>}
+          </PanelIndicadores>
+          {/* Desglose: clic en un tipo para ver solo esas inconsistencias en la tabla */}
+          <PanelIndicadores titulo={`Inconsistencias (${rows.length})`} items={porTipo.map(([t, n]) => ({
+            label: TIPO_LABEL[t]?.label ?? t, value: n, icono: t === 'sin_cama' ? ICONOS_IND.cama : ICONOS_IND.alerta,
+            color: TIPO_LABEL[t]?.color === 'red' ? 'red' as const : 'amber' as const,
+            activo: f.tipo === t, onClick: () => setF({ ...f, tipo: f.tipo === t ? '' : t }),
+          }))}>
+            {rows.length === 0 && !loading && <p className="text-sm text-emerald-600">✓ Sin inconsistencias.</p>}
+          </PanelIndicadores>
+          <FilterBar vertical onClear={() => setF(VACIO)}>
+            <select className={selectCls} value={f.tipo} onChange={(e) => setF({ ...f, tipo: e.target.value })}>
+              <option value="">Todos los tipos</option>
+              {tipos.map((t) => <option key={t} value={t}>{TIPO_LABEL[t]?.label ?? t}</option>)}
+            </select>
+            <select className={selectCls} value={f.unidad} onChange={(e) => setF({ ...f, unidad: e.target.value })}>
+              <option value="">Todas las unidades</option>
+              {unidades.map((u) => <option key={u} value={u}>{u}</option>)}
+            </select>
+            <select className={selectCls} value={f.area} onChange={(e) => setF({ ...f, area: e.target.value })}>
+              <option value="">Todas las áreas</option>
+              {areas.map((a) => <option key={a} value={a}>{a}</option>)}
+            </select>
+            <input className={inputCls} placeholder="Paciente, # ingreso, cama, detalle…" value={f.texto} onChange={(e) => setF({ ...f, texto: e.target.value })} />
+          </FilterBar>
+        </>
+      }>
+      <Card hover={false} className="overflow-hidden">
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
           <div className="text-sm text-gray-500">{filtrados.length}{filtrados.length !== rows.length ? ` de ${rows.length}` : ''} inconsistencia(s)</div>
           <Link to="/admin/homologacion" className="text-sm font-medium text-brand-light hover:underline">Ir a Homologación CENSO →</Link>
@@ -174,6 +166,7 @@ export default function SincronizacionCenso() {
           </table>
         </div>
       </Card>
+      </ConLateral>
 
       {/* Confirmación de ejecución manual */}
       <Modal open={confirmar} onClose={() => setConfirmar(false)} title="Ejecutar sincronización del CENSO">

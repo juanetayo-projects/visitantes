@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { PageHeader, Btn } from '../../components/ui'
+import { PageHeader, Btn, PanelIndicadores, ICONOS_IND } from '../../components/ui'
 import CrudTable from '../../components/CrudTable'
 import EstadoSyncCenso from '../../components/EstadoSyncCenso'
 import { useSyncCenso } from '../../components/ProgresoSync'
@@ -21,7 +21,6 @@ export default function HomologacionCenso() {
   const [soloPendientes, setSoloPendientes] = useState(false)
   const [version, setVersion] = useState(0)
   const sync = useSyncCenso()
-  const [msg, setMsg] = useState<{ ok: boolean; t: string } | null>(null)
 
   useEffect(() => {
     supabase.from('homologacion_ubicaciones').select('id', { count: 'exact', head: true }).eq('activo', true).is('ubicacion_id', null).then(({ count }) => setPendientes(count ?? 0))
@@ -31,14 +30,9 @@ export default function HomologacionCenso() {
   }, [version])
 
   async function sincronizar() {
-    setMsg(null)
-    const r = await sync.ejecutar()
-    if (r.ok) setMsg({ ok: true, t: `Sincronización completada: ${r.resumen?.total_censo ?? '—'} pacientes en el censo.` })
-    else setMsg({ ok: false, t: 'No se pudo sincronizar: ' + (r.error ?? 'error desconocido') })
+    await sync.ejecutar()
     setVersion((v) => v + 1)
   }
-
-  const hayProblemas = !!pendientes || !!sinUbicar
 
   return (
     <div>
@@ -46,31 +40,20 @@ export default function HomologacionCenso() {
         action={<Btn onClick={sincronizar} disabled={sync.corriendo}>{sync.corriendo ? 'Sincronizando…' : '↻ Sincronizar ahora'}</Btn>} />
       {sync.vista}
 
-      <EstadoSyncCenso key={version} />
-      {msg && <div className={`mb-4 rounded-lg px-4 py-3 text-sm ${msg.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>{msg.t}</div>}
-
-      <div className="mb-4 grid gap-3 sm:grid-cols-3">
-        <div className="rounded-xl bg-brand-50 px-4 py-3 text-sm text-brand">
-          <span className="font-semibold">{total ?? '—'}</span> ubicaciones del CENSO vigentes en el catálogo.
-        </div>
-        <button onClick={() => { setSoloPendientes((s) => !s); setVersion((v) => v + 1) }} disabled={!pendientes}
-          className={`rounded-xl px-4 py-3 text-left text-sm ${pendientes ? 'bg-amber-50 text-amber-700 hover:ring-1 hover:ring-amber-300' : 'bg-emerald-50 text-emerald-700'}`}>
-          {pendientes
-            ? <><span className="font-semibold">{pendientes}</span> sin homologar — {soloPendientes ? 'ver todas' : 'clic para verlas y asignarlas'}.</>
-            : 'Ninguna ubicación pendiente de homologar.'}
-        </button>
-        <div className={`rounded-xl px-4 py-3 text-sm ${sinUbicar ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'}`}>
-          {sinUbicar
-            ? <><span className="font-semibold">{sinUbicar}</span> paciente(s) del censo sin ubicar bien. <Link to="/admin/ubicaciones?tab=censo" className="font-medium underline">Ver detalle</Link></>
-            : 'Todos los pacientes con cama quedaron ubicados.'}
-        </div>
-      </div>
-      {!hayProblemas && <p className="sr-only">La homologación está al día.</p>}
-
       <CrudTable
         key={`${version}-${soloPendientes}`}
         tabla="homologacion_ubicaciones" titulo="Homologación de ubicaciones" orderBy="censo_unidad"
         subtitulo="CENSO (unidad · área · cama) → ubicación de la app. La sincronización agrega sola las camas nuevas; las que no puede resolver quedan pendientes aquí. Los nombres de unidad que el censo ya no usa quedan como Activo = No."
+        lateral={
+          <>
+            <EstadoSyncCenso key={version} />
+            <PanelIndicadores titulo="Estado de la homologación" items={[
+              { label: 'Ubicaciones vigentes', value: total ?? '—', hint: 'Del censo, en el catálogo', icono: ICONOS_IND.base, color: 'blue' },
+              { label: 'Sin homologar', value: pendientes ?? '—', hint: pendientes ? (soloPendientes ? 'Clic para ver todas' : 'Clic para verlas y asignarlas') : 'Ninguna pendiente', icono: ICONOS_IND.alerta, color: pendientes ? 'amber' : 'green', activo: soloPendientes, onClick: pendientes ? () => { setSoloPendientes((v) => !v); setVersion((v) => v + 1) } : undefined },
+              { label: 'Pacientes sin ubicar', value: sinUbicar ?? '—', hint: sinUbicar ? <Link to="/admin/ubicaciones?tab=censo" className="font-medium text-brand-light underline">Ver detalle</Link> : 'Todos con cama están ubicados', icono: ICONOS_IND.cama, color: sinUbicar ? 'red' : 'green' },
+            ]} />
+          </>
+        }
         filtrosIniciales={soloPendientes ? { ubicacion_id: '__null', activo: 'true' } : { activo: 'true' }}
         filtros={[
           { key: 'ubicacion_id', label: 'Estado', opciones: [{ value: '__notnull', label: 'Homologadas' }, { value: '__null', label: 'Sin homologar' }] },

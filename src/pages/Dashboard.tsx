@@ -138,7 +138,7 @@ export default function Dashboard() {
         </FilterBar>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
           {[['Visitas', m.total], ['Activas', m.activas], ['Finalizadas', m.finalizadas], ['Familiares', m.familiar], ['Proveedores', m.proveedor], ['Colaboradores', m.colaborador]].map(([k, v]) => (
-            <div key={k as string} className="rounded-xl bg-white px-4 py-3 shadow-neu-xs">
+            <div key={k as string} className="rounded-xl bg-white px-4 py-3 shadow-neu-xs transition-colors hover:bg-brand-50">
               <div className="text-xs text-gray-500">{k}</div>
               <div className="text-xl font-bold tabular-nums text-gray-900">{v}</div>
             </div>

@@ -98,7 +98,7 @@ export function KpiCard({ titulo, valor, detalle, icono, tono, serie, colorSerie
       )}
     </>
   )
-  const cls = 'block h-full w-full rounded-2xl bg-white p-4 text-left shadow-neu-sm'
+  const cls = 'block h-full w-full rounded-2xl bg-white p-4 text-left shadow-neu-sm transition-colors hover:bg-brand-50'
   return onClick
     ? <button onClick={onClick} className={`${cls} transition hover:-translate-y-0.5 hover:shadow-neu`}>{contenido}</button>
     : <div className={cls}>{contenido}</div>
@@ -106,7 +106,7 @@ export function KpiCard({ titulo, valor, detalle, icono, tono, serie, colorSerie
 
 export function Panel({ titulo, icono, accion, children, className = '' }: { titulo: string; icono?: string; accion?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <section className={`flex flex-col rounded-2xl bg-white p-5 shadow-neu-sm ${className}`}>
+    <section className={`flex flex-col rounded-2xl bg-white p-5 shadow-neu-sm transition-colors hover:bg-brand-50/60 ${className}`}>
       <header className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 text-base font-semibold text-gray-900">
           {icono && <Icono d={icono} className="h-5 w-5 text-brand-light" />}{titulo}
@@ -151,7 +151,7 @@ export function HeroInicio({ nombre, indicadores }: {
                 <span className="mt-0.5 block text-2xl font-bold tabular-nums">{k.valor}</span>
               </>
             )
-            const cls = 'rounded-xl border border-white/20 bg-white/10 px-3 py-2 backdrop-blur-sm'
+            const cls = 'rounded-xl border border-white/20 bg-white/10 px-3 py-2 backdrop-blur-sm transition-colors hover:bg-white/25'
             return k.to
               ? <Link key={k.titulo} to={k.to} className={`${cls} transition hover:bg-white/20`}>{interior}</Link>
               : <div key={k.titulo} className={cls}>{interior}</div>

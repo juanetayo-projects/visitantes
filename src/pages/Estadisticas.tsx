@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import ReactECharts from 'echarts-for-react'
-import { PageHeader, Card, FilterBar, selectCls, MetricCard, Modal, Badge } from '../components/ui'
+import { PageHeader, Card, FilterBar, selectCls, PanelIndicadores, ICONOS_IND, ConLateral, Modal, Badge } from '../components/ui'
 import { listVisitas, listSedes, listPisos, describirFiltros, type VisitaListado, type FiltrosVisita } from '../lib/data'
 import { exportarExcel, exportarPDF, type Columna } from '../lib/exportar'
 import { setFestivos } from '../lib/festivosColombia'
@@ -84,35 +84,38 @@ export default function Estadisticas() {
     <div>
       <PageHeader title="Mapa de calor" subtitle="Flujo de visitantes por día y hora — zona horaria Colombia (GMT-5)" />
 
-      <div className="grid gap-4 sm:grid-cols-3 mb-5">
-        <MetricCard label="Total de visitas" value={total} color="blue" />
-        <MetricCard label="En domingos / festivos" value={festivosCount} hint="calendario Colombia" color="amber" />
-        <MetricCard label="Pico (día·hora)" value={max} hint="máximo en una celda" color="teal" />
-      </div>
-
-      <FilterBar onClear={() => setF({ estado: '' })}>
-        <select className={selectCls} value={f.tipo ?? ''} onChange={(e) => setF({ ...f, tipo: e.target.value })}>
-          <option value="">Todos los tipos</option>
-          <option value="familiar">Familiar</option><option value="proveedor">Proveedor</option><option value="colaborador">Colaborador</option>
-        </select>
-        <select className={selectCls} value={f.estado ?? ''} onChange={(e) => setF({ ...f, estado: e.target.value as any })}>
-          <option value="">Activas y finalizadas</option><option value="activa">Solo activas</option><option value="finalizada">Solo finalizadas</option>
-        </select>
-        <select className={selectCls} value={f.sedeId ?? ''} onChange={(e) => setF({ ...f, sedeId: e.target.value, pisoId: '' })}>
-          <option value="">Todas las sedes</option>{sedes.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
-        </select>
-        <select className={selectCls} value={f.pisoId ?? ''} disabled={!f.sedeId} onChange={(e) => setF({ ...f, pisoId: e.target.value })}>
-          <option value="">{f.sedeId ? 'Todos los pisos' : 'Elige sede'}</option>{pisos.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-        </select>
-        <input type="date" className={selectCls} value={f.desde ?? ''} onChange={(e) => setF({ ...f, desde: e.target.value })} />
-        <input type="date" className={selectCls} value={f.hasta ?? ''} onChange={(e) => setF({ ...f, hasta: e.target.value })} />
-      </FilterBar>
-
+      <ConLateral lateral={
+        <>
+          <PanelIndicadores titulo="Resumen" items={[
+            { label: 'Total de visitas', value: total, icono: ICONOS_IND.total, color: 'blue' },
+            { label: 'En domingos / festivos', value: festivosCount, hint: 'Calendario Colombia', icono: ICONOS_IND.calendario, color: 'amber' },
+            { label: 'Pico (día · hora)', value: max, hint: 'Máximo en una celda', icono: ICONOS_IND.pico, color: 'teal' },
+          ]} />
+          <FilterBar vertical onClear={() => setF({ estado: '' })}>
+            <select className={selectCls} value={f.tipo ?? ''} onChange={(e) => setF({ ...f, tipo: e.target.value })}>
+              <option value="">Todos los tipos</option>
+              <option value="familiar">Familiar</option><option value="proveedor">Proveedor</option><option value="colaborador">Colaborador</option>
+            </select>
+            <select className={selectCls} value={f.estado ?? ''} onChange={(e) => setF({ ...f, estado: e.target.value as any })}>
+              <option value="">Activas y finalizadas</option><option value="activa">Solo activas</option><option value="finalizada">Solo finalizadas</option>
+            </select>
+            <select className={selectCls} value={f.sedeId ?? ''} onChange={(e) => setF({ ...f, sedeId: e.target.value, pisoId: '' })}>
+              <option value="">Todas las sedes</option>{sedes.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+            </select>
+            <select className={selectCls} value={f.pisoId ?? ''} disabled={!f.sedeId} onChange={(e) => setF({ ...f, pisoId: e.target.value })}>
+              <option value="">{f.sedeId ? 'Todos los pisos' : 'Elige sede'}</option>{pisos.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+            </select>
+            <input type="date" className={selectCls} value={f.desde ?? ''} onChange={(e) => setF({ ...f, desde: e.target.value })} />
+            <input type="date" className={selectCls} value={f.hasta ?? ''} onChange={(e) => setF({ ...f, hasta: e.target.value })} />
+          </FilterBar>
+        </>
+      }>
       <Card className="p-5">
         <div className="text-sm font-semibold text-brand mb-2">Mapa de calor — visitas por día y hora <span className="font-normal text-gray-400">(clic en una celda para ver el detalle)</span></div>
         {loading ? <div className="py-16 text-center text-gray-400 text-sm">Cargando…</div>
           : <ReactECharts option={option} onEvents={onEvents} style={{ height: 420 }} />}
       </Card>
+      </ConLateral>
 
       {/* Ajuste 6: detalle de personas de la celda seleccionada */}
       <Modal open={!!sel} onClose={() => setSel(null)} maxWidth="max-w-3xl"

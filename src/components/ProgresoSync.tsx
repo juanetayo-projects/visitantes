@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { ejecutarSyncCenso } from '../lib/data'
 
 // Vista de ejecución de la sincronización con el censo: cronómetro con anillo de avance,
@@ -46,6 +47,10 @@ export function ProgresoSync({ estado, inicio, fin, resumen, error, onCerrar }: 
 }) {
   const [ahora, setAhora] = useState(Date.now())
   const cerrarRef = useRef<HTMLButtonElement>(null)
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
+  const hayInconsistencias = estado === 'listo' && !!resumen?.inconsistencias
+  const yaEnSync = pathname === '/admin/sync-censo'
   useEffect(() => {
     if (estado !== 'corriendo') { cerrarRef.current?.focus(); return }
     const t = setInterval(() => setAhora(Date.now()), 200)
@@ -150,7 +155,12 @@ export function ProgresoSync({ estado, inicio, fin, resumen, error, onCerrar }: 
         <div className="flex min-h-[4.5rem] items-center justify-center px-6 py-4">
           {corriendo
             ? <p className="text-center text-xs text-white/60">Puedes seguir esperando aquí; no cierres esta página.</p>
-            : <button ref={cerrarRef} onClick={onCerrar} className="rounded-xl bg-white px-6 py-2 text-sm font-semibold text-brand transition hover:bg-brand-50 focus:outline-none focus:ring-2 focus:ring-cyan-200">Cerrar</button>}
+            : <div className="flex flex-wrap items-center justify-center gap-2">
+                {hayInconsistencias && !yaEnSync && (
+                  <button onClick={() => { onCerrar(); navigate('/admin/sync-censo') }} className="rounded-xl bg-amber-300 px-5 py-2 text-sm font-semibold text-brand transition hover:bg-amber-200 focus:outline-none focus:ring-2 focus:ring-cyan-200">Ver las {resumen?.inconsistencias} inconsistencias</button>
+                )}
+                <button ref={cerrarRef} onClick={onCerrar} className="rounded-xl bg-white px-6 py-2 text-sm font-semibold text-brand transition hover:bg-brand-50 focus:outline-none focus:ring-2 focus:ring-cyan-200">{hayInconsistencias && yaEnSync ? 'Ver las inconsistencias' : 'Cerrar'}</button>
+              </div>}
         </div>
       </div>
     </div>,

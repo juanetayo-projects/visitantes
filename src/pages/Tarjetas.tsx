@@ -98,7 +98,7 @@ export default function Tarjetas() {
         <input className={selectCls} placeholder="Buscar tarjeta, titular, cédula, teléfono…" value={f.texto ?? ''} onChange={(e) => setF({ ...f, texto: e.target.value })} />
       </FilterBar>
 
-      <Card className="overflow-hidden">
+      <Card hover={false} className="overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-2 p-4 border-b border-gray-100">
           <div className="font-semibold text-brand">Tarjetas <span className="text-gray-400 text-sm">({rows.length})</span></div>
           {esStaff && <span className="text-xs text-gray-500">Para una salida, busca la tarjeta en uso y pulsa «Registrar salida y devolver».</span>}

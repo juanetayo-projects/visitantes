@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { PageHeader, Card, MetricCard, FilterBar, selectCls, inputCls, textareaCls, Btn, Badge, Modal, ComentariosBadge } from '../components/ui'
+import { PageHeader, Card, PanelIndicadores, ICONOS_IND, ConLateral, FilterBar, selectCls, inputCls, textareaCls, Btn, Badge, Modal, ComentariosBadge } from '../components/ui'
 import { useAuth } from '../auth/AuthProvider'
 import {
   listSolicitudesOtro, crearSolicitudOtro, cambiarEstadoOtro,
@@ -87,28 +87,30 @@ export default function Otro() {
           <Btn variant="light" onClick={() => exportarPDF('Solicitudes de Otro', COLS, rows)}>PDF</Btn>
         </div>} />
 
-      <div className="grid gap-4 sm:grid-cols-4 mb-5">
-        <MetricCard label="Total (filtro)" value={rows.length} color="blue" />
-        <MetricCard label="Recibidos" value={rows.filter((r) => r.estado === 'recibido').length} color="blue" />
-        <MetricCard label="Atendidos" value={rows.filter((r) => r.estado === 'atendido').length} color="green" />
-        <MetricCard label="Pendientes" value={rows.filter((r) => r.estado === 'pendiente').length} color="amber" />
-      </div>
-
-      <FilterBar onClear={() => setF({})}>
-        <select className={selectCls} value={f.estado ?? ''} onChange={(e) => setF({ ...f, estado: e.target.value as any })}>
-          <option value="">Todos los estados</option>
-          {(Object.keys(ESTADO_HEMODINAMIA_LABEL) as EstadoHemodinamia[]).map((e) => <option key={e} value={e}>{ESTADO_HEMODINAMIA_LABEL[e]}</option>)}
-        </select>
-        <select className={selectCls} value={f.atendidoPor ?? ''} onChange={(e) => setF({ ...f, atendidoPor: e.target.value })}>
-          <option value="">Todos (atendido por)</option>
-          {atendidoPorOpciones.map((n) => <option key={n} value={n}>{n}</option>)}
-        </select>
-        <input type="date" className={selectCls} value={f.desde ?? ''} onChange={(e) => setF({ ...f, desde: e.target.value })} />
-        <input type="date" className={selectCls} value={f.hasta ?? ''} onChange={(e) => setF({ ...f, hasta: e.target.value })} />
-        <input className={selectCls} placeholder="Paciente, documento, concepto…" value={f.texto ?? ''} onChange={(e) => setF({ ...f, texto: e.target.value })} />
-      </FilterBar>
-
-      <Card className="overflow-hidden">
+      <ConLateral lateral={
+        <>
+          <PanelIndicadores titulo="Resumen" items={[
+            { label: 'Total (filtro)', value: rows.length, icono: ICONOS_IND.total, color: 'blue' },
+            { label: 'Recibidos', value: rows.filter((r) => r.estado === 'recibido').length, icono: ICONOS_IND.recibido, color: 'teal' },
+            { label: 'Atendidos', value: rows.filter((r) => r.estado === 'atendido').length, icono: ICONOS_IND.atendido, color: 'green' },
+            { label: 'Pendientes', value: rows.filter((r) => r.estado === 'pendiente').length, icono: ICONOS_IND.pendiente, color: 'amber' },
+          ]} />
+          <FilterBar vertical onClear={() => setF({})}>
+            <select className={selectCls} value={f.estado ?? ''} onChange={(e) => setF({ ...f, estado: e.target.value as any })}>
+              <option value="">Todos los estados</option>
+              {(Object.keys(ESTADO_HEMODINAMIA_LABEL) as EstadoHemodinamia[]).map((e) => <option key={e} value={e}>{ESTADO_HEMODINAMIA_LABEL[e]}</option>)}
+            </select>
+            <select className={selectCls} value={f.atendidoPor ?? ''} onChange={(e) => setF({ ...f, atendidoPor: e.target.value })}>
+              <option value="">Todos (atendido por)</option>
+              {atendidoPorOpciones.map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
+            <input type="date" className={selectCls} value={f.desde ?? ''} onChange={(e) => setF({ ...f, desde: e.target.value })} />
+            <input type="date" className={selectCls} value={f.hasta ?? ''} onChange={(e) => setF({ ...f, hasta: e.target.value })} />
+            <input className={selectCls} placeholder="Paciente, documento, concepto…" value={f.texto ?? ''} onChange={(e) => setF({ ...f, texto: e.target.value })} />
+          </FilterBar>
+        </>
+      }>
+      <Card hover={false} className="overflow-hidden">
         <div className="px-4 py-2.5 border-b border-gray-100 text-sm text-gray-500">{rows.length} solicitud(es)</div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -154,6 +156,7 @@ export default function Otro() {
           </table>
         </div>
       </Card>
+      </ConLateral>
 
       {/* Nueva solicitud (staff) */}
       <Modal open={abrirNueva} onClose={() => setAbrirNueva(false)} title="Nueva solicitud de información — Otro">

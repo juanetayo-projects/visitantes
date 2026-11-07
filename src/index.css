@@ -66,3 +66,9 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .reloj-manecilla, .termometro-relleno, .cm-pulse { animation: none }
 }
+
+/* Filtros en la barra lateral derecha: uno por fila y las dos fechas lado a lado */
+.filtros-columna { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem }
+.filtros-columna > * { grid-column: span 2; width: 100%; min-width: 0 }
+.filtros-columna > select, .filtros-columna > input { padding-left: 0.625rem; padding-right: 0.5rem; font-size: 0.8125rem; text-overflow: ellipsis }
+.filtros-columna > input[type='date'] { grid-column: span 1; padding-right: 0.125rem; font-size: 0.75rem }

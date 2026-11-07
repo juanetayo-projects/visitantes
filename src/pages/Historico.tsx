@@ -77,7 +77,7 @@ export default function Historico() {
         <input className={selectCls} placeholder="Paciente, cédula, # ingreso, habitación…" value={f.texto ?? ''} onChange={(e) => setF({ ...f, texto: e.target.value })} />
       </FilterBar>
 
-      <Card className="overflow-hidden">
+      <Card hover={false} className="overflow-hidden">
         <div className="px-4 py-2.5 border-b border-gray-100 text-sm text-gray-500">{filtrados.length} visita(s)</div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">

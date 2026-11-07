@@ -265,7 +265,7 @@ export default function Registrar() {
         <div className="grid gap-3 sm:grid-cols-2">
           {tiposDisponibles.map((t) => (
             <button key={t.v} onClick={() => { reset(); setTipo(t.v) }}
-              className={`flex items-center gap-3 rounded-xl p-3 text-left transition-all duration-150 ${tipo === t.v ? 'bg-brand-50 shadow-neu-inset' : 'bg-white shadow-neu-sm hover:shadow-neu'}`}>
+              className={`flex items-center gap-3 rounded-xl p-3 text-left transition-all duration-150 ${tipo === t.v ? 'bg-brand-50 shadow-neu-inset' : 'bg-white shadow-neu-sm hover:bg-brand-50 hover:shadow-neu'}`}>
               <span className={`grid h-10 w-10 place-items-center rounded-lg ${tipo === t.v ? 'bg-brand text-white' : 'bg-gray-100 text-brand'}`}>
                 <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d={t.icon} /></svg>
               </span>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '../lib/supabase'
-import { Card, Btn, inputCls, textareaCls, selectCls, Badge, Modal, SearchableSelect } from './ui'
+import { Card, Btn, inputCls, textareaCls, selectCls, Badge, Modal, SearchableSelect, ConLateral } from './ui'
 
 export type Lookups = Record<string, Map<string, string>>
 
@@ -38,12 +38,14 @@ interface Props {
   subtitulo?: string
   filtros?: CrudFiltro[]
   filtrosIniciales?: Record<string, string>
+  // Lleva título, búsqueda, botón y filtros a una barra lateral derecha, debajo de este contenido.
+  lateral?: ReactNode
   // Se invoca antes de insertar/actualizar; puede completar/validar el formulario.
   // Si retorna { error }, se muestra el mensaje y no se guarda.
   onBeforeSave?: (form: Record<string, any>, editing: boolean) => Promise<Record<string, any> | { error: string }>
 }
 
-export default function CrudTable({ tabla, titulo, columnas, campos, orderBy = 'created_at', subtitulo, filtros, filtrosIniciales, onBeforeSave }: Props) {
+export default function CrudTable({ tabla, titulo, columnas, campos, orderBy = 'created_at', subtitulo, filtros, filtrosIniciales, lateral, onBeforeSave }: Props) {
   const [filtroVals, setFiltroVals] = useState<Record<string, string>>(filtrosIniciales ?? {})
   const [rows, setRows] = useState<any[]>([])
   const [lookups, setLookups] = useState<Lookups>({})
@@ -162,20 +164,66 @@ export default function CrudTable({ tabla, titulo, columnas, campos, orderBy = '
     return r
   }, [rows, busca, columnas, lookups, filtros, filtroVals])
 
+  const encabezado = (
+    <div>
+      <div className="font-semibold text-brand">{titulo} <span className="text-gray-400 text-sm">({filtrados.length}{filtrados.length !== rows.length ? ` de ${rows.length}` : ''})</span></div>
+      {subtitulo && <div className="text-xs text-gray-500">{subtitulo}</div>}
+    </div>
+  )
+
+  if (lateral !== undefined) {
+    const hayFiltro = Object.values(filtroVals).some(Boolean) || !!busca
+    return (
+      <ConLateral lateral={
+        <>
+          {lateral}
+          <section className="rounded-2xl bg-white p-4 shadow-neu-sm">
+            {encabezado}
+            <div className="mt-3 space-y-2">
+              <input aria-label={`Buscar en ${titulo}`} className={inputCls} placeholder="Buscar…" value={busca} onChange={(e) => setBusca(e.target.value)} />
+              <Btn onClick={abrirNuevo} className="w-full">+ Agregar</Btn>
+            </div>
+          </section>
+          {filtros && filtros.length > 0 && (
+            <section className="rounded-2xl bg-white p-4 shadow-neu-sm">
+              <div className="mb-2 flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-sm font-medium text-brand">
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 4h18l-7 9v6l-4 2v-8z" /></svg>
+                  Filtros
+                </div>
+                {hayFiltro && <button onClick={() => { setFiltroVals({}); setBusca('') }} className="text-xs text-gray-500 hover:text-brand">Limpiar</button>}
+              </div>
+              <div className="filtros-columna">
+                {filtros.map((f) => (
+                  <select key={f.key} aria-label={f.label} className={selectCls} value={filtroVals[f.key] ?? ''} onChange={(e) => setFiltroVals({ ...filtroVals, [f.key]: e.target.value })}>
+                    <option value="">{f.label}: todos</option>
+                    {(filtroOpciones[f.key] ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                ))}
+              </div>
+            </section>
+          )}
+        </>
+      }>
+        {tablaYModal(false)}
+      </ConLateral>
+    )
+  }
+
+  return tablaYModal(true)
+
+  function tablaYModal(conCabecera: boolean) {
   return (
-    <Card className="overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-2 p-4 border-b border-black/5">
-        <div>
-          <div className="font-semibold text-brand">{titulo} <span className="text-gray-400 text-sm">({filtrados.length}{filtrados.length !== rows.length ? ` de ${rows.length}` : ''})</span></div>
-          {subtitulo && <div className="text-xs text-gray-500">{subtitulo}</div>}
-        </div>
+    <Card hover={false} className="overflow-hidden">
+      {conCabecera && <div className="flex flex-wrap items-center justify-between gap-2 p-4 border-b border-black/5">
+        {encabezado}
         <div className="flex gap-2">
           <input className={inputCls} style={{ width: 200 }} placeholder="Buscar…" value={busca} onChange={(e) => setBusca(e.target.value)} />
           <Btn onClick={abrirNuevo}>+ Agregar</Btn>
         </div>
-      </div>
+      </div>}
 
-      {filtros && filtros.length > 0 && (
+      {conCabecera && filtros && filtros.length > 0 && (
         <div className="flex flex-wrap items-end gap-3 border-b border-black/5 px-4 py-3">
           <div className="flex items-center gap-1.5 self-center text-sm font-medium text-brand">
             <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 4h18l-7 9v6l-4 2v-8z" /></svg>
@@ -253,4 +301,5 @@ export default function CrudTable({ tabla, titulo, columnas, campos, orderBy = '
       </Modal>
     </Card>
   )
+  }
 }

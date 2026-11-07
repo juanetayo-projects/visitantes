@@ -16,12 +16,12 @@ export function PageHeader({ title, subtitle, action }: { title: string; subtitl
 export type CardColor = 'blue' | 'green' | 'red' | 'amber' | 'purple' | 'teal'
 
 const GRAD: Record<CardColor, string> = {
-  blue: 'from-[#0D2D6B] to-[#16468E]',
-  green: 'from-emerald-500 to-emerald-600',
-  red: 'from-rose-500 to-rose-600',
-  amber: 'from-amber-400 to-amber-500',
-  purple: 'from-violet-500 to-violet-600',
-  teal: 'from-teal-500 to-cyan-600',
+  blue: 'from-[#0D2D6B] to-[#16468E] hover:from-[#16468E] hover:to-[#2563A8]',
+  green: 'from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700',
+  red: 'from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700',
+  amber: 'from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600',
+  purple: 'from-violet-500 to-violet-600 hover:from-violet-600 hover:to-violet-700',
+  teal: 'from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700',
 }
 
 export function MetricCard({ label, value, hint, color = 'blue', icon }: {
@@ -43,9 +43,9 @@ export function MetricCard({ label, value, hint, color = 'blue', icon }: {
   )
 }
 
-export function FilterBar({ children, onClear }: { children: ReactNode; onClear?: () => void }) {
+export function FilterBar({ children, onClear, vertical = false }: { children: ReactNode; onClear?: () => void; vertical?: boolean }) {
   return (
-    <div className="mb-5 rounded-2xl bg-white p-4 shadow-neu">
+    <div className={vertical ? 'rounded-2xl bg-white p-4 shadow-neu-sm' : 'mb-5 rounded-2xl bg-white p-4 shadow-neu'}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2 text-brand font-semibold text-sm">
           <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 4h18l-7 9v6l-4 2v-8z" /></svg>
@@ -58,7 +58,7 @@ export function FilterBar({ children, onClear }: { children: ReactNode; onClear?
           </button>
         )}
       </div>
-      <div className="filtros-linea">{children}</div>
+      <div className={vertical ? 'filtros-columna' : 'filtros-linea'}>{children}</div>
     </div>
   )
 }
@@ -159,8 +159,75 @@ export function Tabs<T extends string>({ tabs, value, onChange }: {
   )
 }
 
-export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <div className={`rounded-2xl bg-white shadow-neu ${className}`}>{children}</div>
+// hover={false} en las que contienen tablas o formularios: el color de fondo distraería al leerlas.
+export function Card({ children, className = '', hover = true }: { children: ReactNode; className?: string; hover?: boolean }) {
+  return <div className={`rounded-2xl bg-white shadow-neu ${hover ? 'transition-colors hover:bg-brand-50/60' : ''} ${className}`}>{children}</div>
+}
+
+// Contenido principal a la izquierda y barra lateral derecha con indicadores y filtros.
+// La barra queda fija al desplazar la página; en pantallas angostas pasa arriba del contenido.
+export function ConLateral({ lateral, children }: { lateral: ReactNode; children: ReactNode }) {
+  return (
+    <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="order-2 min-w-0 xl:order-1">{children}</div>
+      <aside className="order-1 min-w-0 space-y-4 xl:sticky xl:top-[68px] xl:order-2 xl:max-h-[calc(100vh-84px)] xl:overflow-y-auto xl:overscroll-contain xl:p-1">{lateral}</aside>
+    </div>
+  )
+}
+
+const TONO_IND: Record<CardColor, string> = {
+  blue: 'bg-blue-100 text-blue-700', green: 'bg-emerald-100 text-emerald-700', red: 'bg-rose-100 text-rose-700',
+  amber: 'bg-amber-100 text-amber-700', purple: 'bg-violet-100 text-violet-700', teal: 'bg-teal-100 text-teal-700',
+}
+export const ICONOS_IND = {
+  total: 'M4 6h16M4 12h16M4 18h16',
+  recibido: 'M20 13V7a2 2 0 00-2-2H6a2 2 0 00-2 2v6m16 0v4a2 2 0 01-2 2H6a2 2 0 01-2-2v-4m16 0h-5l-1 2h-4l-1-2H4',
+  atendido: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+  pendiente: 'M12 7v5l3 2m6-2a9 9 0 11-18 0 9 9 0 0118 0z',
+  calendario: 'M8 3v4m8-4v4M4 11h16M5 7h14a1 1 0 011 1v11a2 2 0 01-2 2H6a2 2 0 01-2-2V8a1 1 0 011-1z',
+  pico: 'M3 17l5-5 4 4 8-9',
+  alerta: 'M12 9v4m0 4h.01M10.3 3.86l-8 14A2 2 0 004 21h16a2 2 0 001.7-3.14l-8-14a2 2 0 00-3.4 0z',
+  personas: 'M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1a4 4 0 100-8 4 4 0 000 8z',
+  actualizar: 'M4 4v5h5M20 20v-5h-5M4 9a8 8 0 0114-3M20 15a8 8 0 01-14 3',
+  salida: 'M17 16l4-4m0 0l-4-4m4 4H7m6 8H6a2 2 0 01-2-2V6a2 2 0 012-2h7',
+  cama: 'M3 7v10M3 12h15a3 3 0 013 3v2M7 12V9a1 1 0 011-1h6a1 1 0 011 1v3',
+  base: 'M4 7c0 1.7 3.6 3 8 3s8-1.3 8-3-3.6-3-8-3-8 1.3-8 3zm0 0v10c0 1.7 3.6 3 8 3s8-1.3 8-3V7M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3',
+}
+export interface IndicadorItem { label: string; value: ReactNode; hint?: ReactNode; color?: CardColor; icono?: string; onClick?: () => void; activo?: boolean }
+
+// Lista de indicadores para la barra lateral: cada fila cambia de color al pasar el mouse.
+export function PanelIndicadores({ titulo, accion, items, children }: { titulo: string; accion?: ReactNode; items: IndicadorItem[]; children?: ReactNode }) {
+  return (
+    <section className="rounded-2xl bg-white p-4 shadow-neu-sm">
+      <header className="mb-2 flex items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold text-gray-900">{titulo}</h2>
+        {accion}
+      </header>
+      {children}
+      <ul className="-mx-1.5 space-y-0.5">
+        {items.map((i) => {
+          const contenido = (
+            <>
+              <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full ${TONO_IND[i.color ?? 'blue']}`}>
+                <svg className="h-4 w-4" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d={i.icono ?? ICONOS_IND.total} /></svg>
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm text-gray-700">{i.label}</span>
+                {i.hint && <span className="block text-xs text-gray-500">{i.hint}</span>}
+              </span>
+              <span className="shrink-0 text-lg font-bold tabular-nums text-gray-900">{i.value}</span>
+            </>
+          )
+          const cls = `flex w-full items-center gap-2.5 rounded-xl px-1.5 py-1.5 text-left transition-colors hover:bg-brand-50 ${i.activo ? 'bg-brand-50 ring-1 ring-brand-light/40' : ''}`
+          return (
+            <li key={i.label}>
+              {i.onClick ? <button onClick={i.onClick} aria-pressed={i.activo} className={cls}>{contenido}</button> : <div className={cls}>{contenido}</div>}
+            </li>
+          )
+        })}
+      </ul>
+    </section>
+  )
 }
 
 export function Modal({ open, onClose, title, children, maxWidth = 'max-w-md' }: {

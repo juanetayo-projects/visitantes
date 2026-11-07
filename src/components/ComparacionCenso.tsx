@@ -76,7 +76,7 @@ export default function ComparacionCenso() {
       <EstadoSyncCenso />
       {error && <div className="rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
 
-      <Card className="overflow-hidden">
+      <Card hover={false} className="overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-black/5 p-4">
           <div>
             <div className="font-semibold text-brand">Diferencias con el censo <span className="text-sm text-gray-400">({camas.length})</span></div>
@@ -101,7 +101,7 @@ export default function ComparacionCenso() {
             </table></div>}
       </Card>
 
-      <Card className="overflow-hidden">
+      <Card hover={false} className="overflow-hidden">
         <div className="border-b border-black/5 p-4">
           <div className="font-semibold text-brand">Unidades del censo y su piso <span className="text-sm text-gray-400">({unidades.length})</span></div>
           <div className="text-xs text-gray-500">Cada unidad se reconoce por su ID de GoMedisys, así que renombrarla no rompe nada. Una unidad nueva aparece aquí sin piso: asígnaselo para que sus camas se homologuen solas.</div>

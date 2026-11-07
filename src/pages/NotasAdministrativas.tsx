@@ -74,7 +74,7 @@ export default function NotasAdministrativas() {
       </FilterBar>
 
       {/* Actividad administrativa vs. gestión operativa, por usuario */}
-      <Card className="overflow-hidden mb-5">
+      <Card hover={false} className="overflow-hidden mb-5">
         <div className="px-4 py-2.5 border-b border-gray-100 text-sm font-semibold text-brand">Actividad por usuario</div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -105,7 +105,7 @@ export default function NotasAdministrativas() {
       ) : (
         <div className="space-y-5">
           {grupos.map((g) => (
-            <Card key={g.nombre} className="overflow-hidden">
+            <Card key={g.nombre} hover={false} className="overflow-hidden">
               <div className="flex items-center justify-between gap-2 border-b border-gray-100 bg-brand-50/60 px-4 py-2.5">
                 <div className="text-sm font-semibold text-brand">{g.nombre}</div>
                 <span className="rounded-full bg-brand px-2.5 py-0.5 text-xs font-medium text-white">{g.notas.length} nota(s)</span>

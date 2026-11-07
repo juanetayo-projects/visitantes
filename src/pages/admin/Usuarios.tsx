@@ -100,7 +100,7 @@ export default function Usuarios() {
 
       {msg && <div className={`mb-4 rounded-lg px-4 py-3 text-sm ${msg.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>{msg.t}</div>}
 
-      <Card className="overflow-hidden">
+      <Card hover={false} className="overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-brand text-white"><tr>
             {['Nombre', 'Email', 'Rol', 'Estado', 'Acciones'].map((h) => <th key={h} className="px-3 py-2.5 text-left font-medium">{h}</th>)}

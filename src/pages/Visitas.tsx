@@ -95,7 +95,7 @@ export default function Visitas() {
         <input className={selectCls} placeholder="Buscar nombre, cédula, paciente…" value={f.texto ?? ''} onChange={(e) => setF({ ...f, texto: e.target.value })} />
       </FilterBar>
 
-      <Card className="overflow-hidden">
+      <Card hover={false} className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-brand text-white">
