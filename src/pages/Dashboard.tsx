@@ -72,6 +72,21 @@ export default function Dashboard() {
     <div className="space-y-5">
       <EstadoSyncCenso soloSiDesactualizado />
 
+      {/* Accesos rápidos arriba: es lo primero que busca quien entra a trabajar */}
+      {accesos.length > 0 && (
+        <nav aria-label="Accesos rápidos" className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))' }}>
+          {accesos.map((a) => (
+            <Link key={a.to} to={a.to} className="group flex items-center gap-3 rounded-2xl bg-white p-3 shadow-neu-sm transition hover:bg-brand hover:text-white">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-50 text-brand transition group-hover:bg-white/15 group-hover:text-white"><Icono d={a.icono} /></span>
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-semibold text-gray-900 group-hover:text-white">{a.titulo}</span>
+                <span className="block truncate text-xs text-gray-500 group-hover:text-white/80">{a.detalle}</span>
+              </span>
+            </Link>
+          ))}
+        </nav>
+      )}
+
       <div className="grid gap-5 xl:grid-cols-3">
         <HeroInicio nombre={perfil?.nombre} indicadores={[
           { titulo: 'Visitantes dentro', valor: resumen?.activas ?? '—', icono: ICONOS.personas, color: '#7DD3FC', to: '/visitas' },
@@ -91,29 +106,13 @@ export default function Dashboard() {
         <KpiCard titulo="Sin cama asignada" valor={sinCama.length} detalle="Clic para ver los pacientes →" icono={ICONOS.cama} tono="ambar" proporcion={prop(sinCama.length)} onClick={() => setVerSinCama(true)} />
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-3">
+      <div className="grid gap-5 lg:grid-cols-2 xl:grid-cols-4">
         <TendenciaVisitas serie={serie} />
         <Panel titulo="Visitantes dentro, por piso" icono={ICONOS.edificio} accion={<span className="text-xs text-gray-500">{resumen?.activas ?? 0} en total</span>}>
           <ListaPisos pisos={porPiso} />
         </Panel>
-      </div>
-
-      <div className="grid gap-5 xl:grid-cols-3">
         <Panel titulo="Tarjetas de acceso" icono={ICONOS.tarjeta}>
           <DonaTarjetas disponible={inv?.disponible ?? 0} enUso={inv?.en_uso ?? 0} inactiva={inv?.inactiva ?? 0} />
-        </Panel>
-        <Panel titulo="Accesos rápidos" className="xl:col-span-2">
-          <div className="grid flex-1 gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))' }}>
-            {accesos.map((a) => (
-              <Link key={a.to} to={a.to} className="group flex flex-col justify-between gap-3 rounded-xl bg-brand-50 p-4 transition hover:bg-brand hover:text-white">
-                <span className="grid h-10 w-10 place-items-center rounded-full bg-white text-brand"><Icono d={a.icono} /></span>
-                <span>
-                  <span className="block text-sm font-semibold text-gray-900 group-hover:text-white">{a.titulo}</span>
-                  <span className="block text-xs text-gray-500 group-hover:text-white/80">{a.detalle}</span>
-                </span>
-              </Link>
-            ))}
-          </div>
         </Panel>
       </div>
 
