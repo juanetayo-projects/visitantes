@@ -112,12 +112,12 @@ export interface PacienteUbicacion {
 
 export type TipoAislamiento =
   | 'contacto' | 'gotas' | 'aereo' | 'protector' | 'estricto'
-  | 'respiratorio' | 'cohortizacion' | 'respiratorio_contacto'
+  | 'respiratorio' | 'cohortizacion' | 'respiratorio_contacto' | 'vectores'
 
 // Etiquetas legibles de cada tipo de aislamiento (incluye las categorías del CENSO).
 export const AISLAMIENTO_LABEL: Record<TipoAislamiento, string> = {
   contacto: 'Contacto', gotas: 'Gotas', aereo: 'Aéreo', protector: 'Protector', estricto: 'Estricto',
-  respiratorio: 'Respiratorio', cohortizacion: 'Cohortización', respiratorio_contacto: 'Respiratorio / Contacto',
+  respiratorio: 'Respiratorio', cohortizacion: 'Cohortización', respiratorio_contacto: 'Respiratorio / Contacto', vectores: 'Vectores',
 }
 
 export interface Aislamiento {

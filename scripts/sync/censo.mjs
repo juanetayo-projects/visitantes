@@ -47,6 +47,8 @@ const AISL_MAP = {
   'COHORTIZACION': 'cohortizacion',
   'RESPIRATORIO / CONTACTO': 'respiratorio_contacto',
   'RESPIRATORIO/CONTACTO': 'respiratorio_contacto',
+  'GOTAS': 'gotas',
+  'VECTORES': 'vectores',
   'NO APLICA': null,
 }
 function mapAislamiento(v) {

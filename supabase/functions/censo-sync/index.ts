@@ -60,7 +60,7 @@ async function loginCenso(base: string, user_name: string, password: string, int
 
 const AISL_MAP: Record<string, string | null> = {
   'CONTACTO': 'contacto', 'RESPIRATORIO': 'respiratorio', 'PROTECTOR': 'protector', 'COHORTIZACION': 'cohortizacion',
-  'RESPIRATORIO / CONTACTO': 'respiratorio_contacto', 'RESPIRATORIO/CONTACTO': 'respiratorio_contacto', 'NO APLICA': null,
+  'RESPIRATORIO / CONTACTO': 'respiratorio_contacto', 'RESPIRATORIO/CONTACTO': 'respiratorio_contacto', 'GOTAS': 'gotas', 'VECTORES': 'vectores', 'NO APLICA': null,
 }
 function mapAislamiento(v: unknown): string | null | '__desc__' {
   const n = norm(v)
