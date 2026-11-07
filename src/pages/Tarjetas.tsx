@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { PageHeader, Card, MetricCard, Badge, Btn, FilterBar, selectCls, Modal } from '../components/ui'
+import { PageHeader, ContadorCircular, ConLateral, PanelIndicadores, ICONOS_IND, Card, Badge, Btn, FilterBar, selectCls, Modal } from '../components/ui'
 import { useAuth } from '../auth/AuthProvider'
 import { inventarioTarjetas, listTarjetasDetalle, listSedes, listPisos, listUbicaciones, finalizarVisita, describirFiltros, type InventarioTarjetas, type TarjetaDetalle, type FiltrosTarjeta } from '../lib/data'
 import { exportarExcel, exportarPDF, type Columna } from '../lib/exportar'
@@ -60,21 +60,23 @@ export default function Tarjetas() {
   return (
     <div>
       <PageHeader title="Tarjetas de acceso" subtitle="Inventario, tenencia y devolución de tarjetas"
+        contador={<ContadorCircular valor={loading ? '…' : rows.length} etiqueta={rows.length === 1 ? 'tarjeta' : 'tarjetas'} />}
         action={<div className="flex gap-2">
           <Btn variant="light" onClick={() => exportarExcel('Tarjetas de acceso', COLS, rows, describirFiltros(f, { sedes, pisos, ubicaciones }))}>Excel</Btn>
           <Btn variant="light" onClick={() => exportarPDF('Tarjetas de acceso', COLS, rows, describirFiltros(f, { sedes, pisos, ubicaciones }))}>PDF</Btn>
         </div>} />
 
+      <ConLateral lateral={<>
       {/* Inventario — clic para filtrar por estado */}
-      <div className="grid gap-4 sm:grid-cols-4 mb-5">
-        <button onClick={() => setEstado('')} className="text-left"><MetricCard label="Total tarjetas" value={inv?.total ?? '—'} hint={!f.estado ? '● filtro activo' : 'ver todas'} color="blue" /></button>
-        <button onClick={() => setEstado('disponible')} className="text-left"><MetricCard label="Disponibles" value={inv?.disponible ?? '—'} hint={f.estado === 'disponible' ? '● filtro activo' : 'filtrar'} color="green" /></button>
-        <button onClick={() => setEstado('en_uso')} className="text-left"><MetricCard label="En uso" value={inv?.en_uso ?? '—'} hint={f.estado === 'en_uso' ? '● filtro activo' : 'filtrar'} color="amber" /></button>
-        <button onClick={() => setEstado('inactiva')} className="text-left"><MetricCard label="Inactivas" value={inv?.inactiva ?? '—'} hint={f.estado === 'inactiva' ? '● filtro activo' : 'filtrar'} color="purple" /></button>
-      </div>
+      <PanelIndicadores titulo="Inventario" items={[
+        { label: 'Total tarjetas', value: inv?.total ?? '—', hint: !f.estado ? 'Filtro activo' : 'Ver todas', icono: ICONOS_IND.total, color: 'blue', activo: !f.estado, onClick: () => setEstado('') },
+        { label: 'Disponibles', value: inv?.disponible ?? '—', hint: f.estado === 'disponible' ? 'Filtro activo' : 'Filtrar', icono: ICONOS_IND.atendido, color: 'green', activo: f.estado === 'disponible', onClick: () => setEstado('disponible') },
+        { label: 'En uso', value: inv?.en_uso ?? '—', hint: f.estado === 'en_uso' ? 'Filtro activo' : 'Filtrar', icono: ICONOS_IND.personas, color: 'amber', activo: f.estado === 'en_uso', onClick: () => setEstado('en_uso') },
+        { label: 'Inactivas', value: inv?.inactiva ?? '—', hint: f.estado === 'inactiva' ? 'Filtro activo' : 'Filtrar', icono: ICONOS_IND.alerta, color: 'purple', activo: f.estado === 'inactiva', onClick: () => setEstado('inactiva') },
+      ]} />
 
       {/* Filtros completos */}
-      <FilterBar onClear={() => setF({})}>
+      <FilterBar vertical onClear={() => setF({})}>
         <select className={selectCls} value={f.estado ?? ''} onChange={(e) => setF({ ...f, estado: e.target.value })}>
           <option value="">Todos los estados</option>
           <option value="disponible">Disponibles</option>
@@ -97,13 +99,11 @@ export default function Tarjetas() {
         <input type="date" className={selectCls} value={f.hasta ?? ''} onChange={(e) => setF({ ...f, hasta: e.target.value })} />
         <input className={selectCls} placeholder="Buscar tarjeta, titular, cédula, teléfono…" value={f.texto ?? ''} onChange={(e) => setF({ ...f, texto: e.target.value })} />
       </FilterBar>
+      {esStaff && <p className="px-1 text-xs text-gray-500">Para una salida, busca la tarjeta en uso y pulsa «Registrar salida y devolver».</p>}
+      </>}>
 
       <Card hover={false} className="overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-2 p-4 border-b border-gray-100">
-          <div className="font-semibold text-brand">Tarjetas <span className="text-gray-400 text-sm">({rows.length})</span></div>
-          {esStaff && <span className="text-xs text-gray-500">Para una salida, busca la tarjeta en uso y pulsa «Registrar salida y devolver».</span>}
-        </div>
-        <div className="overflow-x-auto">
+        <div className="tabla-scroll">
           <table className="w-full text-sm">
             <thead className="bg-brand text-white"><tr>
               {['Tarjeta', 'Estado', 'Titular', 'Teléfono', 'Tipo', 'Paciente / ubicación', 'Desde', esStaff ? 'Acción' : ''].map((h) => <th key={h} className="px-3 py-2.5 text-left font-medium whitespace-nowrap">{h}</th>)}
@@ -146,6 +146,7 @@ export default function Tarjetas() {
           </table>
         </div>
       </Card>
+      </ConLateral>
 
       {/* Modal de confirmación de salida con datos del visitante + iconos */}
       <Modal open={!!confirmar} onClose={() => setConfirmar(null)} title="Registrar salida y devolver tarjeta">

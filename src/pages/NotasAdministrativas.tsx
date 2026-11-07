@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { PageHeader, Card, MetricCard, FilterBar, selectCls, Btn } from '../components/ui'
+import { PageHeader, ContadorCircular, ConLateral, PanelIndicadores, ICONOS_IND, Card, FilterBar, selectCls, Btn } from '../components/ui'
 import { listNotasAdministrativas, metricasNotasPorUsuario, type FiltrosNota, type ActividadUsuario } from '../lib/data'
 import { exportarExcel, exportarPDF, type Columna } from '../lib/exportar'
 import { supabase } from '../lib/supabase'
@@ -53,18 +53,19 @@ export default function NotasAdministrativas() {
   return (
     <div>
       <PageHeader title="Notas administrativas" subtitle="Novedades registradas sobre habitaciones/pacientes, independientes del registro de visitas"
+        contador={<ContadorCircular valor={loading ? '…' : rows.length} etiqueta={rows.length === 1 ? 'nota' : 'notas'} />}
         action={<div className="flex gap-2">
           <Btn variant="light" onClick={() => exportarExcel('Notas administrativas', COLS, rows)}>Excel</Btn>
           <Btn variant="light" onClick={() => exportarPDF('Notas administrativas', COLS, rows)}>PDF</Btn>
         </div>} />
 
-      <div className="grid gap-4 sm:grid-cols-3 mb-5">
-        <MetricCard label="Total notas (filtro)" value={rows.length} color="blue" />
-        <MetricCard label="Notas de hoy" value={notasHoy} color="green" />
-        <MetricCard label="Usuario más activo" value={usuarioTop ? usuarioTop.nombre : '—'} hint={usuarioTop ? `${usuarioTop.notas} nota(s)` : undefined} color="purple" />
-      </div>
-
-      <FilterBar onClear={() => setF({})}>
+      <ConLateral lateral={<>
+        <PanelIndicadores titulo="Resumen" items={[
+          { label: 'Total notas (filtro)', value: rows.length, icono: ICONOS_IND.total, color: 'blue' },
+          { label: 'Notas de hoy', value: notasHoy, icono: ICONOS_IND.calendario, color: 'green' },
+          { label: 'Usuario más activo', value: usuarioTop ? usuarioTop.notas : '—', hint: usuarioTop?.nombre, icono: ICONOS_IND.personas, color: 'purple' },
+        ]} />
+      <FilterBar vertical onClear={() => setF({})}>
         <select className={selectCls} value={f.usuarioId ?? ''} onChange={(e) => setF({ ...f, usuarioId: e.target.value })}>
           <option value="">Todos los usuarios</option>{usuarios.map((u) => <option key={u.id} value={u.id}>{u.nombre}</option>)}
         </select>
@@ -72,31 +73,14 @@ export default function NotasAdministrativas() {
         <input type="date" className={selectCls} value={f.hasta ?? ''} onChange={(e) => setF({ ...f, hasta: e.target.value })} />
         <input className={selectCls} placeholder="Buscar en comentario, paciente…" value={f.texto ?? ''} onChange={(e) => setF({ ...f, texto: e.target.value })} />
       </FilterBar>
-
-      {/* Actividad administrativa vs. gestión operativa, por usuario */}
-      <Card hover={false} className="overflow-hidden mb-5">
-        <div className="px-4 py-2.5 border-b border-gray-100 text-sm font-semibold text-brand">Actividad por usuario</div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-brand/5 text-brand"><tr>
-              <th className="px-3 py-2 text-left font-medium">Usuario</th>
-              <th className="px-3 py-2 text-left font-medium">Notas administrativas</th>
-              <th className="px-3 py-2 text-left font-medium">Visitas registradas</th>
-            </tr></thead>
-            <tbody className="divide-y divide-gray-100">
-              {actividad.length === 0
-                ? <tr><td colSpan={3} className="py-6 text-center text-gray-400">Sin datos</td></tr>
-                : actividad.map((a) => (
-                  <tr key={a.usuario_id} className="hover:bg-brand-50/40">
-                    <td className="px-3 py-2 font-medium text-gray-800">{a.nombre}</td>
-                    <td className="px-3 py-2 text-gray-600">{a.notas}</td>
-                    <td className="px-3 py-2 text-gray-600">{a.visitas}</td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+        {/* Actividad administrativa vs. gestión operativa, por usuario; clic para ver solo sus notas */}
+        <PanelIndicadores titulo="Actividad por usuario" accion={<span className="text-[11px] text-gray-500">notas</span>} items={actividad.map((a) => ({
+          label: a.nombre, value: a.notas, hint: `${a.visitas} visita(s) registrada(s)`, icono: ICONOS_IND.personas, color: 'teal' as const,
+          activo: f.usuarioId === a.usuario_id, onClick: () => setF({ ...f, usuarioId: f.usuarioId === a.usuario_id ? '' : a.usuario_id }),
+        }))}>
+          {actividad.length === 0 && <p className="text-sm text-gray-400">Sin datos</p>}
+        </PanelIndicadores>
+      </>}>
 
       {loading ? (
         <Card className="py-10 text-center text-gray-400 text-sm">Cargando…</Card>
@@ -110,7 +94,7 @@ export default function NotasAdministrativas() {
                 <div className="text-sm font-semibold text-brand">{g.nombre}</div>
                 <span className="rounded-full bg-brand px-2.5 py-0.5 text-xs font-medium text-white">{g.notas.length} nota(s)</span>
               </div>
-              <div className="overflow-x-auto">
+              <div className="tabla-scroll">
                 <table className="w-full text-sm">
                   <thead className="bg-brand text-white"><tr>
                     {['Fecha/hora', 'Paciente', 'Cédula', 'Ubicación', '# Ingreso', 'Comentario'].map((h) => <th key={h} className="px-3 py-2.5 text-left font-medium whitespace-nowrap">{h}</th>)}
@@ -133,6 +117,7 @@ export default function NotasAdministrativas() {
           ))}
         </div>
       )}
+      </ConLateral>
     </div>
   )
 }

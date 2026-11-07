@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { PageHeader, Card, FilterBar, selectCls, Btn, Badge, Modal } from '../components/ui'
+import { PageHeader, ContadorCircular, ConLateral, PanelIndicadores, ICONOS_IND, Card, FilterBar, selectCls, Btn, Badge, Modal } from '../components/ui'
 import { useAuth } from '../auth/AuthProvider'
 import { listVisitas, listSedes, listPisos, listUbicaciones, finalizarVisita, describirFiltros, type VisitaListado, type FiltrosVisita } from '../lib/data'
 import { exportarExcel, exportarPDF, type Columna } from '../lib/exportar'
@@ -59,14 +59,24 @@ export default function Visitas() {
 
   return (
     <div>
-      <PageHeader title="Visitas" subtitle={`${filtrados.length} registros`} action={
+      <PageHeader title="Visitas" subtitle="Visitantes registrados: quién está dentro y quién ya salió"
+        contador={<ContadorCircular valor={loading ? '…' : filtrados.length} etiqueta={filtrados.length === 1 ? 'visita' : 'visitas'} />} action={
         <div className="flex gap-2">
           <Btn variant="light" onClick={() => exportarExcel('Visitas', COLS, filtrados, describirFiltros(f, { sedes, pisos, ubicaciones }))}>Excel</Btn>
           <Btn variant="light" onClick={() => exportarPDF('Visitas', COLS, filtrados, describirFiltros(f, { sedes, pisos, ubicaciones }))}>PDF</Btn>
         </div>
       } />
 
-      <FilterBar onClear={() => setF({ estado: '' })}>
+      <ConLateral lateral={<>
+        <PanelIndicadores titulo="Resumen" items={[
+          { label: 'Total (filtro)', value: filtrados.length, icono: ICONOS_IND.total, color: 'blue' },
+          { label: 'Activas (dentro)', value: filtrados.filter((r) => r.estado === 'activa').length, icono: ICONOS_IND.recibido, color: 'green' },
+          { label: 'Finalizadas', value: filtrados.filter((r) => r.estado === 'finalizada').length, icono: ICONOS_IND.salida, color: 'red' },
+          { label: 'Familiares', value: filtrados.filter((r) => r.tipo_visitante === 'familiar').length, icono: ICONOS_IND.personas, color: 'teal' },
+          { label: 'Proveedores', value: filtrados.filter((r) => r.tipo_visitante === 'proveedor').length, icono: ICONOS_IND.base, color: 'amber' },
+          { label: 'Colaboradores', value: filtrados.filter((r) => r.tipo_visitante === 'colaborador').length, icono: ICONOS_IND.personas, color: 'purple' },
+        ]} />
+      <FilterBar vertical onClear={() => setF({ estado: '' })}>
         <select className={selectCls} value={f.estado} onChange={(e) => setF({ ...f, estado: e.target.value as any })}>
           <option value="">Todos los estados</option>
           <option value="activa">Activas (dentro)</option>
@@ -94,9 +104,10 @@ export default function Visitas() {
         <input type="date" className={selectCls} value={f.hasta ?? ''} onChange={(e) => setF({ ...f, hasta: e.target.value })} />
         <input className={selectCls} placeholder="Buscar nombre, cédula, paciente…" value={f.texto ?? ''} onChange={(e) => setF({ ...f, texto: e.target.value })} />
       </FilterBar>
+      </>}>
 
       <Card hover={false} className="overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="tabla-scroll">
           <table className="w-full text-sm">
             <thead className="bg-brand text-white">
               <tr>
@@ -143,6 +154,7 @@ export default function Visitas() {
           </table>
         </div>
       </Card>
+      </ConLateral>
 
       {/* Modal de confirmación de salida */}
       <Modal open={!!confirmar} onClose={() => setConfirmar(null)} title="Registrar salida y devolver tarjeta">

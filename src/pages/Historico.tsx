@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { PageHeader, Card, FilterBar, selectCls, Btn, Badge } from '../components/ui'
+import { PageHeader, ContadorCircular, ConLateral, PanelIndicadores, ICONOS_IND, Card, FilterBar, selectCls, Btn, Badge } from '../components/ui'
 import { listVisitas, listSedes, listPisos, listUbicaciones, describirFiltros, type VisitaListado, type FiltrosVisita } from '../lib/data'
 import { exportarExcel, exportarPDF, type Columna } from '../lib/exportar'
 import type { Sede, Piso, Ubicacion } from '../lib/types'
@@ -51,12 +51,22 @@ export default function Historico() {
   return (
     <div>
       <PageHeader title="Histórico de visitas" subtitle="Consulta por habitación/ubicación y por paciente (incluye visitas finalizadas)"
+        contador={<ContadorCircular valor={loading ? '…' : filtrados.length} etiqueta={filtrados.length === 1 ? 'visita' : 'visitas'} />}
         action={<div className="flex gap-2">
           <Btn variant="light" onClick={() => exportarExcel('Histórico de visitas', COLS, filtrados, describirFiltros(f, { sedes, pisos, ubicaciones }))}>Excel</Btn>
           <Btn variant="light" onClick={() => exportarPDF('Histórico de visitas', COLS, filtrados, describirFiltros(f, { sedes, pisos, ubicaciones }))}>PDF</Btn>
         </div>} />
 
-      <FilterBar onClear={() => setF({ estado: '' })}>
+      <ConLateral lateral={<>
+        <PanelIndicadores titulo="Resumen" items={[
+          { label: 'Total (filtro)', value: filtrados.length, icono: ICONOS_IND.total, color: 'blue' },
+          { label: 'Activas (dentro)', value: filtrados.filter((r) => r.estado === 'activa').length, icono: ICONOS_IND.recibido, color: 'green' },
+          { label: 'Finalizadas', value: filtrados.filter((r) => r.estado === 'finalizada').length, icono: ICONOS_IND.salida, color: 'red' },
+          { label: 'Familiares', value: filtrados.filter((r) => r.tipo_visitante === 'familiar').length, icono: ICONOS_IND.personas, color: 'teal' },
+          { label: 'Proveedores', value: filtrados.filter((r) => r.tipo_visitante === 'proveedor').length, icono: ICONOS_IND.base, color: 'amber' },
+          { label: 'Colaboradores', value: filtrados.filter((r) => r.tipo_visitante === 'colaborador').length, icono: ICONOS_IND.personas, color: 'purple' },
+        ]} />
+      <FilterBar vertical onClear={() => setF({ estado: '' })}>
         <select className={selectCls} value={f.sedeId ?? ''} onChange={(e) => setF({ ...f, sedeId: e.target.value, pisoId: '', ubicacionId: '' })}>
           <option value="">Todas las sedes</option>{sedes.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
         </select>
@@ -76,10 +86,10 @@ export default function Historico() {
         <input type="date" className={selectCls} value={f.hasta ?? ''} onChange={(e) => setF({ ...f, hasta: e.target.value })} />
         <input className={selectCls} placeholder="Paciente, cédula, # ingreso, habitación…" value={f.texto ?? ''} onChange={(e) => setF({ ...f, texto: e.target.value })} />
       </FilterBar>
+      </>}>
 
       <Card hover={false} className="overflow-hidden">
-        <div className="px-4 py-2.5 border-b border-gray-100 text-sm text-gray-500">{filtrados.length} visita(s)</div>
-        <div className="overflow-x-auto">
+        <div className="tabla-scroll">
           <table className="w-full text-sm">
             <thead className="bg-brand text-white"><tr>
               {['Ingreso', 'Salida / devolución', 'Visitante', 'Tipo', 'Paciente', '# Ingreso', 'Ubicación', 'Sede', 'Tarjeta', 'Estado'].map((h) => <th key={h} className="px-3 py-2.5 text-left font-medium whitespace-nowrap">{h}</th>)}
@@ -129,6 +139,7 @@ export default function Historico() {
           </table>
         </div>
       </Card>
+      </ConLateral>
     </div>
   )
 }

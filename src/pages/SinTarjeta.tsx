@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { PageHeader, Card, FilterBar, selectCls, Btn, Badge } from '../components/ui'
+import { PageHeader, ContadorCircular, ConLateral, PanelIndicadores, ICONOS_IND, Card, FilterBar, selectCls, Btn, Badge } from '../components/ui'
 import { listVisitas, listSedes, describirFiltros, type VisitaListado, type FiltrosVisita } from '../lib/data'
 import { exportarExcel, exportarPDF, type Columna } from '../lib/exportar'
 import type { Sede } from '../lib/types'
@@ -40,12 +40,19 @@ export default function SinTarjeta() {
   return (
     <div>
       <PageHeader title="Ingresos sin tarjeta" subtitle="Visitantes registrados sin ubicación/tarjeta asignada (paciente aún no ubicado)"
+        contador={<ContadorCircular valor={loading ? '…' : filtrados.length} etiqueta={filtrados.length === 1 ? 'ingreso' : 'ingresos'} />}
         action={<div className="flex gap-2">
           <Btn variant="light" onClick={() => exportarExcel('Ingresos sin tarjeta', COLS, filtrados, describirFiltros({ ...f, tipo: 'sin_tarjeta' }, { sedes }))}>Excel</Btn>
           <Btn variant="light" onClick={() => exportarPDF('Ingresos sin tarjeta', COLS, filtrados, describirFiltros({ ...f, tipo: 'sin_tarjeta' }, { sedes }))}>PDF</Btn>
         </div>} />
 
-      <FilterBar onClear={() => setF({ estado: '' })}>
+      <ConLateral lateral={<>
+        <PanelIndicadores titulo="Resumen" items={[
+          { label: 'Total (filtro)', value: filtrados.length, icono: ICONOS_IND.total, color: 'blue' },
+          { label: 'Activas (dentro)', value: filtrados.filter((r) => r.estado === 'activa').length, icono: ICONOS_IND.recibido, color: 'green' },
+          { label: 'Finalizadas', value: filtrados.filter((r) => r.estado === 'finalizada').length, icono: ICONOS_IND.salida, color: 'red' },
+        ]} />
+      <FilterBar vertical onClear={() => setF({ estado: '' })}>
         <select className={selectCls} value={f.sedeId ?? ''} onChange={(e) => setF({ ...f, sedeId: e.target.value })}>
           <option value="">Todas las sedes</option>{sedes.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
         </select>
@@ -56,10 +63,10 @@ export default function SinTarjeta() {
         <input type="date" className={selectCls} value={f.hasta ?? ''} onChange={(e) => setF({ ...f, hasta: e.target.value })} />
         <input className={selectCls} placeholder="Nombre o cédula del visitante…" value={f.texto ?? ''} onChange={(e) => setF({ ...f, texto: e.target.value })} />
       </FilterBar>
+      </>}>
 
       <Card hover={false} className="overflow-hidden">
-        <div className="px-4 py-2.5 border-b border-gray-100 text-sm text-gray-500">{filtrados.length} registro(s)</div>
-        <div className="overflow-x-auto">
+        <div className="tabla-scroll">
           <table className="w-full text-sm">
             <thead className="bg-brand text-white"><tr>
               {['Ingreso', 'Salida', 'Visitante', 'Acompañante', 'Sede', 'Estado'].map((h) => <th key={h} className="px-3 py-2.5 text-left font-medium whitespace-nowrap">{h}</th>)}
@@ -84,6 +91,7 @@ export default function SinTarjeta() {
           </table>
         </div>
       </Card>
+      </ConLateral>
     </div>
   )
 }
