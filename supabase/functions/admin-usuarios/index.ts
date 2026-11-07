@@ -35,6 +35,23 @@ Deno.serve(async (req) => {
       await admin.from('perfiles').update({ nombre, rol, activo: true }).eq('id', data.user.id)
       return json({ ok: true, id: data.user.id })
     }
+    if (body.action === 'update') {
+      const { id, nombre, email, rol, activo } = body
+      if (!id || !nombre?.trim() || !email?.trim()) return json({ error: 'Nombre y correo son obligatorios.' }, 400)
+      // Un admin no puede quitarse a sí mismo el rol ni desactivarse (se quedaría sin acceso).
+      if (id === user.id && (rol !== 'admin' || activo !== true)) return json({ error: 'No puedes cambiar tu propio rol ni desactivar tu usuario.' }, 400)
+      const { data: actual, error: errGet } = await admin.auth.admin.getUserById(id)
+      if (errGet || !actual?.user) return json({ error: 'Usuario no encontrado.' }, 404)
+      const correo = email.trim().toLowerCase()
+      const { error: errAuth } = await admin.auth.admin.updateUserById(id, {
+        ...(correo !== (actual.user.email ?? '').toLowerCase() ? { email: correo, email_confirm: true } : {}),
+        user_metadata: { ...(actual.user.user_metadata ?? {}), nombre: nombre.trim() },
+      })
+      if (errAuth) return json({ error: errAuth.message }, 400)
+      const { error: errPerfil } = await admin.from('perfiles').update({ nombre: nombre.trim(), email: correo, rol, activo: !!activo }).eq('id', id)
+      if (errPerfil) return json({ error: errPerfil.message }, 400)
+      return json({ ok: true })
+    }
     if (body.action === 'delete') {
       if (body.id === user.id) return json({ error: 'No puedes eliminar tu propio usuario.' }, 400)
       const { error } = await admin.auth.admin.deleteUser(body.id)

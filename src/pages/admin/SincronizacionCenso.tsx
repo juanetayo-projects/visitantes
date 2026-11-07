@@ -3,12 +3,16 @@ import { Link } from 'react-router-dom'
 import { PageHeader, Card, Badge, Btn, FilterBar, selectCls, inputCls, Modal } from '../../components/ui'
 import { listInconsistencias, ultimoSync, ejecutarSyncCenso, type CensoInconsistencia, type CensoSyncLog } from '../../lib/data'
 import { exportarExcel, type Columna } from '../../lib/exportar'
+import EstadoSyncCenso from '../../components/EstadoSyncCenso'
 
 const TIPO_LABEL: Record<string, { label: string; color: 'red' | 'amber' | 'gray' }> = {
   ubicacion_no_homologada: { label: 'Ubicación sin homologar', color: 'red' },
   sin_cama: { label: 'Sin cama asignada', color: 'amber' },
   aislamiento_desconocido: { label: 'Aislamiento no contemplado', color: 'amber' },
-  unidad_desconocida: { label: 'Unidad desconocida', color: 'red' },
+  unidad_desconocida: { label: 'Unidad sin piso asignado', color: 'red' },
+  ubicacion_inactiva: { label: 'Paciente en ubicación inactiva', color: 'red' },
+  piso_incoherente: { label: 'Homologada a otro piso', color: 'red' },
+  cama_duplicada: { label: 'Dos pacientes en una ubicación', color: 'amber' },
 }
 
 function fechaHoraCO(iso: string | null): string {
@@ -92,10 +96,12 @@ export default function SincronizacionCenso() {
 
       {msg && <div className={`mb-4 rounded-lg px-4 py-3 text-sm ${msg.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>{msg.texto}</div>}
 
+      <EstadoSyncCenso key={log?.run_at ?? 'sin'} soloSiDesactualizado />
+
       {/* Estado de la última corrida */}
       <Card className="mb-5 p-5">
         {!log ? (
-          <div className="text-sm text-gray-500">Aún no se ha ejecutado ninguna sincronización. Usa «Ejecutar ahora» o espera la corrida automática horaria.</div>
+          <div className="text-sm text-gray-500">Aún no se ha ejecutado ninguna sincronización. Usa «Ejecutar ahora» o espera la corrida automática.</div>
         ) : (
           <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
             <div>
@@ -171,7 +177,7 @@ export default function SincronizacionCenso() {
       <Modal open={confirmar} onClose={() => setConfirmar(false)} title="Ejecutar sincronización del CENSO">
         <p className="text-sm text-gray-700">
           Esto <b>consultará la API del CENSO en este momento</b> y actualizará los pacientes, aislamientos e
-          inconsistencias en la base de datos. La corrida automática es cada hora; úsalo para <b>forzar</b> una actualización inmediata.
+          inconsistencias en la base de datos. Hay corridas automáticas; úsalo para <b>forzar</b> una actualización inmediata.
         </p>
         <div className="mt-4 flex gap-2">
           <Btn onClick={ejecutar} className="flex-1">Sí, ejecutar ahora</Btn>

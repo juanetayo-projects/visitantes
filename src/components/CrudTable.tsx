@@ -37,13 +37,14 @@ interface Props {
   orderBy?: string
   subtitulo?: string
   filtros?: CrudFiltro[]
+  filtrosIniciales?: Record<string, string>
   // Se invoca antes de insertar/actualizar; puede completar/validar el formulario.
   // Si retorna { error }, se muestra el mensaje y no se guarda.
   onBeforeSave?: (form: Record<string, any>, editing: boolean) => Promise<Record<string, any> | { error: string }>
 }
 
-export default function CrudTable({ tabla, titulo, columnas, campos, orderBy = 'created_at', subtitulo, filtros, onBeforeSave }: Props) {
-  const [filtroVals, setFiltroVals] = useState<Record<string, string>>({})
+export default function CrudTable({ tabla, titulo, columnas, campos, orderBy = 'created_at', subtitulo, filtros, filtrosIniciales, onBeforeSave }: Props) {
+  const [filtroVals, setFiltroVals] = useState<Record<string, string>>(filtrosIniciales ?? {})
   const [rows, setRows] = useState<any[]>([])
   const [lookups, setLookups] = useState<Lookups>({})
   const [optionsMap, setOptionsMap] = useState<Record<string, { value: string; label: string }[]>>({})

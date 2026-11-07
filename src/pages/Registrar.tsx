@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { PageHeader, Card, Btn, selectCls, inputCls, textareaCls, Badge, Modal } from '../components/ui'
 import MapaHabitaciones from '../components/MapaHabitaciones'
+import EstadoSyncCenso from '../components/EstadoSyncCenso'
 import { useAuth } from '../auth/AuthProvider'
 import {
   listSedes, listPisos, listPuertas, listUbicaciones, listResponsables, listServicios, tarjetasDisponibles,
-  buscarVisitante, upsertVisitante, registrarVisita, ordenarAreas, evaluarRestricciones, buscarPacientePorDocumento, type EvalRestriccion,
+  buscarVisitante, upsertVisitante, registrarVisita, ordenarAreas, evaluarRestricciones, buscarPacientePorDocumento, buscarPacienteEnCenso, verificarPacienteCenso, type EvalRestriccion, type VerificacionCenso,
 } from '../lib/data'
 import { AISLAMIENTO_LABEL } from '../lib/types'
 import type { Sede, Piso, Puerta, Responsable, Servicio, Tarjeta, TipoVisitante, OcupacionUbicacion } from '../lib/types'
@@ -63,7 +64,7 @@ export default function Registrar() {
   const [puertaId, setPuertaId] = useState('')
   const [tarjetaId, setTarjetaId] = useState('')
   const [sel, setSel] = useState<OcupacionUbicacion | null>(null)
-  const [aviso, setAviso] = useState<{ tipo: 'sinPaciente' | 'autorizacion' | 'tarjeta' | 'sinTarjetas'; o?: OcupacionUbicacion } | null>(null)
+  const [aviso, setAviso] = useState<{ tipo: 'sinPaciente' | 'autorizacion' | 'tarjeta' | 'sinTarjetas' | 'egreso'; o?: OcupacionUbicacion } | null>(null)
 
   // Restricciones (horario / cupo) del paciente seleccionado y datos de autorización excepcional
   const [restric, setRestric] = useState<EvalRestriccion | null>(null)
@@ -83,14 +84,33 @@ export default function Registrar() {
   const puertaSel = useMemo(() => puertas.find((p) => p.id === puertaId), [puertas, puertaId])
   const requiereTarjeta = tipo !== 'sin_tarjeta' && (puertaSel?.requiere_tarjeta ?? true)
 
+  // Verificación de la ubicación contra el censo en vivo. Evita registrar con datos de un
+  // paciente que ya cambió de cama o egresó desde la última sincronización.
+  const [verif, setVerif] = useState<VerificacionCenso | 'verificando' | null>(null)
+  const verifId = useRef(0)
+
   // Maneja el clic en una habitación del mapa: valida paciente y evalúa horario/cupos.
-  function seleccionar(o: OcupacionUbicacion) {
+  async function seleccionar(o: OcupacionUbicacion) {
     if (!o.num_ingreso) { setAviso({ tipo: 'sinPaciente' }); return }
     setSel(o)
     setRestric(null)
     // Regla de edad: ≥65 o ≤18 ⇒ acompañante permanente
     if (requierePermanente(o.edad)) setTipoAcomp('permanente')
     evaluarRestricciones(o).then(setRestric)
+    const id = ++verifId.current
+    setVerif('verificando')
+    const v = await verificarPacienteCenso(o)
+    if (id !== verifId.current) return // el usuario ya eligió a otro paciente
+    setVerif(v)
+    if (v.estado === 'egreso') {
+      setSel(null); setRestric(null); setAviso({ tipo: 'egreso', o }); setRefreshMapa((k) => k + 1)
+    } else if (v.ocupacion) {
+      setSel(v.ocupacion)
+      if (requierePermanente(v.ocupacion.edad)) setTipoAcomp('permanente')
+      // El servicio y el aislamiento pueden haber cambiado: el horario aplicable también.
+      evaluarRestricciones(v.ocupacion).then((r) => { if (id === verifId.current) setRestric(r) })
+      if (v.estado === 'cambio') setRefreshMapa((k) => k + 1)
+    }
   }
 
   // Busca el paciente por número de identificación y lo selecciona aunque no tenga cama.
@@ -99,7 +119,8 @@ export default function Registrar() {
     if (!docPaciente.trim()) return
     setBuscandoDoc(true)
     try {
-      const o = await buscarPacientePorDocumento(docPaciente)
+      // Si no está en la copia local puede haber ingresado después de la última sincronización.
+      const o = await buscarPacientePorDocumento(docPaciente) ?? await buscarPacienteEnCenso(docPaciente)
       if (!o) { setDocMsg('No se encontró un paciente con esa identificación.'); return }
       seleccionar(o)
     } finally { setBuscandoDoc(false) }
@@ -150,6 +171,7 @@ export default function Registrar() {
     setTipoAcomp('visita'); setPermisoOtros(''); setResponsableId(''); setServicioVisita(''); setTarjetaId('')
     setRestric(null); setAutorizadoPorId(''); setAutorizacionObs('')
     setDocPaciente(''); setDocMsg('')
+    verifId.current++; setVerif(null)
   }
 
   const restriccionActiva = !!restric && (restric.fueraHorario || restric.excedeSimultaneo || restric.excedeDia)
@@ -159,6 +181,7 @@ export default function Registrar() {
     setMsg(null)
     if (!cedula.trim() || !nombres.trim()) { setMsg({ ok: false, texto: 'Cédula y nombres son obligatorios.' }); return }
     if (tipo === 'familiar' && !sel?.num_ingreso) { setMsg({ ok: false, texto: 'Selecciona la habitación del paciente en el mapa.' }); return }
+    if (tipo === 'familiar' && verif === 'verificando') { setMsg({ ok: false, texto: 'Espera a que termine la verificación de la ubicación en el censo.' }); return }
     if (tipo === 'proveedor' && !responsableId) { setMsg({ ok: false, texto: 'Selecciona la persona responsable que acompaña.' }); return }
     if (requiereTarjeta && !tarjetaId) { setAviso({ tipo: tarjetas.length === 0 ? 'sinTarjetas' : 'tarjeta' }); return }
     // Fuera de horario o excede el cupo ⇒ pedir autorización (permite continuar)
@@ -190,7 +213,8 @@ export default function Registrar() {
         num_ingreso: sel?.num_ingreso ?? null,
         ubicacion_id: sel?.ubicacion_id || null,
         ubicacion_etiqueta: sel?.etiqueta ?? null,
-        piso_id: sel?.piso_id || (tipo === 'familiar' ? pisoId : null),
+        // Nunca se asume el piso visible en pantalla: un paciente sin cama queda sin piso.
+        piso_id: sel?.piso_id || null,
         aislamiento: sel?.aislamiento ?? null,
         responsable_id: tipo === 'proveedor' ? responsableId : null,
         autorizado_por_id: autorizado ? autorizadoPorId : null,
@@ -215,6 +239,7 @@ export default function Registrar() {
   return (
     <div>
       <PageHeader title="Registrar visita" subtitle="Ingreso de visitantes — zona horaria Colombia (GMT-5)" />
+      <EstadoSyncCenso soloSiDesactualizado />
 
       {msg && (
         <div className={`mb-4 rounded-lg px-4 py-3 text-sm ${msg.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>{msg.texto}</div>
@@ -311,6 +336,10 @@ export default function Registrar() {
                       </div>
                       {(sel.area || sel.servicio) && <div className="text-xs text-brand-light">{[sel.area, sel.servicio].filter(Boolean).join(' · ')}</div>}
                       <div className="text-xs text-gray-500">Cupo {sel.visitas.length}/{restric?.limiteSimultaneo ?? sel.cupo}{restric ? ` · ${restric.visitasHoy} visita(s) hoy` : ''}</div>
+                      {verif === 'verificando' && <div className="mt-1.5 rounded-md bg-gray-100 px-2 py-1 text-xs text-gray-600">Verificando la ubicación en el censo…</div>}
+                      {verif && verif !== 'verificando' && verif.estado === 'ok' && <div className="mt-1.5 rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">✓ Ubicación confirmada en el censo: {verif.ubicacionCenso}</div>}
+                      {verif && verif !== 'verificando' && verif.estado === 'cambio' && <div className="mt-1.5 rounded-md bg-amber-50 px-2 py-1 text-xs text-amber-800"><b>La ubicación cambió.</b> La app tenía «{verif.ubicacionAnterior}»; el censo indica hoy: <b>{verif.ubicacionCenso}</b>. Se registrará la ubicación del censo.</div>}
+                      {verif && verif !== 'verificando' && verif.estado === 'no_disponible' && <div className="mt-1.5 rounded-md bg-amber-50 px-2 py-1 text-xs text-amber-800">No se pudo confirmar en vivo. Esta ubicación es la de la última sincronización: confírmala con el paciente o el servicio.</div>}
                     </div>
                   : 'Selecciona una habitación ocupada en el mapa →'}
               </div>
@@ -426,7 +455,7 @@ export default function Registrar() {
               )}
 
               <div className="flex gap-2 pt-2">
-                <Btn onClick={guardar} disabled={guardando} className="flex-1">{guardando ? 'Registrando…' : 'Registrar ingreso'}</Btn>
+                <Btn onClick={guardar} disabled={guardando || (tipo === 'familiar' && verif === 'verificando')} className="flex-1">{guardando ? 'Registrando…' : tipo === 'familiar' && verif === 'verificando' ? 'Verificando ubicación…' : 'Registrar ingreso'}</Btn>
                 <Btn variant="ghost" onClick={reset}>Cancelar</Btn>
               </div>
             </div>
@@ -443,6 +472,21 @@ export default function Registrar() {
           <p className="text-sm text-gray-700">
             Esta ubicación <b>no tiene un paciente registrado</b> actualmente, por lo que no es posible
             registrar un visitante familiar aquí. Verifica el número de habitación o selecciona una ocupada.
+          </p>
+        </div>
+        <div className="mt-4 text-right"><Btn onClick={() => setAviso(null)}>Entendido</Btn></div>
+      </Modal>
+
+      {/* El paciente ya no está en el censo */}
+      <Modal open={aviso?.tipo === 'egreso'} onClose={() => setAviso(null)} title="El paciente ya no está en el censo">
+        <div className="flex items-start gap-3">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-amber-100 text-amber-600">
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.3 3.9l-8 14A2 2 0 004 21h16a2 2 0 001.7-3.1l-8-14a2 2 0 00-3.4 0z" /></svg>
+          </span>
+          <p className="text-sm text-gray-700">
+            <b>{aviso?.o?.paciente_nombre}</b> (ingreso {aviso?.o?.num_ingreso}) aparecía en <b>{aviso?.o?.etiqueta}</b>, pero
+            el censo ya no lo reporta: probablemente <b>egresó</b>. No es posible registrar la visita. Verifica con el servicio
+            o búscalo por identificación si tiene un ingreso nuevo.
           </p>
         </div>
         <div className="mt-4 text-right"><Btn onClick={() => setAviso(null)}>Entendido</Btn></div>

@@ -16,9 +16,14 @@ export default function Usuarios() {
   const [pass2, setPass2] = useState('')
   const [passMsg, setPassMsg] = useState<string | null>(null)
   const [passBusy, setPassBusy] = useState(false)
+  const [edit, setEdit] = useState<Perfil | null>(null)
+  const [editForm, setEditForm] = useState({ nombre: '', email: '', rol: 'orientador' as Rol, activo: true })
+  const [editMsg, setEditMsg] = useState<string | null>(null)
+  const [editBusy, setEditBusy] = useState(false)
+  const [yoId, setYoId] = useState<string | null>(null)
 
   async function cargar() { const { data } = await supabase.from('perfiles').select('*').order('email'); setItems((data ?? []) as Perfil[]) }
-  useEffect(() => { cargar() }, [])
+  useEffect(() => { cargar(); supabase.auth.getUser().then(({ data }) => setYoId(data.user?.id ?? null)) }, [])
 
   async function setRol(p: Perfil, rol: Rol) { await supabase.from('perfiles').update({ rol }).eq('id', p.id); cargar() }
   async function toggle(p: Perfil) { await supabase.from('perfiles').update({ activo: !p.activo }).eq('id', p.id); cargar() }
@@ -49,6 +54,29 @@ export default function Usuarios() {
     const r = await invoke({ action: 'delete', id: p.id })
     if (r.error) { alert(r.error); return }
     cargar()
+  }
+
+  function abrirEdicion(p: Perfil) {
+    setEdit(p); setEditMsg(null)
+    setEditForm({ nombre: p.nombre ?? '', email: p.email ?? '', rol: p.rol, activo: p.activo })
+  }
+
+  async function guardarEdicion() {
+    if (!edit) return
+    const nombre = editForm.nombre.trim(); const email = editForm.email.trim().toLowerCase()
+    if (!nombre) { setEditMsg('El nombre es obligatorio.'); return }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setEditMsg('Escribe un correo válido.'); return }
+    setEditBusy(true)
+    // El correo también vive en Auth, por eso va por la Edge Function; lo demás basta con el perfil.
+    let error: string | null | undefined
+    if (email !== (edit.email ?? '').toLowerCase()) {
+      error = (await invoke({ action: 'update', id: edit.id, nombre, email, rol: editForm.rol, activo: editForm.activo })).error
+    } else {
+      error = (await supabase.from('perfiles').update({ nombre, rol: editForm.rol, activo: editForm.activo }).eq('id', edit.id)).error?.message
+    }
+    setEditBusy(false)
+    if (error) { setEditMsg(error); return }
+    setMsg({ ok: true, t: `Usuario ${email} actualizado.` }); setEdit(null); cargar()
   }
 
   function abrirResetPass(p: Perfil) { setPassModal(p); setPass1(''); setPass2(''); setPassMsg(null) }
@@ -89,6 +117,7 @@ export default function Usuarios() {
                 </td>
                 <td className="px-3 py-2"><button onClick={() => toggle(p)}>{p.activo ? <Badge color="green">Activo</Badge> : <Badge>Inactivo</Badge>}</button></td>
                 <td className="px-3 py-2 whitespace-nowrap">
+                  <button onClick={() => abrirEdicion(p)} className="rounded-lg bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand hover:bg-brand-100 mr-1">Editar</button>
                   <button onClick={() => abrirResetPass(p)} className="rounded-lg bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand hover:bg-brand-100 mr-1">Contraseña</button>
                   <button onClick={() => eliminar(p)} className="rounded-lg bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700 hover:bg-rose-100">Eliminar</button>
                 </td>
@@ -112,6 +141,31 @@ export default function Usuarios() {
           <Btn onClick={crear} disabled={busy} className="flex-1">{busy ? 'Creando…' : 'Crear usuario'}</Btn>
           <Btn variant="ghost" onClick={() => setOpen(false)}>Cancelar</Btn>
         </div>
+      </Modal>
+
+      <Modal open={!!edit} onClose={() => setEdit(null)} title="Editar usuario">
+        {edit && (
+          <div className="space-y-3">
+            <div><label className="block text-xs font-medium text-gray-500 mb-1">Nombre completo *</label>
+              <input className={inputCls} value={editForm.nombre} onChange={(e) => setEditForm({ ...editForm, nombre: e.target.value })} /></div>
+            <div><label className="block text-xs font-medium text-gray-500 mb-1">Correo electrónico *</label>
+              <input className={inputCls} type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} />
+              <p className="mt-1 text-xs text-gray-400">Es el correo con el que inicia sesión.</p></div>
+            <div><label className="block text-xs font-medium text-gray-500 mb-1">Rol</label>
+              <select className={inputCls} value={editForm.rol} disabled={edit.id === yoId} onChange={(e) => setEditForm({ ...editForm, rol: e.target.value as Rol })}>
+                {(Object.keys(ROL_LABEL) as Rol[]).map((r) => <option key={r} value={r}>{ROL_LABEL[r]}</option>)}
+              </select></div>
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              <input type="checkbox" checked={editForm.activo} disabled={edit.id === yoId} onChange={(e) => setEditForm({ ...editForm, activo: e.target.checked })} /> Usuario activo
+            </label>
+            {edit.id === yoId && <p className="text-xs text-gray-400">Es tu propio usuario: el rol y el estado no se pueden cambiar desde aquí.</p>}
+            {editMsg && <p className="text-sm text-rose-600">{editMsg}</p>}
+            <div className="flex gap-2 pt-1">
+              <Btn onClick={guardarEdicion} disabled={editBusy} className="flex-1">{editBusy ? 'Guardando…' : 'Guardar cambios'}</Btn>
+              <Btn variant="ghost" onClick={() => setEdit(null)}>Cancelar</Btn>
+            </div>
+          </div>
+        )}
       </Modal>
 
       <Modal open={!!passModal} onClose={() => setPassModal(null)} title="Cambiar contraseña">

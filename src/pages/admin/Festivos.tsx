@@ -18,7 +18,7 @@ export default function Festivos() {
 
   return (
     <div>
-      <PageHeader title="Festivos" subtitle="Calendario de Colombia (Ley Emiliani). El sistema también los calcula automáticamente." />
+      <PageHeader title="Festivos" subtitle="Calendario de Colombia (Ley Emiliani). Desde 2026 incluye el festivo de Nuestra Señora del Rosario de Chiquinquirá (Ley 2578 de 2026). El sistema también los calcula automáticamente." />
       <Card className="p-4 mb-5">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm text-gray-600">Generar festivos del año</span>

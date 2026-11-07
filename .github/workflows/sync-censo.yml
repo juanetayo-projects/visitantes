@@ -5,6 +5,10 @@ on:
     - cron: '0 * * * *'   # cada hora en punto (UTC)
   workflow_dispatch:        # permite ejecutarlo a mano
 
+# Permiso para reactivar este workflow: GitHub desactiva los cron tras 60 días sin actividad en el repo.
+permissions:
+  actions: write
+
 concurrency:
   group: sync-censo
   cancel-in-progress: false
@@ -13,6 +17,12 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
+      # Evita que GitHub desactive el cron por inactividad (ya ocurrió el 26-oct-2026: los datos
+      # quedaron congelados 11 días). Volver a habilitarlo reinicia el contador de 60 días.
+      - name: Mantener activo el cron
+        run: gh api -X PUT "repos/${GITHUB_REPOSITORY}/actions/workflows/sync-censo.yml/enable"
+        env:
+          GH_TOKEN: ${{ github.token }}
       # Llama a la Edge Function censo-sync (misma lógica que el botón manual de la app).
       # La función lee las credenciales del CENSO desde sus propios secrets en Supabase.
       # --retry: la API del CENSO ocasionalmente responde sin token o cae unos segundos;

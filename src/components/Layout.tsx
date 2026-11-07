@@ -61,13 +61,14 @@ export default function Layout() {
   }
 
   return (
-    <div className="min-h-screen flex">
-      <aside className="w-60 bg-brand text-white flex flex-col shrink-0">
+    <div className="h-screen flex overflow-hidden">
+      {/* Menú y contenido tienen scroll independiente: desplazar uno nunca mueve al otro */}
+      <aside className="h-screen w-60 bg-brand text-white flex flex-col shrink-0">
         <div className="flex flex-col items-center gap-2 px-4 py-5 border-b border-white/10 text-center">
           <img src={LOGO} alt="Clínica" className="h-12 w-auto" />
           <span className="text-base font-semibold leading-tight">Control de Visitantes</span>
         </div>
-        <nav className="flex-1 px-2 py-3 space-y-1 overflow-y-auto">
+        <nav className="flex-1 min-h-0 px-2 py-3 space-y-1 overflow-y-auto overscroll-contain">
           {top.map(i => (
             <NavLink key={i.to} to={i.to} end={i.to === '/'} className={({ isActive }) => linkCls(isActive)}>
               <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d={i.icon} /></svg>
@@ -99,7 +100,7 @@ export default function Layout() {
           © 2026 Clínica Santa Bárbara
         </div>
       </aside>
-      <main className="flex-1 overflow-auto">
+      <main className="h-screen min-w-0 flex-1 overflow-auto overscroll-contain">
         {/* Header azul (mismo tono que el menú lateral) */}
         <header className="sticky top-0 z-20 flex items-center justify-end gap-3 bg-brand px-6 py-2.5 shadow-sm">
           {rol === 'orientador' && sedeTrabajo && (

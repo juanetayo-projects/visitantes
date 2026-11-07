@@ -34,7 +34,7 @@ export default function Estadisticas() {
   const [loading, setLoading] = useState(true)
   const [f, setF] = useState<FiltrosVisita>({ estado: '' })
   const [sel, setSel] = useState<{ dow: number; hora: number } | null>(null)
-  const festivos = useMemo(() => setFestivos(2024, 2027), [])
+  const festivos = useMemo(() => setFestivos(2024, new Date().getFullYear() + 1), [])
 
   useEffect(() => { listSedes().then(setSedes) }, [])
   useEffect(() => { if (f.sedeId) listPisos(f.sedeId).then(setPisos); else setPisos([]) }, [f.sedeId])

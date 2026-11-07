@@ -10,6 +10,7 @@ Clínica de Alta Complejidad Santa Bárbara.
 | [04_MANUAL_USUARIO.md](04_MANUAL_USUARIO.md) | Guía de uso por módulo y rol |
 | [05_DESPLIEGUE.md](05_DESPLIEGUE.md) | Infra, CI/CD, integraciones GoMedisys/CENSO, Resend |
 | [06_PROMPT_ACTUALIZADO.md](06_PROMPT_ACTUALIZADO.md) | Prompt de construcción consolidado con todos los ajustes |
+| [07_PARALELISMO_CENSO.md](07_PARALELISMO_CENSO.md) | Qué hacer cuando la clínica crea o renombra ubicaciones |
 
 - **App:** https://juanetayo-projects.github.io/visitantes/
 - **Repo:** https://github.com/juanetayo-projects/visitantes

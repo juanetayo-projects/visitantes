@@ -48,6 +48,10 @@ export function festivosColombia(anio: number): FestivoCalc[] {
     { fecha: fmt(fijo(12, 8)), nombre: 'Inmaculada Concepción' },
     { fecha: fmt(fijo(12, 25)), nombre: 'Navidad' },
   ]
+  // Ley 2578 de 2026: Día de Nuestra Señora del Rosario de Chiquinquirá (9 de julio),
+  // festivo nacional desde 2026 y trasladable al lunes por Ley Emiliani (2026 → 13 de julio).
+  // La ley fue demandada ante la Corte Constitucional; si la declarara inexequible, retirar esta línea.
+  if (anio >= 2026) lista.push({ fecha: fmt(aLunes(fijo(7, 9))), nombre: 'Nuestra Señora del Rosario de Chiquinquirá' })
   return lista.sort((a, b) => a.fecha.localeCompare(b.fecha))
 }
 

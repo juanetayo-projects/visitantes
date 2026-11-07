@@ -343,23 +343,81 @@ export async function visitasActivasPorIngreso(numIngreso: string): Promise<Visi
 
 // Busca un paciente por su número de identificación y arma su ocupación (aunque no tenga cama).
 export async function buscarPacientePorDocumento(doc: string): Promise<OcupacionUbicacion | null> {
-  const { data: pac } = await supabase.from('pacientes_ubicacion').select('*').eq('documento', doc.trim()).maybeSingle()
+  // Un mismo documento puede tener más de un ingreso: se toma el más reciente.
+  const { data: filas } = await supabase.from('pacientes_ubicacion').select('*').eq('documento', doc.trim()).order('fecha_ingreso', { ascending: false }).limit(1)
+  const pac = filas?.[0]
   if (!pac) return null
   const [{ data: ais }, visitas, notasMap] = await Promise.all([
     supabase.from('aislamientos').select('tipo').eq('num_ingreso', pac.num_ingreso).eq('vigente', true).maybeSingle(),
     visitasActivasPorIngreso(pac.num_ingreso),
     contarNotasPorIngresos([pac.num_ingreso]),
   ])
-  let cupo = 2
-  if (pac.ubicacion_id) { const { data: u } = await supabase.from('ubicaciones').select('cupo_default').eq('id', pac.ubicacion_id).maybeSingle(); if (u) cupo = u.cupo_default }
+  let cupo = 2, area: string | null = pac.censo_area ?? null
+  if (pac.ubicacion_id) { const { data: u } = await supabase.from('ubicaciones').select('cupo_default, area').eq('id', pac.ubicacion_id).maybeSingle(); if (u) { cupo = u.cupo_default; area = u.area } }
   return {
     ubicacion_id: pac.ubicacion_id ?? '',
-    etiqueta: pac.ubicacion_etiqueta ?? 'Sin cama asignada',
-    tipo: 'cama' as TipoUbicacion, area: null, servicio: pac.servicio ?? null, cupo, piso_id: pac.piso_id ?? null,
+    // Si la cama aún no está homologada se muestra tal como la reporta el censo: el paciente sí tiene cama.
+    etiqueta: pac.ubicacion_etiqueta ?? pac.censo_cama ?? 'Sin cama asignada',
+    tipo: 'cama' as TipoUbicacion, area, servicio: pac.servicio ?? null, cupo, piso_id: pac.piso_id ?? null,
     num_ingreso: pac.num_ingreso, paciente_nombre: pac.nombre ?? null, paciente_documento: pac.documento ?? null,
     edad: pac.edad ?? null, aislamiento: (ais?.tipo as TipoAislamiento) ?? null, visitas,
     notas_count: notasMap.get(pac.num_ingreso) ?? 0,
   }
+}
+
+// ─── Verificación en vivo contra el CENSO (Registrar visita) ───
+export type EstadoVerificacion = 'ok' | 'cambio' | 'egreso' | 'no_disponible'
+export interface VerificacionCenso {
+  estado: EstadoVerificacion
+  ocupacion?: OcupacionUbicacion
+  ubicacionAnterior?: string
+  ubicacionCenso?: string
+  error?: string
+}
+async function invocarVerificacion(params: { num_ingreso?: string; documento?: string }): Promise<any | null> {
+  const { data, error } = await supabase.functions.invoke('censo-sync', { body: { action: 'verificar', ...params } })
+  // Sin respuesta explícita de la acción no se puede afirmar nada sobre el paciente.
+  if (error || !data || data.ok !== true || typeof data.encontrado !== 'boolean') return null
+  return data
+}
+const textoCenso = (v: any) => [v.unidad, v.area, v.cama].filter(Boolean).join(' / ') || 'Sin cama asignada'
+
+async function aplicarVerificacion(v: any, base: OcupacionUbicacion | null): Promise<OcupacionUbicacion> {
+  const visitas = base?.visitas ?? await visitasActivasPorIngreso(v.num_ingreso)
+  return {
+    ubicacion_id: v.ubicacion_id ?? '',
+    etiqueta: v.etiqueta ?? v.cama ?? 'Sin cama asignada',
+    tipo: base?.tipo ?? ('cama' as TipoUbicacion),
+    area: v.ubicacion_area ?? v.area ?? null,
+    servicio: v.servicio ?? v.unidad ?? null,
+    cupo: v.cupo ?? base?.cupo ?? 2,
+    piso_id: v.piso_id ?? null,
+    num_ingreso: v.num_ingreso,
+    paciente_nombre: v.nombre ?? base?.paciente_nombre ?? null,
+    paciente_documento: v.documento ?? base?.paciente_documento ?? null,
+    edad: v.edad ?? base?.edad ?? null,
+    aislamiento: (v.aislamiento as TipoAislamiento) ?? null,
+    visitas,
+    notas_count: base?.notas_count ?? 0,
+  }
+}
+
+// Confirma contra el censo en vivo que el paciente sigue donde indica la app.
+export async function verificarPacienteCenso(o: OcupacionUbicacion): Promise<VerificacionCenso> {
+  if (!o.num_ingreso) return { estado: 'no_disponible' }
+  const v = await invocarVerificacion({ num_ingreso: o.num_ingreso })
+  if (!v) return { estado: 'no_disponible' }
+  if (!v.encontrado) return { estado: 'egreso' }
+  const ocupacion = await aplicarVerificacion(v, o)
+  const cambio = (o.ubicacion_id || '') !== (v.ubicacion_id ?? '') || ((!v.ubicacion_id) && o.etiqueta !== ocupacion.etiqueta)
+  return { estado: cambio ? 'cambio' : 'ok', ocupacion, ubicacionAnterior: o.etiqueta, ubicacionCenso: textoCenso(v) }
+}
+
+// Paciente que aún no llega al espejo (ingresó después de la última sincronización).
+export async function buscarPacienteEnCenso(doc: string): Promise<OcupacionUbicacion | null> {
+  const v = await invocarVerificacion({ documento: doc.trim() })
+  if (!v?.encontrado) return null
+  return aplicarVerificacion(v, null)
 }
 
 // Pacientes en estado "sin cama asignada" (para tarjeta y tabla del dashboard).
@@ -597,6 +655,11 @@ export async function listInconsistencias(): Promise<CensoInconsistencia[]> {
 export async function ultimoSync(): Promise<CensoSyncLog | null> {
   const { data } = await supabase.from('censo_sync_log').select('*').order('run_at', { ascending: false }).limit(1).maybeSingle()
   return (data ?? null) as CensoSyncLog | null
+}
+// Antigüedad en minutos de la última sincronización exitosa (null si nunca ha corrido).
+export async function ultimoSyncExitoso(): Promise<string | null> {
+  const { data } = await supabase.from('censo_sync_log').select('run_at').eq('ok', true).order('run_at', { ascending: false }).limit(1).maybeSingle()
+  return (data as any)?.run_at ?? null
 }
 // Ejecuta el sync del CENSO bajo demanda (Edge Function censo-sync; solo admin).
 export async function ejecutarSyncCenso(): Promise<{ ok: boolean; resumen?: any; error?: string }> {

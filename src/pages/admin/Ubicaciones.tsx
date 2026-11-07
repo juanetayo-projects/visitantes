@@ -1,7 +1,9 @@
 import { useState } from 'react'
-import { PageHeader } from '../../components/ui'
+import { useSearchParams } from 'react-router-dom'
+import { PageHeader, Tabs } from '../../components/ui'
 import CrudTable from '../../components/CrudTable'
 import ImportarEstructura from '../../components/ImportarEstructura'
+import ComparacionCenso from '../../components/ComparacionCenso'
 
 const TIPOS = [
   { value: 'habitacion', label: 'Habitación' }, { value: 'cubiculo', label: 'Cubículo' },
@@ -9,13 +11,32 @@ const TIPOS = [
   { value: 'camilla', label: 'Camilla' }, { value: 'area', label: 'Área' },
 ]
 
+type Tab = 'ubicaciones' | 'pisos' | 'puertas' | 'sedes' | 'censo' | 'importar'
+const TABS: { value: Tab; label: string }[] = [
+  { value: 'ubicaciones', label: 'Ubicaciones' },
+  { value: 'pisos', label: 'Pisos' },
+  { value: 'puertas', label: 'Puertas de acceso' },
+  { value: 'sedes', label: 'Sedes' },
+  { value: 'censo', label: 'Censo vs app' },
+  { value: 'importar', label: 'Importar / exportar' },
+]
+
 export default function Ubicaciones() {
   const [recarga, setRecarga] = useState(0)
+  // La pestaña va en la URL para conservarla al recargar y poder enlazarla.
+  const [params, setParams] = useSearchParams()
+  const tab = (TABS.find((t) => t.value === params.get('tab'))?.value ?? 'ubicaciones') as Tab
+
   return (
     <div>
       <PageHeader title="Sedes y ubicaciones" subtitle="Estructura física: sedes, puertas, pisos y ubicaciones (camas, cubículos, sillones)" />
-      <div className="space-y-6">
-        <ImportarEstructura onDone={() => setRecarga((k) => k + 1)} />
+      <Tabs tabs={TABS} value={tab} onChange={(v) => setParams({ tab: v }, { replace: true })} />
+
+      {tab === 'importar' && <ImportarEstructura onDone={() => setRecarga((k) => k + 1)} />}
+
+      {tab === 'censo' && <ComparacionCenso />}
+
+      {tab === 'sedes' && (
         <CrudTable
           key={`sedes-${recarga}`}
           tabla="sedes" titulo="Sedes" orderBy="orden"
@@ -28,6 +49,9 @@ export default function Ubicaciones() {
             { key: 'activo', label: 'Activo', type: 'checkbox', default: true },
           ]}
         />
+      )}
+
+      {tab === 'puertas' && (
         <CrudTable
           tabla="puertas" titulo="Puertas de acceso" orderBy="nombre"
           subtitulo="«Requiere tarjeta» controla si Registrar pide tarjeta de acceso al ingresar por esa puerta"
@@ -39,6 +63,9 @@ export default function Ubicaciones() {
             { key: 'activo', label: 'Activo', type: 'checkbox', default: true },
           ]}
         />
+      )}
+
+      {tab === 'pisos' && (
         <CrudTable
           key={`pisos-${recarga}`}
           tabla="pisos" titulo="Pisos" orderBy="orden"
@@ -51,6 +78,9 @@ export default function Ubicaciones() {
             { key: 'activo', label: 'Activo', type: 'checkbox', default: true },
           ]}
         />
+      )}
+
+      {tab === 'ubicaciones' && (
         <CrudTable
           key={`ubic-${recarga}`}
           tabla="ubicaciones" titulo="Ubicaciones" orderBy="orden"
@@ -78,7 +108,7 @@ export default function Ubicaciones() {
             { key: 'activo', label: 'Activo', type: 'checkbox', default: true },
           ]}
         />
-      </div>
+      )}
     </div>
   )
 }

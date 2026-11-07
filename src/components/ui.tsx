@@ -141,6 +141,24 @@ export function Btn({ children, onClick, type = 'button', variant = 'primary', d
   return <button type={type} onClick={onClick} disabled={disabled} className={`${base} ${v} ${className}`}>{children}</button>
 }
 
+export function Tabs<T extends string>({ tabs, value, onChange }: {
+  tabs: { value: T; label: string; badge?: number }[]
+  value: T
+  onChange: (v: T) => void
+}) {
+  return (
+    <div role="tablist" className="mb-5 flex flex-wrap gap-2">
+      {tabs.map((t) => (
+        <button key={t.value} role="tab" aria-selected={value === t.value} onClick={() => onChange(t.value)}
+          className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm transition-all duration-150 ${value === t.value ? 'bg-brand font-medium text-white shadow-neu-sm' : 'bg-white text-gray-600 shadow-neu-xs hover:shadow-neu-sm hover:text-brand'}`}>
+          {t.label}
+          {!!t.badge && <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none ${value === t.value ? 'bg-white/25 text-white' : 'bg-rose-100 text-rose-700'}`}>{t.badge}</span>}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
   return <div className={`rounded-2xl bg-white shadow-neu ${className}`}>{children}</div>
 }
