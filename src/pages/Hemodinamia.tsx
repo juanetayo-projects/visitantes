@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { PageHeader, Card, PanelIndicadores, ICONOS_IND, ConLateral, FilterBar, selectCls, inputCls, textareaCls, Btn, Badge, Modal, ComentariosBadge } from '../components/ui'
+import { PageHeader, ContadorCircular, Card, PanelIndicadores, ICONOS_IND, ConLateral, FilterBar, selectCls, inputCls, textareaCls, Btn, Badge, Modal, ComentariosBadge } from '../components/ui'
 import { useAuth } from '../auth/AuthProvider'
 import {
   listSolicitudesHemodinamia, crearSolicitudHemodinamia, cambiarEstadoHemodinamia,
@@ -70,6 +70,7 @@ export default function Hemodinamia() {
   return (
     <div>
       <PageHeader title="Hemodinamia — solicitudes de información" subtitle="Documentos y solicitudes que traen los pacientes/familiares para Hemodinamia"
+        contador={<ContadorCircular valor={loading ? "…" : rows.length} etiqueta={rows.length === 1 ? "solicitud" : "solicitudes"} />}
         action={<div className="flex gap-2">
           {esStaff && <Btn onClick={() => setAbrirNueva(true)}>+ Nueva solicitud</Btn>}
           <Btn variant="light" onClick={() => exportarExcel('Solicitudes de Hemodinamia', COLS, rows)}>Excel</Btn>
@@ -96,8 +97,7 @@ export default function Hemodinamia() {
         </>
       }>
       <Card hover={false} className="overflow-hidden">
-        <div className="px-4 py-2.5 border-b border-gray-100 text-sm text-gray-500">{rows.length} solicitud(es)</div>
-        <div className="overflow-x-auto">
+        <div className="tabla-scroll">
           <table className="w-full text-sm">
             <thead className="bg-brand text-white"><tr>
               {['Fecha/hora', 'Paciente', 'Procedimiento', 'Documentos', 'Estado', ''].map((h) => <th key={h} className="px-3 py-2.5 text-left font-medium whitespace-nowrap">{h}</th>)}

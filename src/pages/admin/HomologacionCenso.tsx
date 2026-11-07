@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { PageHeader, Btn, PanelIndicadores, ICONOS_IND } from '../../components/ui'
+import { PageHeader, ContadorCircular, Btn, PanelIndicadores, ICONOS_IND } from '../../components/ui'
 import CrudTable from '../../components/CrudTable'
 import EstadoSyncCenso from '../../components/EstadoSyncCenso'
 import { useSyncCenso } from '../../components/ProgresoSync'
@@ -20,6 +20,7 @@ export default function HomologacionCenso() {
   const [sinUbicar, setSinUbicar] = useState<number | null>(null)
   const [soloPendientes, setSoloPendientes] = useState(false)
   const [version, setVersion] = useState(0)
+  const [conteo, setConteo] = useState({ visibles: 0, total: 0, cargando: true })
   const sync = useSyncCenso()
 
   useEffect(() => {
@@ -37,6 +38,7 @@ export default function HomologacionCenso() {
   return (
     <div>
       <PageHeader title="Homologación CENSO" subtitle="Mapea cada ubicación que llega del CENSO a la ubicación real de la app. La sincronización aplica esta tabla automáticamente."
+        contador={<ContadorCircular valor={conteo.cargando ? '…' : conteo.visibles} etiqueta={conteo.visibles === 1 ? 'ubicación' : 'ubicaciones'} de={!conteo.cargando && conteo.visibles !== conteo.total ? conteo.total : undefined} />}
         action={<Btn onClick={sincronizar} disabled={sync.corriendo}>{sync.corriendo ? 'Sincronizando…' : '↻ Sincronizar ahora'}</Btn>} />
       {sync.vista}
 
@@ -54,6 +56,7 @@ export default function HomologacionCenso() {
             ]} />
           </>
         }
+        onConteo={(visibles, total, cargando) => setConteo({ visibles, total, cargando })}
         filtrosIniciales={soloPendientes ? { ubicacion_id: '__null', activo: 'true' } : { activo: 'true' }}
         filtros={[
           { key: 'ubicacion_id', label: 'Estado', opciones: [{ value: '__notnull', label: 'Homologadas' }, { value: '__null', label: 'Sin homologar' }] },

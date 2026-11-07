@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { PageHeader, Card, PanelIndicadores, ICONOS_IND, ConLateral, FilterBar, selectCls, inputCls, textareaCls, Btn, Badge, Modal, ComentariosBadge } from '../components/ui'
+import { PageHeader, ContadorCircular, Card, PanelIndicadores, ICONOS_IND, ConLateral, FilterBar, selectCls, inputCls, textareaCls, Btn, Badge, Modal, ComentariosBadge } from '../components/ui'
 import { useAuth } from '../auth/AuthProvider'
 import {
   listSolicitudesOtro, crearSolicitudOtro, cambiarEstadoOtro,
@@ -81,6 +81,7 @@ export default function Otro() {
   return (
     <div>
       <PageHeader title="Otro — solicitudes de información" subtitle="Otros conceptos que solicitan pacientes/familiares en recepción (aparte de Cirugía y Hemodinamia)"
+        contador={<ContadorCircular valor={loading ? "…" : rows.length} etiqueta={rows.length === 1 ? "solicitud" : "solicitudes"} />}
         action={<div className="flex gap-2">
           {esStaff && <Btn onClick={abrirModalNueva}>+ Nueva solicitud</Btn>}
           <Btn variant="light" onClick={() => exportarExcel('Solicitudes de Otro', COLS, rows)}>Excel</Btn>
@@ -111,8 +112,7 @@ export default function Otro() {
         </>
       }>
       <Card hover={false} className="overflow-hidden">
-        <div className="px-4 py-2.5 border-b border-gray-100 text-sm text-gray-500">{rows.length} solicitud(es)</div>
-        <div className="overflow-x-auto">
+        <div className="tabla-scroll">
           <table className="w-full text-sm">
             <thead className="bg-brand text-white"><tr>
               {['Fecha', 'Paciente', 'EPS', 'Concepto', 'Solicita', 'Atendido por', 'Estado'].map((h) => <th key={h} className="px-3 py-2.5 text-left font-medium whitespace-nowrap">{h}</th>)}

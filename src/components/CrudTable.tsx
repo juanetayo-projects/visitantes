@@ -40,12 +40,14 @@ interface Props {
   filtrosIniciales?: Record<string, string>
   // Lleva título, búsqueda, botón y filtros a una barra lateral derecha, debajo de este contenido.
   lateral?: ReactNode
+  // Informa cuántos registros se ven (tras filtros) y el total, p. ej. para un contador en el encabezado.
+  onConteo?: (visibles: number, total: number, cargando: boolean) => void
   // Se invoca antes de insertar/actualizar; puede completar/validar el formulario.
   // Si retorna { error }, se muestra el mensaje y no se guarda.
   onBeforeSave?: (form: Record<string, any>, editing: boolean) => Promise<Record<string, any> | { error: string }>
 }
 
-export default function CrudTable({ tabla, titulo, columnas, campos, orderBy = 'created_at', subtitulo, filtros, filtrosIniciales, lateral, onBeforeSave }: Props) {
+export default function CrudTable({ tabla, titulo, columnas, campos, orderBy = 'created_at', subtitulo, filtros, filtrosIniciales, lateral, onConteo, onBeforeSave }: Props) {
   const [filtroVals, setFiltroVals] = useState<Record<string, string>>(filtrosIniciales ?? {})
   const [rows, setRows] = useState<any[]>([])
   const [lookups, setLookups] = useState<Lookups>({})
@@ -164,6 +166,8 @@ export default function CrudTable({ tabla, titulo, columnas, campos, orderBy = '
     return r
   }, [rows, busca, columnas, lookups, filtros, filtroVals])
 
+  useEffect(() => { onConteo?.(filtrados.length, rows.length, loading) }, [filtrados.length, rows.length, loading])
+
   const encabezado = (
     <div>
       <div className="font-semibold text-brand">{titulo} <span className="text-gray-400 text-sm">({filtrados.length}{filtrados.length !== rows.length ? ` de ${rows.length}` : ''})</span></div>
@@ -244,9 +248,9 @@ export default function CrudTable({ tabla, titulo, columnas, campos, orderBy = '
         </div>
       )}
 
-      <div className="overflow-x-auto">
+      <div className="tabla-scroll">
         <table className="w-full text-sm">
-          <thead className="bg-brand/5 text-brand">
+          <thead className="bg-brand-50 text-brand">
             <tr>{columnas.map((c) => <th key={c.key} className="px-3 py-2 text-left font-medium whitespace-nowrap">{c.label}</th>)}
               <th className="px-3 py-2 text-right font-medium">Acciones</th></tr>
           </thead>

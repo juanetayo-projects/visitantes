@@ -1,14 +1,28 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
-export function PageHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: ReactNode }) {
+export function PageHeader({ title, subtitle, action, contador }: { title: string; subtitle?: string; action?: ReactNode; contador?: ReactNode }) {
   return (
-    <div className="flex flex-wrap items-end justify-between gap-3 mb-5">
-      <div>
+    <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+      <div className="min-w-0 flex-1">
         <h1 className="text-2xl font-semibold text-brand">{title}</h1>
         {subtitle && <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>}
       </div>
-      {action}
+      {(contador || action) && <div className="flex items-center gap-4">{contador}{action}</div>}
+    </div>
+  )
+}
+
+// Tarjeta circular con el número de registros de la tabla (va en el encabezado de la página).
+export function ContadorCircular({ valor, etiqueta, de }: { valor: ReactNode; etiqueta: string; de?: number }) {
+  return (
+    <div title={de !== undefined ? `${valor} de ${de} ${etiqueta}` : `${valor} ${etiqueta}`}
+      className="grid h-[84px] w-[84px] shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#0D2D6B] to-[#16468E] p-[3px] shadow-neu transition hover:from-[#16468E] hover:to-[#2563A8]">
+      <div className="flex h-full w-full flex-col items-center justify-center rounded-full bg-white text-center transition-colors hover:bg-brand-50">
+        <span className="text-xl font-bold leading-none text-brand">{valor}</span>
+        <span className="mt-1 text-[10px] font-medium uppercase leading-tight tracking-wide text-gray-500">{etiqueta}</span>
+        {de !== undefined && <span className="text-[10px] leading-tight text-gray-400">de {de}</span>}
+      </div>
     </div>
   )
 }

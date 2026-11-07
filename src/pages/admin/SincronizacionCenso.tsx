@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { PageHeader, Card, Badge, Btn, FilterBar, selectCls, inputCls, Modal, ConLateral, PanelIndicadores, ICONOS_IND } from '../../components/ui'
+import { PageHeader, ContadorCircular, Card, Badge, Btn, FilterBar, selectCls, inputCls, Modal, ConLateral, PanelIndicadores, ICONOS_IND } from '../../components/ui'
 import { listInconsistencias, ultimoSync, type CensoInconsistencia, type CensoSyncLog } from '../../lib/data'
 import { exportarExcel, type Columna } from '../../lib/exportar'
 import EstadoSyncCenso from '../../components/EstadoSyncCenso'
@@ -88,7 +88,9 @@ export default function SincronizacionCenso() {
   return (
     <div>
       <PageHeader title="Sincronización CENSO" subtitle="Estado de la última sincronización e inconsistencias detectadas al cruzar el CENSO con la homologación."
+        contador={<ContadorCircular valor={loading ? '…' : filtrados.length} etiqueta={filtrados.length === 1 ? 'inconsistencia' : 'inconsistencias'} de={filtrados.length !== rows.length ? rows.length : undefined} />}
         action={<div className="flex gap-2">
+          <Link to="/admin/homologacion" className="self-center text-sm font-medium text-brand-light hover:underline">Ir a Homologación →</Link>
           <Btn variant="light" onClick={() => exportarExcel('Sincronización CENSO — Inconsistencias', COLS, filtrados, { filtros: describirFiltros(f) })} disabled={!filtrados.length}>Excel</Btn>
           <Btn onClick={() => setConfirmar(true)} disabled={ejecutando}>{ejecutando ? 'Sincronizando…' : '↻ Ejecutar ahora'}</Btn>
         </div>} />
@@ -134,11 +136,7 @@ export default function SincronizacionCenso() {
         </>
       }>
       <Card hover={false} className="overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
-          <div className="text-sm text-gray-500">{filtrados.length}{filtrados.length !== rows.length ? ` de ${rows.length}` : ''} inconsistencia(s)</div>
-          <Link to="/admin/homologacion" className="text-sm font-medium text-brand-light hover:underline">Ir a Homologación CENSO →</Link>
-        </div>
-        <div className="overflow-x-auto">
+        <div className="tabla-scroll">
           <table className="w-full text-sm">
             <thead className="bg-brand text-white"><tr>
               {['Tipo', 'Paciente / # ingreso', 'Unidad CENSO', 'Área', 'Cama', 'Detalle'].map((h) => <th key={h} className="px-3 py-2.5 text-left font-medium whitespace-nowrap">{h}</th>)}

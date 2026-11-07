@@ -67,6 +67,13 @@ body {
   .reloj-manecilla, .termometro-relleno, .cm-pulse { animation: none }
 }
 
+/* Tablas con encabezado inmovilizado: la tabla se desplaza dentro de su tarjeta y la fila de títulos queda fija */
+.tabla-scroll { overflow: auto; max-height: calc(100vh - 10.5rem); overscroll-behavior: contain }
+.tabla-scroll thead tr { background-color: inherit }
+.tabla-scroll thead th { position: sticky; top: 0; z-index: 20; background-color: inherit }
+.tabla-scroll thead th.sticky { z-index: 30 }
+@media (max-width: 1279px) { .tabla-scroll { max-height: 75vh } }
+
 /* Filtros en la barra lateral derecha: uno por fila y las dos fechas lado a lado */
 .filtros-columna { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem }
 .filtros-columna > * { grid-column: span 2; width: 100%; min-width: 0 }
