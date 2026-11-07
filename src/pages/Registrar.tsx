@@ -88,6 +88,16 @@ export default function Registrar() {
   // paciente que ya cambió de cama o egresó desde la última sincronización.
   const [verif, setVerif] = useState<VerificacionCenso | 'verificando' | null>(null)
   const verifId = useRef(0)
+  // Alto real de la franja fija (una o dos líneas según el ancho): el formulario se fija justo debajo.
+  const franjaRef = useRef<HTMLDivElement>(null)
+  const [altoFranja, setAltoFranja] = useState(72)
+  useEffect(() => {
+    const el = franjaRef.current
+    if (!el) return
+    const ro = new ResizeObserver(() => setAltoFranja(el.offsetHeight))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [tipo])
 
   // Maneja el clic en una habitación del mapa: valida paciente y evalúa horario/cupos.
   async function seleccionar(o: OcupacionUbicacion) {
@@ -246,8 +256,9 @@ export default function Registrar() {
       )}
 
       {/* Con un tipo elegido, sede + tipo + fachada se contraen en una franja: el formulario queda arriba y limpio */}
+      {/* La franja queda fija al desplazar (debajo del header de 56 px): piso y búsqueda siempre a mano */}
       {tipo && (
-        <div className="mb-5 flex flex-wrap items-center gap-3 rounded-2xl bg-white p-2.5 shadow-neu-sm">
+        <div ref={franjaRef} className="sticky top-[64px] z-[15] mb-5 flex flex-wrap items-center gap-3 rounded-2xl bg-white p-2.5 shadow-neu">
           <img src={`${import.meta.env.BASE_URL}images/fachada.jpg`} alt="" aria-hidden className="hidden h-12 w-16 rounded-xl object-cover object-[50%_30%] sm:block" />
           <label className="flex items-center gap-2 text-xs font-medium text-gray-500">
             Sede
@@ -255,6 +266,29 @@ export default function Registrar() {
               {sedes.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
             </select>
           </label>
+          {tipo === 'familiar' && <>
+            <label className="flex items-center gap-2 text-xs font-medium text-gray-500">
+              Piso
+              <select aria-label="Piso o servicio" className={`${selectCls} py-1.5 text-sm`} value={pisoId} onChange={(e) => { setPisoId(e.target.value); setSel(null) }}>
+                {pisos.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+              </select>
+            </label>
+            {areas.length > 0 && (
+              <select aria-label="Área" className={`${selectCls} py-1.5 text-sm`} value={area} onChange={(e) => { setArea(e.target.value); setSel(null) }}>
+                <option value="">Todas las áreas</option>
+                {areas.map((a) => <option key={a} value={a}>{a}</option>)}
+              </select>
+            )}
+            {/* Búsqueda por identificación: para pacientes sin cama o que no se ven en el mapa */}
+            <div className="relative flex min-w-[230px] flex-1 items-center gap-2">
+              <svg className="pointer-events-none absolute left-3 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.3-4.3M11 19a8 8 0 100-16 8 8 0 000 16z" /></svg>
+              <input className={`${inputCls} py-1.5 pl-9 text-sm`} value={docPaciente} placeholder="¿Sin cama o no está en el mapa? N° identificación"
+                aria-label="Buscar paciente por número de identificación" inputMode="numeric" autoComplete="off"
+                onChange={(e) => setDocPaciente(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') buscarPorIdentificacion() }} />
+              <Btn variant="light" onClick={buscarPorIdentificacion} disabled={buscandoDoc}>{buscandoDoc ? '…' : 'Buscar'}</Btn>
+            </div>
+          </>}
           <div role="group" aria-label="Tipo de visitante" className="ml-auto flex flex-wrap gap-1 rounded-xl bg-brand-50 p-1">
             {tiposDisponibles.map((t) => (
               <button key={t.v} aria-pressed={tipo === t.v} onClick={() => { if (tipo !== t.v) { reset(); setTipo(t.v) } }}
@@ -265,6 +299,7 @@ export default function Registrar() {
             ))}
           </div>
           <button onClick={reset} title="Volver a elegir el tipo de visitante" className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-500 hover:bg-brand-50 hover:text-brand">Cancelar</button>
+          {tipo === 'familiar' && docMsg && <p className="w-full rounded-lg bg-rose-50 px-3 py-1.5 text-xs text-rose-700">{docMsg}</p>}
         </div>
       )}
 
@@ -315,44 +350,18 @@ export default function Registrar() {
       </div>}
 
       {tipo && (
-        <div className="grid gap-5 lg:grid-cols-5">
-          {/* Mapa (solo familiar) */}
+        <div className="grid items-start gap-5 lg:grid-cols-5">
+          {/* Mapa (solo familiar): piso, área y búsqueda viven en la franja fija de arriba */}
           {tipo === 'familiar' && (
-            <Card className="p-5 lg:col-span-3">
+            <Card hover={false} className="p-5 lg:col-span-3">
               <div className="text-sm font-semibold text-brand mb-3">2. Selecciona la habitación del paciente</div>
-              <div className="flex flex-wrap gap-3 mb-4">
-                <select className={selectCls} value={pisoId} onChange={(e) => { setPisoId(e.target.value); setSel(null) }}>
-                  {pisos.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-                </select>
-                {areas.length > 0 && (
-                  <select className={selectCls} value={area} onChange={(e) => { setArea(e.target.value); setSel(null) }}>
-                    <option value="">Todas las áreas</option>
-                    {areas.map((a) => <option key={a} value={a}>{a}</option>)}
-                  </select>
-                )}
-              </div>
-              {/* Búsqueda por identificación: para pacientes sin cama o que no se ven en el mapa */}
-              <div className="mb-4 rounded-lg border border-dashed border-brand-light/50 bg-brand-50/40 p-3">
-                <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-brand">
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.3-4.3M11 19a8 8 0 100-16 8 8 0 000 16z" /></svg>
-                  ¿No está en el mapa o sin cama asignada? Búscalo por identificación
-                </div>
-                <div className="flex gap-2">
-                  <input className={inputCls} value={docPaciente} placeholder="N° identificación del paciente"
-                    inputMode="numeric" autoComplete="off"
-                    onChange={(e) => setDocPaciente(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') buscarPorIdentificacion() }} />
-                  <Btn variant="light" onClick={buscarPorIdentificacion} disabled={buscandoDoc}>{buscandoDoc ? 'Buscando…' : 'Buscar'}</Btn>
-                </div>
-                {docMsg && <p className="mt-1.5 text-xs text-rose-600">{docMsg}</p>}
-              </div>
-
               {pisoId && <MapaHabitaciones pisoId={pisoId} refreshKey={refreshMapa} onSelect={seleccionar} area={area || undefined} />}
             </Card>
           )}
 
-          {/* Formulario — resaltado para que destaque */}
-          <Card className={`relative overflow-hidden ring-2 ring-brand-light/30 p-5 ${tipo === 'familiar' ? 'lg:col-span-2' : 'lg:col-span-5 mx-auto w-full max-w-xl'}`}>
+          {/* Formulario — resaltado y fijo bajo la franja, para no perderlo al bajar por el mapa */}
+          <Card hover={false} className={`relative overflow-hidden ring-2 ring-brand-light/30 p-5 ${tipo === 'familiar' ? 'lg:col-span-2 lg:sticky lg:overflow-y-auto' : 'lg:col-span-5 mx-auto w-full max-w-xl'}`}
+            style={tipo === 'familiar' ? { top: 64 + altoFranja + 12, maxHeight: `calc(100vh - ${64 + altoFranja + 28}px)` } : undefined}>
             <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-brand to-brand-light" />
             <div className="mt-1 mb-3 inline-flex items-center gap-2 rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-white">
               <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>

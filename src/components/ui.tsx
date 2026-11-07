@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
 export function PageHeader({ title, subtitle, action, contador }: { title: string; subtitle?: string; action?: ReactNode; contador?: ReactNode }) {
@@ -174,8 +174,8 @@ export function Tabs<T extends string>({ tabs, value, onChange }: {
 }
 
 // hover={false} en las que contienen tablas o formularios: el color de fondo distraería al leerlas.
-export function Card({ children, className = '', hover = true }: { children: ReactNode; className?: string; hover?: boolean }) {
-  return <div className={`rounded-2xl bg-white shadow-neu ${hover ? 'transition-colors hover:bg-brand-50/60' : ''} ${className}`}>{children}</div>
+export function Card({ children, className = '', hover = true, style }: { children: ReactNode; className?: string; hover?: boolean; style?: CSSProperties }) {
+  return <div style={style} className={`rounded-2xl bg-white shadow-neu ${hover ? 'transition-colors hover:bg-brand-50/60' : ''} ${className}`}>{children}</div>
 }
 
 // Contenido principal a la izquierda y barra lateral derecha con indicadores y filtros.
