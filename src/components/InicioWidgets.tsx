@@ -67,7 +67,16 @@ const TONO = {
 const BARRA = { azul: 'bg-blue-500', verde: 'bg-emerald-500', rojo: 'bg-rose-500', ambar: 'bg-amber-500', teal: 'bg-teal-500', gris: 'bg-gray-400' }
 
 // ── Tarjeta de indicador: ícono, valor y, si hay datos para ello, tendencia o proporción ──
-export function KpiCard({ titulo, valor, detalle, icono, tono, serie, colorSerie, proporcion, onClick }: {
+// Píldora de variación frente al periodo anterior. subirEsBueno decide el color (más ingresos = verde).
+export function Variacion({ pct, subirEsBueno = true }: { pct: number | null; subirEsBueno?: boolean }) {
+  if (pct == null) return null
+  const igual = pct === 0, sube = pct > 0
+  const bueno = igual ? null : sube === subirEsBueno
+  const cls = bueno == null ? 'bg-gray-100 text-gray-600' : bueno ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
+  return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums ${cls}`}>{igual ? '=' : sube ? '↑' : '↓'} {Math.abs(pct)}%</span>
+}
+
+export function KpiCard({ titulo, valor, detalle, icono, tono, serie, colorSerie, proporcion, variacion, onClick }: {
   titulo: string
   valor: ReactNode
   detalle?: string
@@ -76,6 +85,7 @@ export function KpiCard({ titulo, valor, detalle, icono, tono, serie, colorSerie
   serie?: { fecha: string; n: number }[]
   colorSerie?: string
   proporcion?: number // 0..1
+  variacion?: { pct: number | null; texto: string; subirEsBueno?: boolean }
   onClick?: () => void
 }) {
   const contenido = (
@@ -84,7 +94,11 @@ export function KpiCard({ titulo, valor, detalle, icono, tono, serie, colorSerie
         <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-full ${TONO[tono]}`}><Icono d={icono} /></span>
         <div className="min-w-0 flex-1">
           <div className="text-sm text-gray-500">{titulo}</div>
-          <div className="text-[28px] font-bold leading-tight tabular-nums text-gray-900">{valor}</div>
+          <div className="flex flex-wrap items-baseline gap-2">
+            <span className="text-[28px] font-bold leading-tight tabular-nums text-gray-900">{valor}</span>
+            {variacion && <Variacion pct={variacion.pct} subirEsBueno={variacion.subirEsBueno} />}
+          </div>
+          {variacion && variacion.pct != null && <div className="text-[11px] text-gray-400">{variacion.texto}</div>}
           {detalle && !serie && <div className="mt-0.5 text-xs text-gray-500">{detalle}</div>}
         </div>
         {serie && <Sparkline serie={serie} color={colorSerie ?? COLOR_INGRESOS} etiqueta={titulo} />}
@@ -92,8 +106,11 @@ export function KpiCard({ titulo, valor, detalle, icono, tono, serie, colorSerie
       {/* Con minigráfica, el detalle va debajo a todo el ancho para que no se apriete */}
       {detalle && serie && <div className="mt-1 text-xs text-gray-500">{detalle}</div>}
       {proporcion != null && (
-        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-gray-100" role="presentation">
-          <div className={`h-full rounded-full ${BARRA[tono]}`} style={{ width: `${Math.min(100, Math.round(proporcion * 100))}%` }} />
+        <div className="mt-3 flex items-center gap-2">
+          <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-100" role="presentation">
+            <div className={`h-full rounded-full transition-[width] duration-500 ${BARRA[tono]}`} style={{ width: `${Math.min(100, Math.round(proporcion * 100))}%` }} />
+          </div>
+          <span className="w-9 text-right text-xs font-semibold tabular-nums text-gray-600">{Math.round(proporcion * 100)}%</span>
         </div>
       )}
     </>
@@ -197,28 +214,45 @@ export function TendenciaVisitas({ serie }: { serie: PuntoEventos[] }) {
   const datos = useMemo(() => serie.slice(-dias), [serie, dias])
   const vacio = datos.every((d) => !d.ingresos && !d.salidas)
   const fmt = (f: string) => `${f.slice(8)}/${f.slice(5, 7)}`
+  const ultimo = datos.length - 1
+  // Total del periodo frente al periodo anterior de igual duración (la serie trae 90 días).
+  const total = datos.reduce((a, d) => a + d.ingresos, 0)
+  const previo = serie.length >= dias * 2 ? serie.slice(-dias * 2, -dias).reduce((a, d) => a + d.ingresos, 0) : null
+  const pct = previo ? Math.round(((total - previo) / previo) * 100) : null
   const opcion = useMemo(() => ({
     animation: false,
-    grid: { left: 32, right: 12, top: 34, bottom: 24 },
+    grid: { left: 32, right: 34, top: 40, bottom: 24 },
     legend: { top: 0, right: 0, icon: 'circle', itemWidth: 8, itemHeight: 8, textStyle: { color: '#475569', fontSize: 12 }, data: ['Ingresos', 'Salidas'] },
-    tooltip: { trigger: 'axis', backgroundColor: '#111827', borderWidth: 0, textStyle: { color: '#fff', fontSize: 12 }, axisPointer: { type: 'line', lineStyle: { color: '#94A3B8' } } },
-    xAxis: { type: 'category', boundaryGap: false, data: datos.map((d) => fmt(d.fecha)), axisLine: { lineStyle: { color: '#E2E8F0' } }, axisTick: { show: false }, axisLabel: { color: '#64748B', fontSize: 11, hideOverlap: true } },
+    tooltip: { trigger: 'axis', backgroundColor: '#111827', borderWidth: 0, textStyle: { color: '#fff', fontSize: 12 }, axisPointer: { type: 'shadow', shadowStyle: { color: 'rgba(148,163,184,0.12)' } } },
+    xAxis: { type: 'category', data: datos.map((d) => fmt(d.fecha)), axisLine: { lineStyle: { color: '#E2E8F0' } }, axisTick: { show: false }, axisLabel: { color: '#64748B', fontSize: 11, hideOverlap: true } },
     yAxis: { type: 'value', minInterval: 1, splitLine: { lineStyle: { color: '#F1F5F9' } }, axisLabel: { color: '#64748B', fontSize: 11 } },
     series: [
-      { name: 'Ingresos', type: 'line', data: datos.map((d) => d.ingresos), showSymbol: false, symbolSize: 8, lineStyle: { width: 2, color: COLOR_INGRESOS }, itemStyle: { color: COLOR_INGRESOS }, areaStyle: { color: COLOR_INGRESOS, opacity: 0.08 } },
-      { name: 'Salidas', type: 'line', data: datos.map((d) => d.salidas), showSymbol: false, symbolSize: 8, lineStyle: { width: 2, color: COLOR_SALIDAS }, itemStyle: { color: COLOR_SALIDAS } },
+      // Un solo acento: todas las barras en gris y la de hoy en azul, con su valor encima.
+      {
+        name: 'Ingresos', type: 'bar', barMaxWidth: 22, itemStyle: { color: COLOR_INGRESOS },
+        // La etiqueta va solo en la barra de hoy (a nivel de serie pintaría el recuadro vacío en todas).
+        data: datos.map((d, i) => i === ultimo
+          ? { value: d.ingresos, itemStyle: { color: COLOR_INGRESOS, borderRadius: [5, 5, 0, 0] }, label: { show: true, position: 'top', formatter: 'Hoy: {c}', backgroundColor: '#0D2D6B', color: '#fff', fontSize: 11, fontWeight: 600, padding: [3, 7], borderRadius: 6 } }
+          : { value: d.ingresos, itemStyle: { color: COLOR_NEUTRO, borderRadius: [5, 5, 0, 0] } }),
+      },
+      { name: 'Salidas', type: 'line', data: datos.map((d) => d.salidas), showSymbol: false, symbolSize: 7, lineStyle: { width: 1.5, color: COLOR_SALIDAS }, itemStyle: { color: COLOR_SALIDAS } },
     ],
-  }), [datos])
+  }), [datos, ultimo])
   return (
     <Panel titulo="Ingresos y salidas de visitantes" icono={ICONOS.tendencia} className="xl:col-span-2"
       accion={
-        <div role="group" aria-label="Periodo" className="flex gap-1 rounded-full bg-gray-100 p-1">
+        <div role="group" aria-label="Periodo" className="inline-flex rounded-xl bg-brand-50 p-1">
           {RANGOS.map((r) => (
             <button key={r} aria-pressed={dias === r} onClick={() => setDias(r)}
-              className={`rounded-full px-3 py-0.5 text-xs font-medium transition ${dias === r ? 'bg-white text-brand shadow-sm' : 'text-gray-500 hover:text-brand'}`}>{r} días</button>
+              className={`rounded-lg px-3 py-1 text-xs font-semibold transition ${dias === r ? 'bg-white text-brand shadow-neu-xs' : 'text-gray-500 hover:text-brand'}`}>{r}D</button>
           ))}
         </div>
       }>
+      <div className="mb-1 flex flex-wrap items-baseline gap-2">
+        <span className="text-2xl font-bold tabular-nums text-gray-900">{total}</span>
+        <Variacion pct={pct} />
+        <span className="text-xs text-gray-500">ingresos en los últimos {dias} días{pct != null ? ` · vs. los ${dias} anteriores` : ''}</span>
+      </div>
       <div className="relative">
         <ReactECharts option={opcion} notMerge style={{ height: 260 }} />
         {vacio && <div className="pointer-events-none absolute inset-0 grid place-items-center pt-6 text-center text-sm text-gray-500"><span className="rounded-lg bg-white/90 px-3 py-1.5">Sin ingresos ni salidas registrados en estos {dias} días.</span></div>}
@@ -235,36 +269,35 @@ export function DonaTarjetas({ disponible, enUso, inactiva }: { disponible: numb
     { label: 'En uso', n: enUso, color: COLOR_INGRESOS },
     { label: 'Inactivas', n: inactiva, color: COLOR_NEUTRO },
   ]
-  const R = 42, C = 2 * Math.PI * R
-  const huecos = partes.filter((p) => p.n > 0).length > 1 ? 1.5 : 0
-  let acumulado = 0
   return (
-    <div className="flex flex-wrap items-center gap-5">
-      <div className="relative h-32 w-32 shrink-0">
-        <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90" role="img" aria-label={`${disponible} tarjetas disponibles de ${total}`}>
-          <circle cx="50" cy="50" r={R} fill="none" stroke="#F1F5F9" strokeWidth="11" />
-          {total > 0 && partes.map((p) => {
-            const largo = (p.n / total) * C
-            const seg = p.n > 0 && (
-              <circle key={p.label} cx="50" cy="50" r={R} fill="none" stroke={p.color} strokeWidth="11"
-                strokeDasharray={`${Math.max(0, largo - huecos)} ${C}`} strokeDashoffset={-acumulado}>
-                <title>{p.label}: {p.n}</title>
-              </circle>
-            )
-            acumulado += largo
-            return seg
-          })}
-        </svg>
-        <div className="absolute inset-0 grid place-content-center text-center">
-          <div className="text-2xl font-bold leading-none tabular-nums text-gray-900">{total ? Math.round((disponible / total) * 100) : 0}%</div>
-          <div className="mt-0.5 text-[11px] text-gray-500">disponibles</div>
-        </div>
+    <div className="flex flex-1 flex-col">
+      <div className="flex items-baseline gap-2">
+        <span className="text-3xl font-bold tabular-nums text-gray-900">{total ? Math.round((disponible / total) * 100) : 0}%</span>
+        <span className="text-xs text-gray-500">disponibles · {disponible} de {total}</span>
       </div>
-      <ul className="min-w-[130px] flex-1 space-y-2 text-sm">
+      <BarraApilada partes={partes} className="mt-3" />
+      {total > 0 && enUso / total >= 0.8 && (
+        <p className="mt-3 rounded-lg bg-amber-50 px-3 py-1.5 text-xs text-amber-800">Quedan pocas tarjetas libres: revisa las salidas pendientes.</p>
+      )}
+    </div>
+  )
+}
+
+// ── Barra de proporción apilada con leyenda (reemplaza las donas pequeñas: se lee mejor) ──
+export function BarraApilada({ partes, className = '' }: { partes: { label: string; n: number; color: string }[]; className?: string }) {
+  const total = partes.reduce((a, p) => a + p.n, 0)
+  return (
+    <div className={className}>
+      <div className="flex h-3 gap-0.5 overflow-hidden rounded-full bg-gray-100" role="img" aria-label={partes.map((p) => `${p.label}: ${p.n}`).join(', ')}>
+        {total > 0 && partes.filter((p) => p.n > 0).map((p) => (
+          <div key={p.label} title={`${p.label}: ${p.n}`} className="h-full transition-[width] duration-500" style={{ width: `${(p.n / total) * 100}%`, background: p.color }} />
+        ))}
+      </div>
+      <ul className="mt-3 space-y-1.5 text-sm">
         {partes.map((p) => (
           <li key={p.label} className="flex items-center justify-between gap-3 text-gray-600">
             <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full" style={{ background: p.color }} />{p.label}</span>
-            <b className="tabular-nums text-gray-900">{p.n}</b>
+            <span className="tabular-nums"><b className="text-gray-900">{p.n}</b> <span className="ml-1 text-xs text-gray-400">{total ? Math.round((p.n / total) * 100) : 0}%</span></span>
           </li>
         ))}
       </ul>

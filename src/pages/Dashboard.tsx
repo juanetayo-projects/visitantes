@@ -64,6 +64,9 @@ export default function Dashboard() {
   const ultimos14 = useMemo(() => serie.slice(-14).map((p) => ({ fecha: p.fecha, n: p.ingresos })), [serie])
   const ingresos14 = ultimos14.reduce((a, p) => a + p.n, 0)
   const ayer = serie[serie.length - 2]?.ingresos
+  // Variación de los últimos 14 días frente a los 14 anteriores (la serie trae 90 días).
+  const previos14 = serie.length >= 28 ? serie.slice(-28, -14).reduce((a, p) => a + p.ingresos, 0) : 0
+  const varIngresos = previos14 ? Math.round(((ingresos14 - previos14) / previos14) * 100) : null
   const pacientes = resumen?.pacientes ?? 0
   const prop = (n?: number) => (pacientes && n != null ? n / pacientes : 0)
   const accesos = ACCESOS.filter((a) => !a.roles || a.roles.includes(perfil?.rol ?? ''))
@@ -100,9 +103,12 @@ export default function Dashboard() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiCard titulo="Ingresos" valor={ingresos14} detalle={`Últimos 14 días${ayer != null ? ` · ayer: ${ayer}` : ''}`} icono={ICONOS.entrada} tono="azul" serie={ultimos14} colorSerie={COLOR_INGRESOS} />
-        <KpiCard titulo="Pacientes con acompañante" valor={resumen?.conAcomp ?? '—'} detalle={resumen ? `de ${pacientes} en el censo` : undefined} icono={ICONOS.check} tono="verde" proporcion={prop(resumen?.conAcomp)} />
-        <KpiCard titulo="En aislamiento" valor={resumen?.aislamiento ?? '—'} detalle={resumen ? `de ${pacientes} en el censo` : undefined} icono={ICONOS.alerta} tono="rojo" proporcion={prop(resumen?.aislamiento)} />
+        <KpiCard titulo="Ingresos" valor={ingresos14} detalle={`Últimos 14 días${ayer != null ? ` · ayer: ${ayer}` : ''}`} icono={ICONOS.entrada} tono="azul" serie={ultimos14} colorSerie={COLOR_INGRESOS}
+          variacion={{ pct: varIngresos, texto: 'vs. los 14 días anteriores' }} />
+        <KpiCard titulo="Pacientes con acompañante" valor={resumen?.conAcomp ?? '—'} icono={ICONOS.check} tono="verde" proporcion={prop(resumen?.conAcomp)}
+          detalle={resumen ? `de ${pacientes} en el censo · ${Math.max(0, pacientes - resumen.conAcomp)} sin acompañante` : undefined} />
+        <KpiCard titulo="En aislamiento" valor={resumen?.aislamiento ?? '—'} icono={ICONOS.alerta} tono="rojo" proporcion={prop(resumen?.aislamiento)}
+          detalle={resumen ? `de ${pacientes} en el censo · visitas con precauciones` : undefined} />
         <KpiCard titulo="Sin cama asignada" valor={sinCama.length} detalle="Clic para ver los pacientes →" icono={ICONOS.cama} tono="ambar" proporcion={prop(sinCama.length)} onClick={() => setVerSinCama(true)} />
       </div>
 
