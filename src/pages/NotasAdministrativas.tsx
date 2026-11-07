@@ -87,35 +87,38 @@ export default function NotasAdministrativas() {
       ) : rows.length === 0 ? (
         <Card className="py-10 text-center text-gray-400 text-sm">Sin registros</Card>
       ) : (
-        <div className="space-y-5">
-          {grupos.map((g) => (
-            <Card key={g.nombre} hover={false} className="overflow-hidden">
-              <div className="flex items-center justify-between gap-2 border-b border-gray-100 bg-brand-50/60 px-4 py-2.5">
-                <div className="text-sm font-semibold text-brand">{g.nombre}</div>
-                <span className="rounded-full bg-brand px-2.5 py-0.5 text-xs font-medium text-white">{g.notas.length} nota(s)</span>
-              </div>
-              <div className="tabla-scroll">
-                <table className="w-full text-sm">
-                  <thead className="bg-brand text-white"><tr>
-                    {['Fecha/hora', 'Paciente', 'Cédula', 'Ubicación', '# Ingreso', 'Comentario'].map((h) => <th key={h} className="px-3 py-2.5 text-left font-medium whitespace-nowrap">{h}</th>)}
-                  </tr></thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {g.notas.map((r) => (
-                      <tr key={r.id} className="hover:bg-brand-50/40">
-                        <td className="px-3 py-2 whitespace-nowrap text-gray-600">{horaCO(r.created_at)}</td>
-                        <td className="px-3 py-2 text-gray-700">{r.paciente_nombre ?? '—'}</td>
-                        <td className="px-3 py-2 text-gray-600">{r.paciente_documento ?? '—'}</td>
-                        <td className="px-3 py-2 text-gray-600">{r.ubicacion_etiqueta ?? '—'}</td>
-                        <td className="px-3 py-2 text-gray-600">{r.num_ingreso ?? '—'}</td>
-                        <td className="px-3 py-2 text-gray-700 max-w-md">{r.comentario}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </Card>
-          ))}
-        </div>
+        // Una sola tabla con una fila separadora por usuario: así hay un único encabezado inmovilizado.
+        <Card hover={false} className="overflow-hidden">
+          <div className="tabla-scroll">
+            <table className="w-full text-sm">
+              <thead className="bg-brand text-white"><tr>
+                {['Fecha/hora', 'Paciente', 'Cédula', 'Ubicación', '# Ingreso', 'Comentario'].map((h) => <th key={h} className="px-3 py-2.5 text-left font-medium whitespace-nowrap">{h}</th>)}
+              </tr></thead>
+              {grupos.map((g) => (
+                <tbody key={g.nombre} className="divide-y divide-gray-100">
+                  <tr className="bg-brand-50">
+                    <td colSpan={6} className="px-3 py-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-semibold text-brand">{g.nombre}</span>
+                        <span className="rounded-full bg-brand px-2.5 py-0.5 text-xs font-medium text-white">{g.notas.length} {g.notas.length === 1 ? 'nota' : 'notas'}</span>
+                      </div>
+                    </td>
+                  </tr>
+                  {g.notas.map((r) => (
+                    <tr key={r.id} className="hover:bg-brand-50/40">
+                      <td className="px-3 py-2 whitespace-nowrap text-gray-600">{horaCO(r.created_at)}</td>
+                      <td className="px-3 py-2 text-gray-700">{r.paciente_nombre ?? '—'}</td>
+                      <td className="px-3 py-2 text-gray-600">{r.paciente_documento ?? '—'}</td>
+                      <td className="px-3 py-2 text-gray-600">{r.ubicacion_etiqueta ?? '—'}</td>
+                      <td className="px-3 py-2 text-gray-600">{r.num_ingreso ?? '—'}</td>
+                      <td className="px-3 py-2 text-gray-700 max-w-md">{r.comentario}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              ))}
+            </table>
+          </div>
+        </Card>
       )}
       </ConLateral>
     </div>

@@ -125,7 +125,7 @@ export default function Estadisticas() {
           <button onClick={() => exportarExcel('Mapa de calor — detalle', COLS, detalle, metaDetalle())} className="rounded-lg bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand hover:bg-brand-100">Excel</button>
           <button onClick={() => exportarPDF('Mapa de calor — detalle', COLS, detalle, metaDetalle())} className="rounded-lg bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand hover:bg-brand-100">PDF</button>
         </div>
-        <div className="tabla-scroll !max-h-[55vh]">
+        <div className="tabla-scroll !max-h-[55vh]" data-alto-fijo>
           <table className="w-full text-sm">
             <thead className="bg-brand-50 text-brand">
               <tr>{['Hora', 'Visitante', 'Tipo', 'Paciente / ubicación'].map((h) => <th key={h} className="px-3 py-2 text-left font-medium">{h}</th>)}</tr>

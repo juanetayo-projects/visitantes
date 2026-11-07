@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthProvider'
 import { ROL_LABEL, type Rol } from '../lib/types'
+import { useTablasAlAlto } from '../lib/tablasAlAlto'
 
 const LOGO = `${import.meta.env.BASE_URL}images/logo_cacsb_blanc.png`
 
@@ -52,7 +53,8 @@ export default function Layout() {
   const esAdmin = rol === 'admin'
   const adminActivo = ADMIN.some(i => location.pathname === i.to)
   const [abierto, setAbierto] = useState(adminActivo)
-  const iniciales = (perfil?.nombre || perfil?.email || '?').split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join('')
+  useTablasAlAlto(location.pathname)
+  const iniciales =(perfil?.nombre || perfil?.email || '?').split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join('')
 
   // Al cerrar sesión, vuelve siempre a la raíz — si no, el próximo usuario que
   // inicie sesión aterriza en la última ruta visitada (p.ej. Usuarios) en vez del Inicio.
