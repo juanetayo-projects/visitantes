@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { PageHeader, ContadorCircular, ConLateral, PanelIndicadores, ICONOS_IND, Card, FilterBar, selectCls, Btn, Badge, Modal } from '../components/ui'
+import { PageHeader, useDebounced, AvisoLimite, ContadorCircular, ConLateral, PanelIndicadores, ICONOS_IND, Card, FilterBar, selectCls, Btn, Badge, Modal } from '../components/ui'
 import { useAuth } from '../auth/AuthProvider'
-import { listVisitas, listSedes, listPisos, listUbicaciones, finalizarVisita, describirFiltros, type VisitaListado, type FiltrosVisita } from '../lib/data'
+import { LIMITE_VISITAS, listVisitas, listSedes, listPisos, listUbicaciones, finalizarVisita, describirFiltros, type VisitaListado, type FiltrosVisita } from '../lib/data'
 import { exportarExcel, exportarPDF, type Columna } from '../lib/exportar'
 import type { Sede, Piso, Ubicacion } from '../lib/types'
 
@@ -34,9 +34,11 @@ export default function Visitas() {
   const [ubicaciones, setUbicaciones] = useState<Ubicacion[]>([])
   const [loading, setLoading] = useState(true)
   const [f, setF] = useState<FiltrosVisita>({ estado: 'activa' })
+  // La búsqueda va al servidor (todas las visitas, no solo las 500 recientes), con un leve retardo al escribir.
+  const textoBusqueda = useDebounced((f.texto ?? '').trim().length >= 3 ? f.texto : '')
   const [confirmar, setConfirmar] = useState<VisitaListado | null>(null)
 
-  async function cargar() { setLoading(true); setRows(await listVisitas(f)); setLoading(false) }
+  async function cargar() { setLoading(true); setRows(await listVisitas(f, { buscarEnServidor: true })); setLoading(false) }
   useEffect(() => { listSedes().then(setSedes) }, [])
   useEffect(() => {
     if (f.sedeId) listPisos(f.sedeId).then(setPisos); else setPisos([])
@@ -44,7 +46,7 @@ export default function Visitas() {
   useEffect(() => {
     if (f.pisoId) listUbicaciones(f.pisoId).then(setUbicaciones); else setUbicaciones([])
   }, [f.pisoId])
-  useEffect(() => { cargar() }, [f.estado, f.tipo, f.sedeId, f.pisoId, f.ubicacionId, f.desde, f.hasta])
+  useEffect(() => { cargar() }, [f.estado, f.tipo, f.sedeId, f.pisoId, f.ubicacionId, f.desde, f.hasta, textoBusqueda])
 
   async function salida() {
     if (!confirmar) return
@@ -107,6 +109,7 @@ export default function Visitas() {
       </>}>
 
       <Card hover={false} className="overflow-hidden">
+        <AvisoLimite n={rows.length} limite={LIMITE_VISITAS} />
         <div className="tabla-scroll">
           <table className="w-full text-sm">
             <thead className="bg-brand text-white">

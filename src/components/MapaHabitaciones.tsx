@@ -155,9 +155,16 @@ export default function MapaHabitaciones({ pisoId, onSelect, refreshKey = 0, are
           style={{ left: tip.x, top: tip.y, transform: tip.arriba ? 'translateY(-100%)' : undefined }}>
           {/* Encabezado azul para destacar */}
           <div className="flex items-center justify-between gap-2 bg-brand px-3 py-2">
-            <div className="min-w-0">
-              <div className="text-sm font-semibold text-white truncate">{tip.o.etiqueta}</div>
-              {(tip.o.area || tip.o.servicio) && <div className="text-[11px] text-brand-100 truncate">{[tip.o.area, tip.o.servicio].filter(Boolean).join(' · ')}</div>}
+            <div className="flex min-w-0 items-center gap-2">
+              {ICONO_TIPO[tip.o.tipo] && (
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/15 text-white" title={ICONO_TIPO[tip.o.tipo].label}>
+                  <Icono d={ICONO_TIPO[tip.o.tipo].d} className="h-4 w-4" />
+                </span>
+              )}
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-white truncate">{tip.o.etiqueta}</div>
+                <div className="text-[11px] text-brand-100 truncate">{[ICONO_TIPO[tip.o.tipo]?.label, tip.o.area, tip.o.servicio].filter(Boolean).join(' · ')}</div>
+              </div>
             </div>
             {tip.o.aislamiento
               ? <span className="inline-flex items-center gap-1 rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-medium text-white">

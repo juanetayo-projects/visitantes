@@ -1,9 +1,33 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
-export function PageHeader({ title, subtitle, action, contador }: { title: string; subtitle?: string; action?: ReactNode; contador?: ReactNode }) {
+// Devuelve el valor solo cuando deja de cambiar por `ms`: evita consultar en cada tecla.
+export function useDebounced<T>(valor: T, ms = 400): T {
+  const [v, setV] = useState(valor)
+  useEffect(() => { const t = setTimeout(() => setV(valor), ms); return () => clearTimeout(t) }, [valor, ms])
+  return v
+}
+
+// Aviso cuando una consulta llega al tope de registros: hay más, hay que acotar con filtros o búsqueda.
+export function AvisoLimite({ n, limite }: { n: number; limite: number }) {
+  if (n < limite) return null
+  return <div className="border-b border-amber-100 bg-amber-50 px-4 py-2 text-xs text-amber-800">Se muestran las {limite} visitas más recientes. Para ver anteriores, usa las fechas, la ubicación o la búsqueda.</div>
+}
+
+// Encabezado de página. Por defecto queda fijo bajo la barra superior (56 px) al desplazar, y publica
+// su alto en --encabezado-pagina para que la barra lateral (ConLateral) se fije justo debajo.
+export function PageHeader({ title, subtitle, action, contador, fijo = true }: { title: string; subtitle?: string; action?: ReactNode; contador?: ReactNode; fijo?: boolean }) {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const raiz = document.documentElement.style
+    const el = ref.current
+    if (!fijo || !el) { raiz.setProperty('--encabezado-pagina', '0px'); return }
+    const ro = new ResizeObserver(() => raiz.setProperty('--encabezado-pagina', `${el.offsetHeight}px`))
+    ro.observe(el)
+    return () => { ro.disconnect(); raiz.setProperty('--encabezado-pagina', '0px') }
+  }, [fijo])
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+    <div ref={ref} className={`flex flex-wrap items-center justify-between gap-3 mb-5 ${fijo ? 'sticky top-14 z-[15] -mx-6 bg-[#E4E9F3]/95 px-6 py-3 backdrop-blur-sm' : ''}`}>
       <div className="min-w-0 flex-1">
         <h1 className="text-2xl font-semibold text-brand">{title}</h1>
         {subtitle && <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>}
@@ -184,7 +208,7 @@ export function ConLateral({ lateral, children }: { lateral: ReactNode; children
   return (
     <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_300px]">
       <div className="order-2 min-w-0 xl:order-1">{children}</div>
-      <aside className="order-1 min-w-0 space-y-4 xl:sticky xl:top-[68px] xl:order-2 xl:max-h-[calc(100vh-84px)] xl:overflow-y-auto xl:overscroll-contain xl:p-1">{lateral}</aside>
+      <aside className="order-1 min-w-0 space-y-4 xl:sticky xl:top-[calc(56px+var(--encabezado-pagina,0px))] xl:order-2 xl:max-h-[calc(100vh-72px-var(--encabezado-pagina,0px))] xl:overflow-y-auto xl:overscroll-contain xl:p-1">{lateral}</aside>
     </div>
   )
 }

@@ -547,10 +547,11 @@ export interface FiltrosVisita {
   texto?: string
 }
 
-export async function listVisitas(f: FiltrosVisita = {}, opts: { excluirSinTarjeta?: boolean } = {}): Promise<VisitaListado[]> {
+export const LIMITE_VISITAS = 500
+export async function listVisitas(f: FiltrosVisita = {}, opts: { excluirSinTarjeta?: boolean; buscarEnServidor?: boolean } = {}): Promise<VisitaListado[]> {
   let q = supabase.from('visitas')
-    .select('id, tipo_visitante, tipo_acompanante, paciente_nombre, num_ingreso, ubicacion_etiqueta, aislamiento, permiso_alimentos, estado, created_at, sede_id, visitante:visitantes(nombres_completos, cedula, celular), tarjeta:tarjetas!visitas_tarjeta_id_fkey(codigo), responsable:responsables!visitas_responsable_id_fkey(nombre_completo), sede:sedes(nombre), eventos:visita_eventos(tipo, hora)')
-    .order('created_at', { ascending: false }).limit(500)
+    .select('id, tipo_visitante, tipo_acompanante, paciente_nombre, paciente_documento, num_ingreso, ubicacion_etiqueta, aislamiento, permiso_alimentos, estado, created_at, sede_id, visitante:visitantes(nombres_completos, cedula, celular), tarjeta:tarjetas!visitas_tarjeta_id_fkey(codigo), responsable:responsables!visitas_responsable_id_fkey(nombre_completo), sede:sedes(nombre), eventos:visita_eventos(tipo, hora)')
+    .order('created_at', { ascending: false }).limit(LIMITE_VISITAS)
   if (opts.excluirSinTarjeta) q = q.neq('tipo_visitante', 'sin_tarjeta')
   if (f.estado) q = q.eq('estado', f.estado)
   if (f.tipo) q = q.eq('tipo_visitante', f.tipo)
@@ -560,6 +561,16 @@ export async function listVisitas(f: FiltrosVisita = {}, opts: { excluirSinTarje
   if (f.numIngreso) q = q.eq('num_ingreso', f.numIngreso)
   if (f.desde) q = q.gte('created_at', f.desde + 'T00:00:00-05:00')
   if (f.hasta) q = q.lte('created_at', f.hasta + 'T23:59:59-05:00')
+  // Búsqueda en el servidor: sin esto, el texto solo se buscaría entre las 500 visitas más recientes
+  // y un paciente de hace semanas no aparecería en el Histórico.
+  const t = opts.buscarEnServidor ? (f.texto ?? '').replace(/[,()*%\\]/g, ' ').trim() : ''
+  if (t.length >= 3) {
+    const { data: vis } = await supabase.from('visitantes').select('id').or(`nombres_completos.ilike.*${t}*,cedula.ilike.*${t}*`).limit(300)
+    const ids = (vis ?? []).map((v: any) => v.id)
+    const condiciones = [`paciente_nombre.ilike.*${t}*`, `paciente_documento.ilike.*${t}*`, `num_ingreso.ilike.*${t}*`, `ubicacion_etiqueta.ilike.*${t}*`]
+    if (ids.length) condiciones.push(`visitante_id.in.(${ids.join(',')})`)
+    q = q.or(condiciones.join(','))
+  }
   const { data } = await q
   let rows = (data ?? []).map((r: any) => ({
     ...r,
@@ -571,6 +582,8 @@ export async function listVisitas(f: FiltrosVisita = {}, opts: { excluirSinTarje
       r.visitante?.nombres_completos?.toLowerCase().includes(t) ||
       r.visitante?.cedula?.includes(t) ||
       r.paciente_nombre?.toLowerCase().includes(t) ||
+      (r as any).paciente_documento?.includes(t) ||
+      r.num_ingreso?.toLowerCase().includes(t) ||
       r.ubicacion_etiqueta?.toLowerCase().includes(t))
   }
   return rows
@@ -923,7 +936,7 @@ export interface FiltrosNota {
 export async function listNotasAdministrativas(f: FiltrosNota = {}): Promise<(NotaAdministrativa & { usuario_nombre: string | null; ubicacion_etiqueta: string | null })[]> {
   let q = supabase.from('notas_administrativas')
     .select('*, registrado:perfiles!notas_administrativas_registrado_por_fkey(nombre), ubicacion:ubicaciones(etiqueta)')
-    .order('created_at', { ascending: false }).limit(500)
+    .order('created_at', { ascending: false }).limit(LIMITE_VISITAS)
   if (f.desde) q = q.gte('created_at', f.desde + 'T00:00:00-05:00')
   if (f.hasta) q = q.lte('created_at', f.hasta + 'T23:59:59-05:00')
   if (f.usuarioId) q = q.eq('registrado_por', f.usuarioId)

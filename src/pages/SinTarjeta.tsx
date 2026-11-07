@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { PageHeader, ContadorCircular, ConLateral, PanelIndicadores, ICONOS_IND, Card, FilterBar, selectCls, Btn, Badge } from '../components/ui'
-import { listVisitas, listSedes, describirFiltros, type VisitaListado, type FiltrosVisita } from '../lib/data'
+import { PageHeader, useDebounced, AvisoLimite, ContadorCircular, ConLateral, PanelIndicadores, ICONOS_IND, Card, FilterBar, selectCls, Btn, Badge } from '../components/ui'
+import { LIMITE_VISITAS, listVisitas, listSedes, describirFiltros, type VisitaListado, type FiltrosVisita } from '../lib/data'
 import { exportarExcel, exportarPDF, type Columna } from '../lib/exportar'
 import type { Sede } from '../lib/types'
 
@@ -24,12 +24,14 @@ export default function SinTarjeta() {
   const [sedes, setSedes] = useState<Sede[]>([])
   const [loading, setLoading] = useState(false)
   const [f, setF] = useState<FiltrosVisita>({ estado: '' })
+  // La búsqueda va al servidor (todas las visitas, no solo las 500 recientes), con un leve retardo al escribir.
+  const textoBusqueda = useDebounced((f.texto ?? '').trim().length >= 3 ? f.texto : '')
 
   useEffect(() => { listSedes().then(setSedes) }, [])
   useEffect(() => {
     setLoading(true)
-    listVisitas({ ...f, tipo: 'sin_tarjeta' }).then((r) => { setRows(r); setLoading(false) })
-  }, [f.estado, f.sedeId, f.desde, f.hasta])
+    listVisitas({ ...f, tipo: 'sin_tarjeta' }, { buscarEnServidor: true }).then((r) => { setRows(r); setLoading(false) })
+  }, [f.estado, f.sedeId, f.desde, f.hasta, textoBusqueda])
 
   const filtrados = useMemo(() => {
     if (!f.texto) return rows
@@ -66,6 +68,7 @@ export default function SinTarjeta() {
       </>}>
 
       <Card hover={false} className="overflow-hidden">
+        <AvisoLimite n={rows.length} limite={LIMITE_VISITAS} />
         <div className="tabla-scroll">
           <table className="w-full text-sm">
             <thead className="bg-brand text-white"><tr>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { PageHeader, ContadorCircular, ConLateral, PanelIndicadores, ICONOS_IND, Card, FilterBar, selectCls, Btn, Badge } from '../components/ui'
-import { listVisitas, listSedes, listPisos, listUbicaciones, describirFiltros, type VisitaListado, type FiltrosVisita } from '../lib/data'
+import { PageHeader, useDebounced, AvisoLimite, ContadorCircular, ConLateral, PanelIndicadores, ICONOS_IND, Card, FilterBar, selectCls, Btn, Badge } from '../components/ui'
+import { LIMITE_VISITAS, listVisitas, listSedes, listPisos, listUbicaciones, describirFiltros, type VisitaListado, type FiltrosVisita } from '../lib/data'
 import { exportarExcel, exportarPDF, type Columna } from '../lib/exportar'
 import type { Sede, Piso, Ubicacion } from '../lib/types'
 
@@ -32,14 +32,16 @@ export default function Historico() {
   const [ubicaciones, setUbicaciones] = useState<Ubicacion[]>([])
   const [loading, setLoading] = useState(false)
   const [f, setF] = useState<FiltrosVisita>({ estado: '' })
+  // La búsqueda va al servidor (todas las visitas, no solo las 500 recientes), con un leve retardo al escribir.
+  const textoBusqueda = useDebounced((f.texto ?? '').trim().length >= 3 ? f.texto : '')
 
   useEffect(() => { listSedes().then(setSedes) }, [])
   useEffect(() => { if (f.sedeId) listPisos(f.sedeId).then(setPisos); else setPisos([]) }, [f.sedeId])
   useEffect(() => { if (f.pisoId) listUbicaciones(f.pisoId).then(setUbicaciones); else setUbicaciones([]) }, [f.pisoId])
   useEffect(() => {
     setLoading(true)
-    listVisitas(f, { excluirSinTarjeta: true }).then((r) => { setRows(r); setLoading(false) })
-  }, [f.estado, f.tipo, f.sedeId, f.pisoId, f.ubicacionId, f.desde, f.hasta])
+    listVisitas(f, { excluirSinTarjeta: true, buscarEnServidor: true }).then((r) => { setRows(r); setLoading(false) })
+  }, [f.estado, f.tipo, f.sedeId, f.pisoId, f.ubicacionId, f.desde, f.hasta, textoBusqueda])
 
   const filtrados = useMemo(() => {
     if (!f.texto) return rows
@@ -89,6 +91,7 @@ export default function Historico() {
       </>}>
 
       <Card hover={false} className="overflow-hidden">
+        <AvisoLimite n={rows.length} limite={LIMITE_VISITAS} />
         <div className="tabla-scroll">
           <table className="w-full text-sm">
             <thead className="bg-brand text-white"><tr>

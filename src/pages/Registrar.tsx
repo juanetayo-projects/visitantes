@@ -261,7 +261,8 @@ export default function Registrar() {
 
   return (
     <div>
-      <PageHeader title="Registrar visita" subtitle="Ingreso de visitantes — zona horaria Colombia (GMT-5)" />
+      {/* Aquí lo que queda fijo es la franja de sede/piso/búsqueda, no el título */}
+      <PageHeader title="Registrar visita" subtitle="Ingreso de visitantes — zona horaria Colombia (GMT-5)" fijo={false} />
       <EstadoSyncCenso soloSiDesactualizado />
 
       {msg && (
