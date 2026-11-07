@@ -170,7 +170,8 @@ export default function CrudTable({ tabla, titulo, columnas, campos, orderBy = '
 
   const encabezado = (
     <div>
-      <div className="font-semibold text-brand">{titulo} <span className="text-gray-400 text-sm">({filtrados.length}{filtrados.length !== rows.length ? ` de ${rows.length}` : ''})</span></div>
+      <div className="font-semibold text-brand">{titulo}</div>
+      <div className="text-sm font-medium text-gray-400">{loading ? 'Cargando…' : `${filtrados.length}${filtrados.length !== rows.length ? ` de ${rows.length}` : ''} ${rows.length === 1 ? 'registro' : 'registros'}`}</div>
       {subtitulo && <div className="text-xs text-gray-500">{subtitulo}</div>}
     </div>
   )

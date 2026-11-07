@@ -5,6 +5,7 @@ import { listInconsistencias, ultimoSync, type CensoInconsistencia, type CensoSy
 import { exportarExcel, type Columna } from '../../lib/exportar'
 import EstadoSyncCenso from '../../components/EstadoSyncCenso'
 import { useSyncCenso } from '../../components/ProgresoSync'
+import { useAuth } from '../../auth/AuthProvider'
 
 const TIPO_LABEL: Record<string, { label: string; color: 'red' | 'amber' | 'gray' }> = {
   ubicacion_no_homologada: { label: 'Ubicación sin homologar', color: 'red' },
@@ -46,7 +47,11 @@ function describirFiltros(f: Filtros): string {
   return p.join(' · ')
 }
 
-export default function SincronizacionCenso() {
+// soloConsulta: vista para orientadores/coordinadores, sin ejecutar la sincronización ni ir a Homologación.
+export default function SincronizacionCenso({ soloConsulta: soloConsultaProp = false }: { soloConsulta?: boolean }) {
+  const { perfil } = useAuth()
+  // Solo el administrador puede sincronizar; cualquier otro rol ve la página en modo consulta.
+  const soloConsulta = soloConsultaProp || perfil?.rol !== 'admin'
   const [rows, setRows] = useState<CensoInconsistencia[]>([])
   const [log, setLog] = useState<CensoSyncLog | null>(null)
   const [loading, setLoading] = useState(true)
@@ -87,15 +92,16 @@ export default function SincronizacionCenso() {
 
   return (
     <div>
-      <PageHeader title="Sincronización CENSO" subtitle="Estado de la última sincronización e inconsistencias detectadas al cruzar el CENSO con la homologación."
+      <PageHeader title={soloConsulta ? "Inconsistencias del censo" : "Sincronización CENSO"}
+        subtitle={soloConsulta ? "Pacientes del CENSO que la app no pudo ubicar en la última sincronización. Si necesitas corregir alguno, avisa al administrador." : "Estado de la última sincronización e inconsistencias detectadas al cruzar el CENSO con la homologación."}
         contador={<ContadorCircular valor={loading ? '…' : filtrados.length} etiqueta={filtrados.length === 1 ? 'inconsistencia' : 'inconsistencias'} de={filtrados.length !== rows.length ? rows.length : undefined} />}
         action={<div className="flex gap-2">
-          <Link to="/admin/homologacion" className="self-center text-sm font-medium text-brand-light hover:underline">Ir a Homologación →</Link>
+          {!soloConsulta && <Link to="/admin/homologacion" className="self-center text-sm font-medium text-brand-light hover:underline">Ir a Homologación →</Link>}
           <Btn variant="light" onClick={() => exportarExcel('Sincronización CENSO — Inconsistencias', COLS, filtrados, { filtros: describirFiltros(f) })} disabled={!filtrados.length}>Excel</Btn>
-          <Btn onClick={() => setConfirmar(true)} disabled={ejecutando}>{ejecutando ? 'Sincronizando…' : '↻ Ejecutar ahora'}</Btn>
+          {!soloConsulta && <Btn onClick={() => setConfirmar(true)} disabled={ejecutando}>{ejecutando ? 'Sincronizando…' : '↻ Ejecutar ahora'}</Btn>}
         </div>} />
 
-      {sync.vista}
+      {!soloConsulta && sync.vista}
       <ConLateral lateral={
         <>
           <EstadoSyncCenso key={log?.run_at ?? 'sin'} soloSiDesactualizado />
@@ -107,7 +113,7 @@ export default function SincronizacionCenso() {
           ] : []}>
             {log
               ? <p className="mb-2 text-sm font-medium text-brand">{fechaHoraCO(log.run_at)}</p>
-              : <p className="text-sm text-gray-500">Aún no se ha ejecutado ninguna sincronización. Usa «Ejecutar ahora» o espera la corrida automática.</p>}
+              : <p className="text-sm text-gray-500">{soloConsulta ? 'Aún no se ha ejecutado ninguna sincronización.' : 'Aún no se ha ejecutado ninguna sincronización. Usa «Ejecutar ahora» o espera la corrida automática.'}</p>}
             {log && !log.ok && log.mensaje && <p className="mb-2 break-words text-xs text-rose-600">{log.mensaje}</p>}
           </PanelIndicadores>
           {/* Desglose: clic en un tipo para ver solo esas inconsistencias en la tabla */}
@@ -167,7 +173,7 @@ export default function SincronizacionCenso() {
       </ConLateral>
 
       {/* Confirmación de ejecución manual */}
-      <Modal open={confirmar} onClose={() => setConfirmar(false)} title="Ejecutar sincronización del CENSO">
+      <Modal open={!soloConsulta && confirmar} onClose={() => setConfirmar(false)} title="Ejecutar sincronización del CENSO">
         <p className="text-sm text-gray-700">
           Esto <b>consultará la API del CENSO en este momento</b> y actualizará los pacientes, aislamientos e
           inconsistencias en la base de datos. Hay corridas automáticas; úsalo para <b>forzar</b> una actualización inmediata.

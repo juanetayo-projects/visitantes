@@ -58,6 +58,7 @@ export default function App() {
               <Route path="cirugia" element={<Cirugia />} />
               <Route path="hemodinamia" element={<Hemodinamia />} />
               <Route path="otro" element={<Otro />} />
+              <Route path="inconsistencias-censo" element={<SincronizacionCenso soloConsulta />} />
               <Route path="admin/usuarios" element={<Usuarios />} />
               <Route path="admin/responsables" element={<Responsables />} />
               <Route path="admin/ubicaciones" element={<Ubicaciones />} />
