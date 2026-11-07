@@ -611,6 +611,23 @@ export async function feedReciente(limit = 14): Promise<FeedItem[]> {
   })) as FeedItem[]
 }
 
+// Ingresos y salidas por día (hora Colombia) de los últimos N días, incluidos los días sin movimiento.
+export interface PuntoEventos { fecha: string; ingresos: number; salidas: number }
+export async function serieEventos(dias: number): Promise<PuntoEventos[]> {
+  const ahoraCO = Date.now() - 5 * 3_600_000
+  const fecha = (ms: number) => new Date(ms).toISOString().slice(0, 10)
+  const m = new Map<string, PuntoEventos>()
+  for (let i = dias - 1; i >= 0; i--) { const f = fecha(ahoraCO - i * 86_400_000); m.set(f, { fecha: f, ingresos: 0, salidas: 0 }) }
+  const desde = fecha(ahoraCO - (dias - 1) * 86_400_000)
+  const { data } = await supabase.from('visita_eventos').select('hora, tipo').gte('hora', desde + 'T00:00:00-05:00').limit(20000)
+  ;(data ?? []).forEach((e: any) => {
+    const p = m.get(fecha(new Date(e.hora).getTime() - 5 * 3_600_000))
+    if (!p) return
+    if (e.tipo === 'ingreso') p.ingresos++; else if (e.tipo === 'salida') p.salidas++
+  })
+  return [...m.values()]
+}
+
 export interface PisoOcup { piso: string; orden: number; n: number }
 export async function ocupacionPorPiso(): Promise<PisoOcup[]> {
   const { data } = await supabase.from('visitas')
