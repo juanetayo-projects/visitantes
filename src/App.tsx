@@ -8,7 +8,6 @@ import Registrar from './pages/Registrar'
 import Visitas from './pages/Visitas'
 import Mapa from './pages/Mapa'
 import Estadisticas from './pages/Estadisticas'
-import Monitoreo from './pages/Monitoreo'
 import Tarjetas from './pages/Tarjetas'
 import Historico from './pages/Historico'
 import SinTarjeta from './pages/SinTarjeta'
@@ -26,6 +25,7 @@ import Festivos from './pages/admin/Festivos'
 import HomologacionCenso from './pages/admin/HomologacionCenso'
 import HorariosVisita from './pages/admin/HorariosVisita'
 import SincronizacionCenso from './pages/admin/SincronizacionCenso'
+import PacientesSinUbicacion from './pages/PacientesSinUbicacion'
 
 function Protegido({ children }: { children: React.ReactNode }) {
   const { session, perfil, loading, sedeTrabajo } = useAuth()
@@ -47,6 +47,7 @@ export default function App() {
             <Route element={<Layout />}>
               <Route index element={<Dashboard />} />
               <Route path="registrar" element={<Registrar />} />
+              <Route path="sin-ubicacion" element={<PacientesSinUbicacion />} />
               <Route path="visitas" element={<Visitas />} />
               <Route path="historico" element={<Historico />} />
               <Route path="sin-tarjeta" element={<SinTarjeta />} />
@@ -54,7 +55,6 @@ export default function App() {
               <Route path="mapa" element={<Mapa />} />
               <Route path="tarjetas" element={<Tarjetas />} />
               <Route path="estadisticas" element={<Estadisticas />} />
-              <Route path="monitoreo" element={<Monitoreo />} />
               <Route path="cirugia" element={<Cirugia />} />
               <Route path="hemodinamia" element={<Hemodinamia />} />
               <Route path="otro" element={<Otro />} />

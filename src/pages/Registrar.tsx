@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { PageHeader, Card, Btn, selectCls, inputCls, textareaCls, Badge, Modal } from '../components/ui'
 import MapaHabitaciones from '../components/MapaHabitaciones'
 import EstadoSyncCenso from '../components/EstadoSyncCenso'
@@ -88,6 +89,16 @@ export default function Registrar() {
   // paciente que ya cambió de cama o egresó desde la última sincronización.
   const [verif, setVerif] = useState<VerificacionCenso | 'verificando' | null>(null)
   const verifId = useRef(0)
+  // Desde "Pacientes sin ubicación": /registrar?doc=… entra como Familiar con el paciente ya buscado y seleccionado.
+  const [params, setParams] = useSearchParams()
+  useEffect(() => {
+    const doc = params.get('doc')
+    if (!doc) return
+    reset(); setTipo('familiar'); setDocPaciente(doc)
+    buscarPorIdentificacion(doc)
+    setParams({}, { replace: true })
+  }, [params])
+
   // Alto real de la franja fija (una o dos líneas según el ancho): el formulario se fija justo debajo.
   const franjaRef = useRef<HTMLDivElement>(null)
   const [altoFranja, setAltoFranja] = useState(72)
@@ -124,13 +135,13 @@ export default function Registrar() {
   }
 
   // Busca el paciente por número de identificación y lo selecciona aunque no tenga cama.
-  async function buscarPorIdentificacion() {
+  async function buscarPorIdentificacion(valor: string = docPaciente) {
     setDocMsg(null)
-    if (!docPaciente.trim()) return
+    if (!valor.trim()) return
     setBuscandoDoc(true)
     try {
       // Si no está en la copia local puede haber ingresado después de la última sincronización.
-      const o = await buscarPacientePorDocumento(docPaciente) ?? await buscarPacienteEnCenso(docPaciente)
+      const o = await buscarPacientePorDocumento(valor) ?? await buscarPacienteEnCenso(valor)
       if (!o) { setDocMsg('No se encontró un paciente con esa identificación.'); return }
       seleccionar(o)
     } finally { setBuscandoDoc(false) }
@@ -164,7 +175,9 @@ export default function Registrar() {
   useEffect(() => { if (!requiereTarjeta) setTarjetaId('') }, [requiereTarjeta])
   useEffect(() => { listResponsables().then(setResponsables); listServicios().then(setServicios) }, [])
   useEffect(() => {
-    setArea(''); setSel(null)
+    // Al cambiar de piso se descarta la cama elegida en el mapa, pero no un paciente sin ubicación
+    // traído por búsqueda (p. ej. desde "Pacientes sin ubicación": los pisos cargan después).
+    setArea(''); setSel((s) => (s && s.piso_id && s.piso_id !== pisoId ? null : s))
     if (!pisoId) { setAreas([]); return }
     listUbicaciones(pisoId).then((u) => setAreas(ordenarAreas([...new Set(u.map((x) => x.area).filter((a): a is string => !!a))])))
   }, [pisoId])
@@ -286,7 +299,9 @@ export default function Registrar() {
                 aria-label="Buscar paciente por número de identificación" inputMode="numeric" autoComplete="off"
                 onChange={(e) => setDocPaciente(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') buscarPorIdentificacion() }} />
-              <Btn variant="light" onClick={buscarPorIdentificacion} disabled={buscandoDoc}>{buscandoDoc ? '…' : 'Buscar'}</Btn>
+              <Btn variant="light" onClick={() => buscarPorIdentificacion()} disabled={buscandoDoc}>{buscandoDoc ? '…' : 'Buscar'}</Btn>
+              <Link to="/sin-ubicacion" title="Pacientes del censo que no aparecen en el mapa"
+                className="whitespace-nowrap text-xs font-medium text-brand-light hover:underline">Sin ubicación →</Link>
             </div>
           </>}
           <div role="group" aria-label="Tipo de visitante" className="ml-auto flex flex-wrap gap-1 rounded-xl bg-brand-50 p-1">
@@ -299,7 +314,11 @@ export default function Registrar() {
             ))}
           </div>
           <button onClick={reset} title="Volver a elegir el tipo de visitante" className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-500 hover:bg-brand-50 hover:text-brand">Cancelar</button>
-          {tipo === 'familiar' && docMsg && <p className="w-full rounded-lg bg-rose-50 px-3 py-1.5 text-xs text-rose-700">{docMsg}</p>}
+          {tipo === 'familiar' && docMsg && (
+            <p className="w-full rounded-lg bg-rose-50 px-3 py-1.5 text-xs text-rose-700">
+              {docMsg} <Link to="/sin-ubicacion" className="font-semibold underline">Revisa la lista de pacientes sin ubicación</Link>.
+            </p>
+          )}
         </div>
       )}
 

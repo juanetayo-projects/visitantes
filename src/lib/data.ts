@@ -437,6 +437,40 @@ export async function pacientesSinCama(): Promise<PacienteSinCama[]> {
   })).sort((a, b) => (a.paciente ?? '').localeCompare(b.paciente ?? ''))
 }
 
+// Pacientes del censo que la app no puede ubicar en el mapa (sin cama, cama sin homologar, etc.).
+// Es la lista a la que va el orientador cuando no encuentra al paciente al registrar una visita.
+export interface PacienteSinUbicacion {
+  num_ingreso: string; paciente: string | null; documento: string | null; edad: number | null
+  unidad: string | null; area: string | null; cama: string | null; servicio: string | null
+  motivo: string; fecha_ingreso: string | null; acompanantes: number; aislamiento: TipoAislamiento | null
+}
+export async function pacientesSinUbicacion(): Promise<PacienteSinUbicacion[]> {
+  const { data: pac } = await supabase.from('pacientes_ubicacion')
+    .select('num_ingreso, nombre, documento, edad, servicio, censo_unidad_id, censo_area, censo_cama, fecha_ingreso').is('ubicacion_id', null)
+  const filas = (pac ?? []) as any[]
+  if (!filas.length) return []
+  const ingresos = filas.map((p) => p.num_ingreso).filter(Boolean)
+  const [{ data: inc }, { data: uni }, { data: vis }, { data: ais }] = await Promise.all([
+    supabase.from('censo_inconsistencias').select('num_ingreso, tipo, censo_unidad').in('num_ingreso', ingresos),
+    supabase.from('censo_unidades').select('id_gomedisys, nombre'),
+    supabase.from('visitas').select('num_ingreso').eq('estado', 'activa').in('num_ingreso', ingresos),
+    supabase.from('aislamientos').select('num_ingreso, tipo').eq('vigente', true).in('num_ingreso', ingresos),
+  ])
+  const incMap = new Map((inc ?? []).map((i: any) => [i.num_ingreso, i]))
+  const uniMap = new Map((uni ?? []).map((u: any) => [String(u.id_gomedisys), u.nombre as string]))
+  const acomp = new Map<string, number>()
+  ;(vis ?? []).forEach((v: any) => acomp.set(v.num_ingreso, (acomp.get(v.num_ingreso) ?? 0) + 1))
+  const aisMap = new Map((ais ?? []).map((a: any) => [a.num_ingreso, a.tipo as TipoAislamiento]))
+  return filas.map((p) => {
+    const i: any = incMap.get(p.num_ingreso)
+    return {
+      num_ingreso: p.num_ingreso, paciente: p.nombre, documento: p.documento, edad: p.edad,
+      unidad: i?.censo_unidad ?? uniMap.get(String(p.censo_unidad_id)) ?? null, area: p.censo_area, cama: p.censo_cama, servicio: p.servicio,
+      motivo: i?.tipo ?? 'sin_cama', fecha_ingreso: p.fecha_ingreso, acompanantes: acomp.get(p.num_ingreso) ?? 0, aislamiento: aisMap.get(p.num_ingreso) ?? null,
+    }
+  }).sort((a, b) => (a.unidad ?? '').localeCompare(b.unidad ?? '') || (a.paciente ?? '').localeCompare(b.paciente ?? ''))
+}
+
 // Pacientes con aislamiento vigente, con su ubicación en la app (para el modal de Inicio).
 export interface PacienteAislado { num_ingreso: string; paciente: string | null; documento: string | null; edad: number | null; tipo: TipoAislamiento; ubicacion: string | null; piso: string | null; servicio: string | null }
 export async function pacientesEnAislamiento(): Promise<PacienteAislado[]> {

@@ -11,6 +11,7 @@ interface Item { to: string; label: string; icon: string; roles: Rol[]; soloTorr
 const TOP: Item[] = [
   { to: '/', label: 'Inicio', icon: 'M3 12l9-9 9 9M5 10v10h14V10', roles: ['admin', 'orientador', 'coordinador'] },
   { to: '/registrar', label: 'Registrar visita', icon: 'M12 5v14M5 12h14', roles: ['admin', 'orientador'] },
+  { to: '/sin-ubicacion', label: 'Pacientes sin ubicación', icon: 'M12 21s-7-6.2-7-11a7 7 0 1114 0c0 4.8-7 11-7 11zM9.5 8.5l5 5m0-5l-5 5', roles: ['admin', 'orientador', 'coordinador'] },
   { to: '/visitas', label: 'Visitas', icon: 'M4 6h16M4 12h16M4 18h16', roles: ['admin', 'orientador', 'coordinador'] },
   { to: '/historico', label: 'Histórico', icon: 'M3 12a9 9 0 109-9 9 9 0 00-9 9zm9-5v5l3 2M3 12H1m2-4l-1.5-1', roles: ['admin', 'orientador', 'coordinador'] },
   { to: '/sin-tarjeta', label: 'Ingresos sin tarjeta', icon: 'M12 9v2m0 4h.01M10.3 3.9l-8 14A2 2 0 004 21h16a2 2 0 001.7-3.1l-8-14a2 2 0 00-3.4 0z', roles: ['admin', 'orientador', 'coordinador'] },
@@ -19,7 +20,6 @@ const TOP: Item[] = [
   { to: '/tarjetas', label: 'Tarjetas de acceso', icon: 'M3 10h18M3 7a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2z', roles: ['admin', 'orientador', 'coordinador'] },
   { to: '/inconsistencias-censo', label: 'Inconsistencias del censo', icon: 'M12 9v4m0 4h.01M10.3 3.86l-8 14A2 2 0 004 21h16a2 2 0 001.7-3.14l-8-14a2 2 0 00-3.4 0z', roles: ['orientador', 'coordinador'] },
   { to: '/estadisticas', label: 'Mapa de calor', icon: 'M3 3v18h18M7 14l3-3 3 3 5-5', roles: ['admin', 'coordinador'] },
-  { to: '/monitoreo', label: 'Centro de monitoreo', icon: 'M3 5h18v12H3zM8 21h8M12 17v4', roles: ['admin', 'coordinador'] },
   { to: '/cirugia', label: 'Cirugía', icon: 'M9 3v4M15 3v4M4 11h16M5 7h14a1 1 0 011 1v11a2 2 0 01-2 2H6a2 2 0 01-2-2V8a1 1 0 011-1z', roles: ['admin', 'orientador', 'coordinador', 'cirugia'], soloTorre: true },
   { to: '/hemodinamia', label: 'Hemodinamia', icon: 'M3 12h4l2-7 4 14 2-7h6', roles: ['admin', 'orientador', 'coordinador', 'hemodinamia'], soloTorre: true },
   { to: '/otro', label: 'Otro', icon: 'M12 8v4m0 4h.01M12 3a9 9 0 100 18 9 9 0 000-18z', roles: ['admin', 'orientador', 'coordinador', 'otro'], soloTorre: true },
