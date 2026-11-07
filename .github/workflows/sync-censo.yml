@@ -2,7 +2,7 @@ name: Sync CENSO Hospitalario
 
 on:
   schedule:
-    - cron: '0 * * * *'   # cada hora en punto (UTC)
+    - cron: '0 * * * *'   # respaldo: el reloj principal es pg_cron cada 15 min (Supabase)
   workflow_dispatch:        # permite ejecutarlo a mano
 
 # Permiso para reactivar este workflow: GitHub desactiva los cron tras 60 días sin actividad en el repo.
