@@ -28,3 +28,41 @@ body {
 @keyframes cmBlink { 0%,100%{opacity:1} 50%{opacity:.3} }
 .cm-pulse { animation: cmPulse 2.2s infinite }
 .cm-blink { animation: cmBlink 1.4s infinite }
+
+/* Barras de desplazamiento sutiles: delgadas, sin flechas ni fondo; se oscurecen al pasar el cursor */
+::-webkit-scrollbar { width: 6px; height: 6px }
+::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent }
+::-webkit-scrollbar-button { display: none }
+::-webkit-scrollbar-thumb { background: rgba(13, 45, 107, 0.16); border-radius: 999px }
+::-webkit-scrollbar-thumb:hover { background: rgba(13, 45, 107, 0.34) }
+.scroll-oscuro::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.16) }
+.scroll-oscuro::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.34) }
+@supports not selector(::-webkit-scrollbar) {
+  * { scrollbar-width: thin; scrollbar-color: rgba(13, 45, 107, 0.2) transparent }
+  .scroll-oscuro { scrollbar-color: rgba(255, 255, 255, 0.2) transparent }
+}
+
+/* Barra de filtros: siempre en una sola línea; los controles se reparten el ancho disponible */
+.filtros-linea { display: flex; flex-wrap: nowrap; align-items: stretch; gap: 0.5rem }
+.filtros-linea > * { flex: 1 1 0; width: 0; min-width: 0 }
+.filtros-linea > select, .filtros-linea > input { padding-left: 0.625rem; padding-right: 0.5rem; font-size: 0.8125rem; text-overflow: ellipsis }
+.filtros-linea > input[type='date'] { flex: 0 1 7.75rem; padding-right: 0.25rem }
+.filtros-linea > input:not([type]) { flex-grow: 1.5 }
+.filtros-linea > button, .filtros-linea > a { flex: 0 0 auto; width: auto }
+
+/* Vista de ejecución de la sincronización (ProgresoSync.tsx) */
+@keyframes relojGiro { from { transform: translateX(-50%) rotate(0deg) } to { transform: translateX(-50%) rotate(360deg) } }
+.reloj-manecilla { transform-origin: 50% 100%; animation: relojGiro 2s linear infinite }
+@keyframes termometroFranjas { from { background-position: 0 0 } to { background-position: 40px 0 } }
+.termometro-relleno {
+  background-image:
+    repeating-linear-gradient(45deg, rgba(255,255,255,0.25) 0 10px, transparent 10px 20px),
+    linear-gradient(90deg, #5eead4, #38bdf8, #34d399);
+  background-size: 40px 100%, 100% 100%;
+  animation: termometroFranjas 0.8s linear infinite;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.7);
+}
+.termometro-quieto { animation: none }
+@media (prefers-reduced-motion: reduce) {
+  .reloj-manecilla, .termometro-relleno, .cm-pulse { animation: none }
+}

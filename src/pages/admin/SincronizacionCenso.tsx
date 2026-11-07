@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageHeader, Card, Badge, Btn, FilterBar, selectCls, inputCls, Modal } from '../../components/ui'
-import { listInconsistencias, ultimoSync, ejecutarSyncCenso, type CensoInconsistencia, type CensoSyncLog } from '../../lib/data'
+import { listInconsistencias, ultimoSync, type CensoInconsistencia, type CensoSyncLog } from '../../lib/data'
 import { exportarExcel, type Columna } from '../../lib/exportar'
 import EstadoSyncCenso from '../../components/EstadoSyncCenso'
+import { useSyncCenso } from '../../components/ProgresoSync'
 
 const TIPO_LABEL: Record<string, { label: string; color: 'red' | 'amber' | 'gray' }> = {
   ubicacion_no_homologada: { label: 'Ubicación sin homologar', color: 'red' },
@@ -51,7 +52,8 @@ export default function SincronizacionCenso() {
   const [loading, setLoading] = useState(true)
   const [f, setF] = useState<Filtros>(VACIO)
   const [confirmar, setConfirmar] = useState(false)
-  const [ejecutando, setEjecutando] = useState(false)
+  const sync = useSyncCenso()
+  const ejecutando = sync.corriendo
   const [msg, setMsg] = useState<{ ok: boolean; texto: string } | null>(null)
 
   function cargar() {
@@ -61,9 +63,8 @@ export default function SincronizacionCenso() {
   useEffect(cargar, [])
 
   async function ejecutar() {
-    setConfirmar(false); setEjecutando(true); setMsg(null)
-    const res = await ejecutarSyncCenso()
-    setEjecutando(false)
+    setConfirmar(false); setMsg(null)
+    const res = await sync.ejecutar()
     if (res.ok) {
       const r = res.resumen ?? {}
       setMsg({ ok: true, texto: `Sincronización completada: ${r.total_censo} en censo · ${r.pacientes_upsert} actualizados · ${r.altas} egresos · ${r.inconsistencias} inconsistencias.` })
@@ -96,6 +97,7 @@ export default function SincronizacionCenso() {
 
       {msg && <div className={`mb-4 rounded-lg px-4 py-3 text-sm ${msg.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>{msg.texto}</div>}
 
+      {sync.vista}
       <EstadoSyncCenso key={log?.run_at ?? 'sin'} soloSiDesactualizado />
 
       {/* Estado de la última corrida */}

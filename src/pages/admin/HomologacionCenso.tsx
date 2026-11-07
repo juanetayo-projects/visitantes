@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { PageHeader, Btn } from '../../components/ui'
 import CrudTable from '../../components/CrudTable'
 import EstadoSyncCenso from '../../components/EstadoSyncCenso'
-import { ejecutarSyncCenso } from '../../lib/data'
+import { useSyncCenso } from '../../components/ProgresoSync'
 import { supabase } from '../../lib/supabase'
 
 const ORIGEN = [{ value: 'auto', label: 'Auto' }, { value: 'regla', label: 'Regla' }, { value: 'manual', label: 'Manual' }]
@@ -20,7 +20,7 @@ export default function HomologacionCenso() {
   const [sinUbicar, setSinUbicar] = useState<number | null>(null)
   const [soloPendientes, setSoloPendientes] = useState(false)
   const [version, setVersion] = useState(0)
-  const [sincronizando, setSincronizando] = useState(false)
+  const sync = useSyncCenso()
   const [msg, setMsg] = useState<{ ok: boolean; t: string } | null>(null)
 
   useEffect(() => {
@@ -31,9 +31,8 @@ export default function HomologacionCenso() {
   }, [version])
 
   async function sincronizar() {
-    setSincronizando(true); setMsg(null)
-    const r = await ejecutarSyncCenso()
-    setSincronizando(false)
+    setMsg(null)
+    const r = await sync.ejecutar()
     if (r.ok) setMsg({ ok: true, t: `Sincronización completada: ${r.resumen?.total_censo ?? '—'} pacientes en el censo.` })
     else setMsg({ ok: false, t: 'No se pudo sincronizar: ' + (r.error ?? 'error desconocido') })
     setVersion((v) => v + 1)
@@ -44,7 +43,8 @@ export default function HomologacionCenso() {
   return (
     <div>
       <PageHeader title="Homologación CENSO" subtitle="Mapea cada ubicación que llega del CENSO a la ubicación real de la app. La sincronización aplica esta tabla automáticamente."
-        action={<Btn onClick={sincronizar} disabled={sincronizando}>{sincronizando ? 'Sincronizando…' : '↻ Sincronizar ahora'}</Btn>} />
+        action={<Btn onClick={sincronizar} disabled={sync.corriendo}>{sync.corriendo ? 'Sincronizando…' : '↻ Sincronizar ahora'}</Btn>} />
+      {sync.vista}
 
       <EstadoSyncCenso key={version} />
       {msg && <div className={`mb-4 rounded-lg px-4 py-3 text-sm ${msg.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>{msg.t}</div>}

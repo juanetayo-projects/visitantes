@@ -85,10 +85,12 @@ export function KpiCard({ titulo, valor, detalle, icono, tono, serie, colorSerie
         <div className="min-w-0 flex-1">
           <div className="text-sm text-gray-500">{titulo}</div>
           <div className="text-[28px] font-bold leading-tight tabular-nums text-gray-900">{valor}</div>
-          {detalle && <div className="mt-0.5 text-xs text-gray-500">{detalle}</div>}
+          {detalle && !serie && <div className="mt-0.5 text-xs text-gray-500">{detalle}</div>}
         </div>
         {serie && <Sparkline serie={serie} color={colorSerie ?? COLOR_INGRESOS} etiqueta={titulo} />}
       </div>
+      {/* Con minigráfica, el detalle va debajo a todo el ancho para que no se apriete */}
+      {detalle && serie && <div className="mt-1 text-xs text-gray-500">{detalle}</div>}
       {proporcion != null && (
         <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-gray-100" role="presentation">
           <div className={`h-full rounded-full ${BARRA[tono]}`} style={{ width: `${Math.min(100, Math.round(proporcion * 100))}%` }} />
@@ -129,8 +131,10 @@ export function HeroInicio({ nombre, indicadores }: {
   const fecha = new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'America/Bogota' })
   return (
     <section className="relative min-h-[240px] overflow-hidden rounded-2xl shadow-neu-sm xl:col-span-2">
-      <img src={`${import.meta.env.BASE_URL}images/quirofano.webp`} alt="" aria-hidden className="absolute inset-0 h-full w-full object-cover object-[70%_35%]" />
-      <div className="absolute inset-0 bg-gradient-to-r from-brand from-25% via-brand/85 via-55% to-brand/40" />
+      <div className="absolute inset-0 bg-brand" />
+      {/* La foto ocupa solo la derecha: es vertical y a todo el ancho perdería nitidez */}
+      <img src={`${import.meta.env.BASE_URL}images/fachada.jpg`} alt="" aria-hidden className="absolute inset-y-0 right-0 h-full w-3/5 object-cover object-[50%_30%]" />
+      <div className="absolute inset-0 bg-gradient-to-r from-brand from-40% via-brand/75 via-65% to-brand/10" />
       <div className="relative flex h-full flex-col justify-between gap-5 p-6 text-white">
         <div>
           <p className="text-xs font-medium uppercase tracking-widest text-sky-200">{saludo()}{nombre ? `, ${nombre.split(' ')[0]}` : ''}</p>

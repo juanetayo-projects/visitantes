@@ -70,7 +70,7 @@ export default function Historico() {
           <option value="">Todos los tipos</option><option value="familiar">Familiar</option><option value="proveedor">Proveedor</option><option value="colaborador">Colaborador</option>
         </select>
         <select className={selectCls} value={f.estado ?? ''} onChange={(e) => setF({ ...f, estado: e.target.value as any })}>
-          <option value="">Todas (activas y finalizadas)</option><option value="activa">Activas</option><option value="finalizada">Finalizadas</option>
+          <option value="">Activas y finalizadas</option><option value="activa">Activas</option><option value="finalizada">Finalizadas</option>
         </select>
         <input type="date" className={selectCls} value={f.desde ?? ''} onChange={(e) => setF({ ...f, desde: e.target.value })} />
         <input type="date" className={selectCls} value={f.hasta ?? ''} onChange={(e) => setF({ ...f, hasta: e.target.value })} />

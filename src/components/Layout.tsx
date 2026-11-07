@@ -68,7 +68,7 @@ export default function Layout() {
           <img src={LOGO} alt="Clínica" className="h-12 w-auto" />
           <span className="text-base font-semibold leading-tight">Control de Visitantes</span>
         </div>
-        <nav className="flex-1 min-h-0 px-2 py-3 space-y-1 overflow-y-auto overscroll-contain">
+        <nav className="flex-1 min-h-0 px-2 py-3 space-y-1 overflow-y-auto overscroll-contain scroll-oscuro">
           {top.map(i => (
             <NavLink key={i.to} to={i.to} end={i.to === '/'} className={({ isActive }) => linkCls(isActive)}>
               <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d={i.icon} /></svg>

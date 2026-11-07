@@ -58,7 +58,7 @@ export function FilterBar({ children, onClear }: { children: ReactNode; onClear?
           </button>
         )}
       </div>
-      <div className="flex flex-nowrap items-end gap-2 overflow-x-auto pb-1">{children}</div>
+      <div className="filtros-linea">{children}</div>
     </div>
   )
 }

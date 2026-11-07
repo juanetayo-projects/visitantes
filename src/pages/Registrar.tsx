@@ -245,8 +245,10 @@ export default function Registrar() {
         <div className={`mb-4 rounded-lg px-4 py-3 text-sm ${msg.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>{msg.texto}</div>
       )}
 
+      <div className="mb-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="flex min-w-0 flex-col gap-5">
       {/* Sede: siempre visible — determina si "Sin tarjeta" aplica (solo Urgencias) */}
-      <Card className="p-4 mb-5">
+      <Card className="p-4">
         <div className="flex items-end gap-3">
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Sede</label>
@@ -258,9 +260,9 @@ export default function Registrar() {
       </Card>
 
       {/* Paso 1: tipo */}
-      <Card className="p-5 mb-5">
+      <Card className="flex-1 p-5">
         <div className="text-sm font-semibold text-brand mb-3">1. Tipo de visitante</div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2">
           {tiposDisponibles.map((t) => (
             <button key={t.v} onClick={() => { reset(); setTipo(t.v) }}
               className={`flex items-center gap-3 rounded-xl p-3 text-left transition-all duration-150 ${tipo === t.v ? 'bg-brand-50 shadow-neu-inset' : 'bg-white shadow-neu-sm hover:shadow-neu'}`}>
@@ -276,6 +278,18 @@ export default function Registrar() {
         </div>
         {!esUrgencias && <p className="mt-2 text-xs text-gray-400">"Sin tarjeta" solo está disponible para la sede Urgencias.</p>}
       </Card>
+      </div>
+
+      {/* Fachada de la clínica: no aporta datos, se oculta en pantallas angostas */}
+      <div className="relative hidden min-h-[340px] overflow-hidden rounded-2xl shadow-neu-sm lg:block">
+        <img src={`${import.meta.env.BASE_URL}images/fachada.jpg`} alt="Fachada de la Clínica Santa Bárbara" className="absolute inset-0 h-full w-full object-cover object-[50%_30%]" />
+        <div className="absolute inset-0 bg-gradient-to-t from-brand/70 via-brand/15 to-brand/5" />
+        <div className="absolute inset-x-0 bottom-0 p-4 text-white">
+          <div className="text-sm font-semibold">Clínica de Alta Complejidad Santa Bárbara</div>
+          <div className="text-xs text-white/85">Control de ingreso de visitantes</div>
+        </div>
+      </div>
+      </div>
 
       {tipo && (
         <div className="grid gap-5 lg:grid-cols-5">
