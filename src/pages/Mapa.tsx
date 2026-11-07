@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { PageHeader, Card, Btn, Modal, selectCls, inputCls, textareaCls } from '../components/ui'
+import { PageHeader, Card, Btn, Modal, ConLateral, selectCls, inputCls, textareaCls } from '../components/ui'
 import MapaHabitaciones from '../components/MapaHabitaciones'
 import { useAuth } from '../auth/AuthProvider'
 import { listSedes, listPisos, listUbicaciones, ordenarAreas, buscarPacientePorDocumento, crearNotaAdministrativa, listNotasContexto } from '../lib/data'
@@ -100,47 +100,61 @@ export default function Mapa() {
 
       {msg && <div className="mb-4 rounded-xl bg-emerald-50 px-4 py-2.5 text-sm text-emerald-700">{msg}</div>}
 
-      <Card className="p-4 mb-5">
-        <div className="flex flex-wrap items-end gap-3">
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Sede</label>
-            <select className={selectCls} value={sedeId} onChange={(e) => setSedeId(e.target.value)}>
-              {sedes.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
-            </select>
+      <ConLateral lateral={
+        // Filtros sobre la foto de la Torre de Salud: la imagen arriba y los selectores sobre el degradado institucional.
+        <section className="relative overflow-hidden rounded-2xl text-white shadow-neu-sm">
+          {/* Se recorta la parte baja de la foto (trae el logo impreso, que chocaría con el texto) */}
+          <div className="absolute inset-x-0 top-0 h-40 overflow-hidden">
+            <img src={`${import.meta.env.BASE_URL}images/torre_salud.png`} alt="Torre de Salud — Clínica Santa Bárbara"
+              className="h-[250px] w-full object-cover object-top" />
           </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Piso / servicio</label>
-            <select className={selectCls} value={pisoId} onChange={(e) => setPisoId(e.target.value)}>
-              {pisos.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-            </select>
-          </div>
-          {areas.length > 0 && (
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Área</label>
-              <select className={selectCls} value={area} onChange={(e) => setArea(e.target.value)}>
-                <option value="">Todas las áreas</option>
-                {areas.map((a) => <option key={a} value={a}>{a}</option>)}
+          <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(13,45,107,0.05)_0,rgba(13,45,107,0.55)_90px,#0D2D6B_160px)]" />
+          <div className="relative space-y-3 p-4 pt-32">
+            <div className="flex items-center gap-1.5 text-sm font-semibold">
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 4h18l-7 9v6l-4 2v-8z" /></svg>
+              Ubicación
+            </div>
+            <label className="block">
+              <span className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-sky-100">Sede</span>
+              <select className={`${selectCls} w-full`} value={sedeId} onChange={(e) => setSedeId(e.target.value)}>
+                {sedes.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
               </select>
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-sky-100">Piso / servicio</span>
+              <select className={`${selectCls} w-full`} value={pisoId} onChange={(e) => setPisoId(e.target.value)}>
+                {pisos.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+              </select>
+            </label>
+            {areas.length > 0 && (
+              <label className="block">
+                <span className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-sky-100">Área</span>
+                <select className={`${selectCls} w-full`} value={area} onChange={(e) => setArea(e.target.value)}>
+                  <option value="">Todas las áreas</option>
+                  {areas.map((a) => <option key={a} value={a}>{a}</option>)}
+                </select>
+              </label>
+            )}
+            <div className="border-t border-white/20 pt-3">
+              <span className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-sky-100">Nota administrativa por cédula</span>
+              <p className="mb-2 text-[11px] text-white/70">Para pacientes sin cama asignada.</p>
+              <div className="flex gap-2">
+                <input className={inputCls} value={doc} placeholder="N° identificación" inputMode="numeric" autoComplete="off" aria-label="Número de identificación del paciente"
+                  onChange={(e) => setDoc(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') buscarPorCedula() }} />
+                <Btn variant="light" onClick={buscarPorCedula} disabled={buscando}>{buscando ? '…' : 'Buscar'}</Btn>
+              </div>
+              {docMsg && <p className="mt-1.5 rounded-md bg-rose-500/90 px-2 py-1 text-xs text-white">{docMsg}</p>}
             </div>
-          )}
-          <div className="flex-1 min-w-[260px]">
-            <label className="block text-xs font-medium text-gray-500 mb-1">Nota administrativa por cédula (sin cama asignada)</label>
-            <div className="flex gap-2">
-              <input className={inputCls} value={doc} placeholder="N° identificación del paciente" inputMode="numeric" autoComplete="off"
-                onChange={(e) => setDoc(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') buscarPorCedula() }} />
-              <Btn variant="light" onClick={buscarPorCedula} disabled={buscando}>{buscando ? 'Buscando…' : 'Buscar'}</Btn>
-            </div>
-            {docMsg && <p className="mt-1 text-xs text-rose-600">{docMsg}</p>}
           </div>
-        </div>
-      </Card>
-
-      <Card className="p-5">
+        </section>
+      }>
+      <Card hover={false} className="p-5">
         {pisoSel && <div className="mb-4 text-lg font-semibold text-brand">{pisoSel.nombre}{area ? ` · ${area}` : ''}</div>}
         {pisoId
           ? <MapaHabitaciones pisoId={pisoId} area={area || undefined} onSelect={abrirNota} />
           : <div className="py-16 text-center text-gray-400 text-sm">Selecciona un piso</div>}
       </Card>
+      </ConLateral>
 
       {/* Nota administrativa: fecha/hora de la app + comentario libre */}
       <Modal open={!!notaFor} onClose={() => setNotaFor(null)} title="Nota administrativa">

@@ -245,7 +245,30 @@ export default function Registrar() {
         <div className={`mb-4 rounded-lg px-4 py-3 text-sm ${msg.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>{msg.texto}</div>
       )}
 
-      <div className="mb-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+      {/* Con un tipo elegido, sede + tipo + fachada se contraen en una franja: el formulario queda arriba y limpio */}
+      {tipo && (
+        <div className="mb-5 flex flex-wrap items-center gap-3 rounded-2xl bg-white p-2.5 shadow-neu-sm">
+          <img src={`${import.meta.env.BASE_URL}images/fachada.jpg`} alt="" aria-hidden className="hidden h-12 w-16 rounded-xl object-cover object-[50%_30%] sm:block" />
+          <label className="flex items-center gap-2 text-xs font-medium text-gray-500">
+            Sede
+            <select aria-label="Sede" className={`${selectCls} py-1.5 text-sm`} value={sedeId} onChange={(e) => setSedeId(e.target.value)}>
+              {sedes.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+            </select>
+          </label>
+          <div role="group" aria-label="Tipo de visitante" className="ml-auto flex flex-wrap gap-1 rounded-xl bg-brand-50 p-1">
+            {tiposDisponibles.map((t) => (
+              <button key={t.v} aria-pressed={tipo === t.v} onClick={() => { if (tipo !== t.v) { reset(); setTipo(t.v) } }}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${tipo === t.v ? 'bg-brand text-white shadow-neu-xs' : 'text-gray-600 hover:bg-white hover:text-brand'}`}>
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d={t.icon} /></svg>
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <button onClick={reset} title="Volver a elegir el tipo de visitante" className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-500 hover:bg-brand-50 hover:text-brand">Cancelar</button>
+        </div>
+      )}
+
+      {!tipo && <div className="mb-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
       <div className="flex min-w-0 flex-col gap-5">
       {/* Sede: siempre visible — determina si "Sin tarjeta" aplica (solo Urgencias) */}
       <Card className="p-4">
@@ -289,7 +312,7 @@ export default function Registrar() {
           <div className="text-xs text-white/85">Control de ingreso de visitantes</div>
         </div>
       </div>
-      </div>
+      </div>}
 
       {tipo && (
         <div className="grid gap-5 lg:grid-cols-5">

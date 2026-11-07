@@ -437,6 +437,27 @@ export async function pacientesSinCama(): Promise<PacienteSinCama[]> {
   })).sort((a, b) => (a.paciente ?? '').localeCompare(b.paciente ?? ''))
 }
 
+// Pacientes con aislamiento vigente, con su ubicación en la app (para el modal de Inicio).
+export interface PacienteAislado { num_ingreso: string; paciente: string | null; documento: string | null; edad: number | null; tipo: TipoAislamiento; ubicacion: string | null; piso: string | null; servicio: string | null }
+export async function pacientesEnAislamiento(): Promise<PacienteAislado[]> {
+  const { data: ais } = await supabase.from('aislamientos').select('num_ingreso, tipo').eq('vigente', true)
+  const filas = (ais ?? []) as { num_ingreso: string; tipo: TipoAislamiento }[]
+  if (!filas.length) return []
+  const [{ data: pac }, { data: pisos }] = await Promise.all([
+    supabase.from('pacientes_ubicacion').select('num_ingreso, nombre, documento, edad, ubicacion_etiqueta, piso_id, servicio').in('num_ingreso', filas.map((f) => f.num_ingreso)),
+    supabase.from('pisos').select('id, nombre'),
+  ])
+  const pisoNom = new Map((pisos ?? []).map((p: any) => [p.id, p.nombre as string]))
+  const pacMap = new Map((pac ?? []).map((p: any) => [p.num_ingreso, p]))
+  return filas.map((f) => {
+    const p: any = pacMap.get(f.num_ingreso)
+    return {
+      num_ingreso: f.num_ingreso, tipo: f.tipo, paciente: p?.nombre ?? null, documento: p?.documento ?? null, edad: p?.edad ?? null,
+      ubicacion: p?.ubicacion_etiqueta ?? null, piso: p?.piso_id ? pisoNom.get(p.piso_id) ?? null : null, servicio: p?.servicio ?? null,
+    }
+  }).sort((a, b) => (a.piso ?? '').localeCompare(b.piso ?? '') || (a.ubicacion ?? '').localeCompare(b.ubicacion ?? '', 'es', { numeric: true }))
+}
+
 // ─── Descripción legible de filtros (para encabezados de export) ──
 const ESTADO_LBL: Record<string, string> = {
   activa: 'Activas (dentro)', finalizada: 'Finalizadas',

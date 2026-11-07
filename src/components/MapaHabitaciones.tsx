@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { getOcupacionPiso, estadoCelda, type EstadoCelda } from '../lib/data'
-import { AISLAMIENTO_LABEL, type OcupacionUbicacion } from '../lib/types'
+import { AISLAMIENTO_LABEL, type OcupacionUbicacion, type TipoUbicacion } from '../lib/types'
 
 const ESTILO: Record<EstadoCelda, { bg: string; bd: string; tx: string; icon: string; label: string }> = {
   permanente: { bg: 'bg-emerald-50', bd: 'border-emerald-500', tx: 'text-emerald-800', icon: 'M9 12l2 2 4-4m5 2a9 9 0 11-18 0 9 9 0 0118 0z', label: 'Acompañante permanente' },
@@ -22,6 +22,16 @@ function fechaHora(iso: string | null): string {
 
 function Icono({ d, className }: { d: string; className?: string }) {
   return <svg className={className} fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d={d} /></svg>
+}
+
+// Ícono por tipo de ubicación, para distinguir de un vistazo habitación, cama, camilla, sillón o cubículo.
+export const ICONO_TIPO: Record<TipoUbicacion, { d: string; label: string }> = {
+  habitacion: { d: 'M5 21V4a1 1 0 011-1h12a1 1 0 011 1v17M3 21h18M14.5 12.5h.01', label: 'Habitación' },
+  cama:       { d: 'M3 7v11M3 13h18v5M21 13v-1a3 3 0 00-3-3h-7v4M6.5 11.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3z', label: 'Cama' },
+  camilla:    { d: 'M3 9h18M5 9v6h14V9M7 15v3m10-3v3M6 19.5a1 1 0 100-2 1 1 0 000 2zm12 0a1 1 0 100-2 1 1 0 000 2zM3 9V7', label: 'Camilla' },
+  sillon:     { d: 'M6 11V7a2 2 0 012-2h8a2 2 0 012 2v4M4 11a2 2 0 012 2v2h12v-2a2 2 0 114 0v4H2v-4a2 2 0 012-2zM5 17v2m14-2v2', label: 'Sillón' },
+  cubiculo:   { d: 'M4 4h16v16H4zM12 4v16M4 12h8', label: 'Cubículo' },
+  area:       { d: 'M4 6h16M4 12h16M4 18h16', label: 'Área' },
 }
 
 const ICON_VIRUS = 'M12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10l2 2m0-14l-2 2M7 17l-2 2M12 8a4 4 0 100 8 4 4 0 000-8z'
@@ -54,6 +64,7 @@ export default function MapaHabitaciones({ pisoId, onSelect, refreshKey = 0, are
     })
     return Array.from(m.entries())
   }, [ocup])
+  const tiposPresentes = useMemo(() => [...new Set(ocup.map((o) => o.tipo).filter((t) => ICONO_TIPO[t]))], [ocup])
 
   function mostrarTip(o: OcupacionUbicacion, el: HTMLElement) {
     if (!o.num_ingreso || !cont.current) return
@@ -82,12 +93,19 @@ export default function MapaHabitaciones({ pisoId, onSelect, refreshKey = 0, are
         <span className="flex items-center gap-1.5 text-rose-600">
           <Icono d={ICON_VIRUS} className="h-4 w-4" /> Aislamiento
         </span>
+        {/* Tipos de ubicación presentes en este piso */}
+        {tiposPresentes.length > 0 && <span className="mx-1 hidden h-4 w-px bg-gray-200 sm:block" />}
+        {tiposPresentes.map((t) => (
+          <span key={t} className="flex items-center gap-1.5 text-gray-500">
+            <Icono d={ICONO_TIPO[t].d} className="h-4 w-4" /> {ICONO_TIPO[t].label}
+          </span>
+        ))}
       </div>
 
       {grupos.filter(([k]) => !area || k === area).map(([grp, items]) => (
         <div key={grp} className="mb-5">
           {grp !== '__' && <div className="mb-2 text-sm font-semibold text-brand">{grp}</div>}
-          <div className="grid gap-2.5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))' }}>
+          <div className="grid gap-2.5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(112px, 1fr))' }}>
             {items.map((o) => {
               const est = estadoCelda(o)
               const s = ESTILO[est]
@@ -106,7 +124,10 @@ export default function MapaHabitaciones({ pisoId, onSelect, refreshKey = 0, are
                     </span>
                   )}
                   <div className="flex items-center justify-between gap-1">
-                    <span className={`min-w-0 truncate text-[13px] font-semibold ${s.tx}`} title={o.etiqueta}>{o.etiqueta}</span>
+                    <span className={`flex min-w-0 items-center gap-1 text-[13px] font-semibold ${s.tx}`} title={`${ICONO_TIPO[o.tipo]?.label ?? ''} ${o.etiqueta}`}>
+                      {ICONO_TIPO[o.tipo] && <Icono d={ICONO_TIPO[o.tipo].d} className="h-3.5 w-3.5 shrink-0 opacity-70" />}
+                      <span className="truncate">{o.etiqueta}</span>
+                    </span>
                     {o.aislamiento
                       ? <Icono d={ICON_VIRUS} className="h-4 w-4 shrink-0 text-rose-600" />
                       : <Icono d={s.icon} className={`h-4 w-4 shrink-0 ${s.tx} opacity-80`} />}
