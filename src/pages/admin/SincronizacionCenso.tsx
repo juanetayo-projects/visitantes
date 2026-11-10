@@ -141,6 +141,20 @@ export default function SincronizacionCenso({ soloConsulta: soloConsultaProp = f
     return [...m.entries()].sort((x, y) => y[1] - x[1])
   }, [rows])
 
+  // Desglose por unidad CENSO (de mayor a menor), con el detalle por tipo como subtítulo.
+  const porUnidad = useMemo(() => {
+    const m = new Map<string, { n: number; tipos: Map<string, number> }>()
+    rows.forEach((r) => {
+      const u = r.censo_unidad ?? ''
+      const e = m.get(u) ?? { n: 0, tipos: new Map() }
+      e.n++; e.tipos.set(r.tipo, (e.tipos.get(r.tipo) ?? 0) + 1); m.set(u, e)
+    })
+    return [...m.entries()].sort((a, b) => b[1].n - a[1].n || a[0].localeCompare(b[0])).map(([u, e]) => ({
+      unidad: u, n: e.n,
+      detalle: [...e.tipos.entries()].sort((a, b) => b[1] - a[1]).map(([t, n]) => `${n} ${(TIPO_LABEL[t]?.label ?? t).toLowerCase()}`).join(' · '),
+    }))
+  }, [rows])
+
   const filtrados = useMemo(() => filtrar(), [rows, f])
   const hayFiltros = Object.values(f).some((v) => v.trim() !== '')
 
@@ -178,6 +192,14 @@ export default function SincronizacionCenso({ soloConsulta: soloConsultaProp = f
           }))}>
             {rows.length === 0 && !loading && <p className="text-sm text-emerald-600">✓ Sin inconsistencias.</p>}
           </PanelIndicadores>
+          {/* Desglose por unidad CENSO: clic en una unidad para filtrar la tabla por ella */}
+          {porUnidad.length > 0 && (
+            <PanelIndicadores titulo={`Por unidad CENSO (${porUnidad.length})`} items={porUnidad.map((u) => ({
+              label: u.unidad || 'Sin unidad', hint: u.detalle, value: u.n, icono: ICONOS_IND.base, color: 'blue' as const,
+              activo: f.unidad === u.unidad && u.unidad !== '',
+              onClick: u.unidad ? () => setF({ ...f, unidad: f.unidad === u.unidad ? '' : u.unidad, area: '' }) : undefined,
+            }))} />
+          )}
         </>
       }>
       <FilterBar onClear={() => setF(VACIO)}>
