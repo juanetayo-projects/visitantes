@@ -49,6 +49,10 @@ const AISL_MAP = {
   'RESPIRATORIO/CONTACTO': 'respiratorio_contacto',
   'GOTAS': 'gotas',
   'VECTORES': 'vectores',
+  'GOTAS / CONTACTO': 'gotas_contacto',
+  'GOTAS/CONTACTO': 'gotas_contacto',
+  'CONTACTO / GOTAS': 'gotas_contacto',
+  'CONTACTO/GOTAS': 'gotas_contacto',
   'NO APLICA': null,
 }
 function mapAislamiento(v) {
