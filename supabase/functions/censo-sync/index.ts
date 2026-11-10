@@ -30,6 +30,11 @@ const key3 = (u: unknown, a: unknown, c: unknown) => `${norm(u)}|${norm(a)}|${no
 const keyId = (id: unknown, a: unknown, c: unknown) => `${String(id ?? '')}|${norm(a)}|${normCama(c)}`
 const camaDe = (r: any) => (r.Cama && String(r.Cama).trim()) || (r.UbicacionNombre && String(r.UbicacionNombre).trim()) || null
 const parseEdad = (v: unknown) => { const n = parseInt(String(v ?? '').replace(/[^\d]/g, ''), 10); return Number.isFinite(n) ? n : null }
+// FechaHoraIngreso llega como "2026-11-09 16:44" (hora local de Colombia) → timestamp sin zona.
+const fechaHoraIngreso = (v: unknown) => {
+  const m = String(v ?? '').trim().match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})(:\d{2})?/)
+  return m ? `${m[1]}T${m[2]}${m[3] ?? ':00'}` : null
+}
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 // La API del CENSO a veces responde 200 sin access_token (reinicio / rate-limit del Laravel).
@@ -238,7 +243,7 @@ Deno.serve(async (req) => {
     const pushIncon = (tipo: string, r: any, cama: string | null, detalle: string) => {
       const k = `${tipo}|${r.Ingreso ?? ''}|${norm(r.UbicacionActual)}|${norm(cama)}`
       if (dedup.has(k)) return; dedup.add(k)
-      incons.push({ tipo, num_ingreso: r.Ingreso ?? null, paciente: r.Paciente ?? null, censo_unidad: r.UbicacionActual ?? null, censo_area: r.UbicacionArea ?? null, censo_cama: cama ?? null, detalle })
+      incons.push({ tipo, num_ingreso: r.Ingreso ?? null, paciente: r.Paciente ?? null, censo_unidad: r.UbicacionActual ?? null, censo_area: r.UbicacionArea ?? null, censo_cama: cama ?? null, fecha_hora_ingreso: fechaHoraIngreso(r.FechaHoraIngreso), detalle })
     }
     for (const r of censo) {
       const numIngreso = r.Ingreso

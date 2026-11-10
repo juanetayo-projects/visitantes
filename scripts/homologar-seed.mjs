@@ -9,7 +9,7 @@ const idx=new Map(), idxSA=new Map()
 ubic.forEach(u=>{ idx.set(norm(u.servicio)+'|'+norm(u.area)+'|'+norm(u.etiqueta),u.id); idxSA.set(norm(u.servicio)+'|'+norm(u.etiqueta),u.id) })
 function derivar(unidad,cama){const u=norm(unidad);const m=String(cama).match(/(\d+)/);const num=m?parseInt(m[1],10):null;const c=String(cama).trim();
   if(/(intensivo|intermedios)/.test(u)&&/^c[ie]/i.test(c)&&num!=null) return 'Cubículo '+String(num).padStart(2,'0');
-  if(/parcial/.test(u)){ if(/^sill/i.test(c)&&num!=null) return 'Sillón '+num; if(/^cami/i.test(c)&&num!=null) return 'Camilla '+num; }
+  if(/parcial/.test(u)){ if(/^sill/i.test(c)&&num!=null) return 'Sillón P'+String(num).padStart(2,'0'); if(/^cami/i.test(c)&&num!=null) return 'Camilla '+num; }
   return null}
 const d=JSON.parse(fs.readFileSync(new URL('../docs/CensoOrientadoresProduccion-1782314313861.json',import.meta.url),'utf8'))
 const arr=Array.isArray(d)?d:(d.data||d.results||Object.values(d).find(Array.isArray))

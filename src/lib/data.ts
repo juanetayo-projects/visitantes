@@ -727,6 +727,7 @@ export async function heatmapDiaHora(): Promise<{ matriz: number[][]; max: numbe
 export interface CensoInconsistencia {
   id: string; tipo: string; num_ingreso: string | null; paciente: string | null
   censo_unidad: string | null; censo_area: string | null; censo_cama: string | null
+  fecha_hora_ingreso: string | null
   detalle: string | null; primera_vez: string; ultima_vez: string
 }
 export interface CensoSyncLog {

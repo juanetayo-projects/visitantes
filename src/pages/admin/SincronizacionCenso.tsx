@@ -26,13 +26,37 @@ function fechaHoraCO(iso: string | null): string {
   return `${dd}/${mm}/${co.getUTCFullYear()} ${h}:${min} ${ap}`
 }
 
-interface Filtros { tipo: string; unidad: string; area: string; texto: string }
-const VACIO: Filtros = { tipo: '', unidad: '', area: '', texto: '' }
+// fecha_hora_ingreso ya viene en hora local de Colombia (timestamp sin zona): solo se formatea.
+function fechaIngreso(v: string | null): { fecha: string; hora: string } | null {
+  const m = v?.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/)
+  if (!m) return null
+  const h24 = parseInt(m[4], 10); const h = h24 % 12 === 0 ? 12 : h24 % 12
+  return { fecha: `${m[3]}/${m[2]}/${m[1]}`, hora: `${h}:${m[5]} ${h24 < 12 ? 'a.m.' : 'p.m.'}` }
+}
+const fechaIngresoTxt = (v: string | null) => { const f = fechaIngreso(v); return f ? `${f.fecha} ${f.hora}` : '' }
+
+// Días transcurridos desde el ingreso. Ambas horas se comparan en hora de Colombia (UTC-5).
+function diasEstancia(v: string | null): number | null {
+  const m = v?.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/)
+  if (!m) return null
+  const ingreso = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5])
+  return (Date.now() - 5 * 3_600_000 - ingreso) / 86_400_000
+}
+const ESTANCIAS: { value: string; label: string; cumple: (d: number) => boolean }[] = [
+  { value: 'lt1', label: 'Menos de 24 horas', cumple: (d) => d < 1 },
+  { value: '1a3', label: '1 a 3 días', cumple: (d) => d >= 1 && d < 4 },
+  { value: '4a7', label: '4 a 7 días', cumple: (d) => d >= 4 && d < 8 },
+  { value: 'gt7', label: 'Más de 7 días', cumple: (d) => d >= 8 },
+]
+
+interface Filtros { tipo: string; unidad: string; area: string; estancia: string; desde: string; hasta: string; texto: string }
+const VACIO: Filtros = { tipo: '', unidad: '', area: '', estancia: '', desde: '', hasta: '', texto: '' }
 
 const COLS: Columna<CensoInconsistencia>[] = [
   { header: 'Tipo', get: (r) => TIPO_LABEL[r.tipo]?.label ?? r.tipo },
   { header: 'Paciente', get: (r) => r.paciente ?? '' },
   { header: '# Ingreso', get: (r) => r.num_ingreso ?? '' },
+  { header: 'Fecha/hora ingreso', get: (r) => fechaIngresoTxt(r.fecha_hora_ingreso) },
   { header: 'Unidad CENSO', get: (r) => r.censo_unidad ?? '' },
   { header: 'Área', get: (r) => r.censo_area ?? '' },
   { header: 'Cama', get: (r) => r.censo_cama ?? '' },
@@ -43,6 +67,8 @@ function describirFiltros(f: Filtros): string {
   if (f.tipo) p.push(`Tipo: ${TIPO_LABEL[f.tipo]?.label ?? f.tipo}`)
   if (f.unidad) p.push(`Unidad CENSO: ${f.unidad}`)
   if (f.area) p.push(`Área: ${f.area}`)
+  if (f.estancia) p.push(`Estancia: ${ESTANCIAS.find((e) => e.value === f.estancia)?.label ?? f.estancia}`)
+  if (f.desde || f.hasta) p.push(`Ingreso: ${f.desde ? f.desde.split('-').reverse().join('/') : '…'} – ${f.hasta ? f.hasta.split('-').reverse().join('/') : '…'}`)
   if (f.texto.trim()) p.push(`Búsqueda: "${f.texto.trim()}"`)
   return p.join(' · ')
 }
@@ -72,23 +98,51 @@ export default function SincronizacionCenso({ soloConsulta: soloConsultaProp = f
     if (res.ok) cargar()
   }
 
-  const unidades = useMemo(() => [...new Set(rows.map((r) => r.censo_unidad).filter(Boolean))].sort() as string[], [rows])
-  const areas = useMemo(() => [...new Set(rows.map((r) => r.censo_area).filter(Boolean))].sort() as string[], [rows])
-  const tipos = useMemo(() => [...new Set(rows.map((r) => r.tipo))].sort(), [rows])
+  // Aplica todos los filtros salvo `omitir`: así el total de cada opción de un filtro refleja
+  // los demás filtros activos y coincide con lo que mostraría la tabla al elegirla.
+  const filtrar = (omitir?: keyof Filtros) => {
+    const t = f.texto.trim().toLowerCase()
+    const estancia = omitir === 'estancia' ? undefined : ESTANCIAS.find((e) => e.value === f.estancia)
+    return rows.filter((r) => {
+      const dia = r.fecha_hora_ingreso?.substring(0, 10) ?? ''
+      const d = diasEstancia(r.fecha_hora_ingreso)
+      return (omitir === 'tipo' || !f.tipo || r.tipo === f.tipo) &&
+        (omitir === 'unidad' || !f.unidad || r.censo_unidad === f.unidad) &&
+        (omitir === 'area' || !f.area || r.censo_area === f.area) &&
+        (!estancia || (d != null && estancia.cumple(d))) &&
+        (!f.desde || (dia !== '' && dia >= f.desde)) &&
+        (!f.hasta || (dia !== '' && dia <= f.hasta)) &&
+        (!t || [r.paciente, r.num_ingreso, r.censo_cama, r.detalle].some((x) => x?.toLowerCase().includes(t)))
+    })
+  }
+  const contar = (vals: (string | null)[]) => {
+    const m = new Map<string, number>()
+    vals.forEach((v) => { if (v) m.set(v, (m.get(v) ?? 0) + 1) })
+    return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+  }
+  // Las opciones salen de todas las filas (para no desaparecer al filtrar); el total, de las filtradas.
+  const conTotales = (todas: (string | null)[], filtradas: (string | null)[]) => {
+    const n = new Map(contar(filtradas))
+    return contar(todas).map(([v]) => [v, n.get(v) ?? 0] as [string, number])
+  }
+  const tipos = useMemo(() => conTotales(rows.map((r) => r.tipo), filtrar('tipo').map((r) => r.tipo)), [rows, f])
+  const unidades = useMemo(() => conTotales(rows.map((r) => r.censo_unidad), filtrar('unidad').map((r) => r.censo_unidad)), [rows, f])
+  const areas = useMemo(() => {
+    const base = rows.filter((r) => !f.unidad || r.censo_unidad === f.unidad)
+    return conTotales(base.map((r) => r.censo_area), filtrar('area').map((r) => r.censo_area))
+  }, [rows, f])
+  const estancias = useMemo(() => {
+    const base = filtrar('estancia').map((r) => diasEstancia(r.fecha_hora_ingreso))
+    return ESTANCIAS.map((e) => ({ ...e, n: base.filter((d) => d != null && e.cumple(d)).length }))
+  }, [rows, f])
   const porTipo = useMemo(() => {
     const m = new Map<string, number>()
     rows.forEach((r) => m.set(r.tipo, (m.get(r.tipo) ?? 0) + 1))
     return [...m.entries()].sort((x, y) => y[1] - x[1])
   }, [rows])
 
-  const filtrados = useMemo(() => {
-    const t = f.texto.trim().toLowerCase()
-    return rows.filter((r) =>
-      (!f.tipo || r.tipo === f.tipo) &&
-      (!f.unidad || r.censo_unidad === f.unidad) &&
-      (!f.area || r.censo_area === f.area) &&
-      (!t || [r.paciente, r.num_ingreso, r.censo_cama, r.detalle].some((x) => x?.toLowerCase().includes(t))))
-  }, [rows, f])
+  const filtrados = useMemo(() => filtrar(), [rows, f])
+  const hayFiltros = Object.values(f).some((v) => v.trim() !== '')
 
   return (
     <div>
@@ -124,40 +178,57 @@ export default function SincronizacionCenso({ soloConsulta: soloConsultaProp = f
           }))}>
             {rows.length === 0 && !loading && <p className="text-sm text-emerald-600">✓ Sin inconsistencias.</p>}
           </PanelIndicadores>
-          <FilterBar vertical onClear={() => setF(VACIO)}>
-            <select className={selectCls} value={f.tipo} onChange={(e) => setF({ ...f, tipo: e.target.value })}>
-              <option value="">Todos los tipos</option>
-              {tipos.map((t) => <option key={t} value={t}>{TIPO_LABEL[t]?.label ?? t}</option>)}
-            </select>
-            <select className={selectCls} value={f.unidad} onChange={(e) => setF({ ...f, unidad: e.target.value })}>
-              <option value="">Todas las unidades</option>
-              {unidades.map((u) => <option key={u} value={u}>{u}</option>)}
-            </select>
-            <select className={selectCls} value={f.area} onChange={(e) => setF({ ...f, area: e.target.value })}>
-              <option value="">Todas las áreas</option>
-              {areas.map((a) => <option key={a} value={a}>{a}</option>)}
-            </select>
-            <input className={inputCls} placeholder="Paciente, # ingreso, cama, detalle…" value={f.texto} onChange={(e) => setF({ ...f, texto: e.target.value })} />
-          </FilterBar>
         </>
       }>
+      <FilterBar onClear={() => setF(VACIO)}>
+        <select className={selectCls} aria-label="Tipo de inconsistencia" value={f.tipo} onChange={(e) => setF({ ...f, tipo: e.target.value })}>
+          <option value="">Todos los tipos</option>
+          {tipos.map(([t, n]) => <option key={t} value={t}>{TIPO_LABEL[t]?.label ?? t} ({n})</option>)}
+        </select>
+        <select className={selectCls} aria-label="Unidad CENSO" value={f.unidad} onChange={(e) => setF({ ...f, unidad: e.target.value, area: '' })}>
+          <option value="">Todas las unidades CENSO</option>
+          {unidades.map(([u, n]) => <option key={u} value={u}>{u} ({n})</option>)}
+        </select>
+        {areas.length > 0 && (
+          <select className={selectCls} aria-label="Área" value={f.area} onChange={(e) => setF({ ...f, area: e.target.value })}>
+            <option value="">Todas las áreas</option>
+            {areas.map(([a, n]) => <option key={a} value={a}>{a} ({n})</option>)}
+          </select>
+        )}
+        <select className={selectCls} aria-label="Estancia" value={f.estancia} onChange={(e) => setF({ ...f, estancia: e.target.value })}>
+          <option value="">Cualquier estancia</option>
+          {estancias.map((e) => <option key={e.value} value={e.value}>{e.label} ({e.n})</option>)}
+        </select>
+        <input type="date" aria-label="Ingreso desde" title="Ingreso desde" className={selectCls} value={f.desde} max={f.hasta || undefined} onChange={(e) => setF({ ...f, desde: e.target.value })} />
+        <input type="date" aria-label="Ingreso hasta" title="Ingreso hasta" className={selectCls} value={f.hasta} min={f.desde || undefined} onChange={(e) => setF({ ...f, hasta: e.target.value })} />
+        <input className={inputCls} placeholder="Paciente, # ingreso, cama, detalle…" value={f.texto} onChange={(e) => setF({ ...f, texto: e.target.value })} />
+      </FilterBar>
+      <p className="-mt-3 mb-3 px-1 text-xs text-gray-500">
+        {loading ? 'Cargando…' : hayFiltros
+          ? <>Mostrando <b className="text-brand">{filtrados.length}</b> de {rows.length} registros{describirFiltros(f) ? ` · ${describirFiltros(f)}` : ''}</>
+          : <>Total: <b className="text-brand">{rows.length}</b> registros</>}
+      </p>
       <Card hover={false} className="overflow-hidden">
         <div className="tabla-scroll">
           <table className="w-full text-sm">
             <thead className="bg-brand text-white"><tr>
-              {['Tipo', 'Paciente / # ingreso', 'Unidad CENSO', 'Área', 'Cama', 'Detalle'].map((h) => <th key={h} className="px-3 py-2.5 text-left font-medium whitespace-nowrap">{h}</th>)}
+              {['Tipo', 'Paciente / # ingreso', 'Ingreso', 'Unidad CENSO', 'Área', 'Cama', 'Detalle'].map((h) => <th key={h} className="px-3 py-2.5 text-left font-medium whitespace-nowrap">{h}</th>)}
             </tr></thead>
             <tbody className="divide-y divide-gray-100">
-              {loading ? <tr><td colSpan={6} className="py-10 text-center text-gray-400">Cargando…</td></tr>
-                : filtrados.length === 0 ? <tr><td colSpan={6} className="py-10 text-center text-emerald-600">{rows.length === 0 ? '✓ Sin inconsistencias — todos los pacientes del CENSO quedaron homologados.' : 'Sin resultados con estos filtros.'}</td></tr>
+              {loading ? <tr><td colSpan={7} className="py-10 text-center text-gray-400">Cargando…</td></tr>
+                : filtrados.length === 0 ? <tr><td colSpan={7}className="py-10 text-center text-emerald-600">{rows.length === 0 ? '✓ Sin inconsistencias — todos los pacientes del CENSO quedaron homologados.' : 'Sin resultados con estos filtros.'}</td></tr>
                 : filtrados.map((r) => {
                   const t = TIPO_LABEL[r.tipo] ?? { label: r.tipo, color: 'gray' as const }
+                  const fi = fechaIngreso(r.fecha_hora_ingreso)
                   return (
                     <tr key={r.id} className="hover:bg-brand-50/40">
                       <td className="px-3 py-2 whitespace-nowrap"><Badge color={t.color}>{t.label}</Badge></td>
                       <td className="px-3 py-2">
                         <div className="text-gray-800">{r.paciente ?? '—'}</div>
                         <div className="text-xs text-gray-500">#{r.num_ingreso ?? '—'}</div>
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        {fi ? <><div className="text-gray-700">{fi.fecha}</div><div className="text-xs text-gray-500">{fi.hora}</div></> : <span className="text-gray-400">—</span>}
                       </td>
                       <td className="px-3 py-2 text-gray-700">{r.censo_unidad ?? '—'}</td>
                       <td className="px-3 py-2 text-gray-600">{r.censo_area ?? '—'}</td>
