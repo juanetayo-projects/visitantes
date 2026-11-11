@@ -742,6 +742,21 @@ export async function ultimoSync(): Promise<CensoSyncLog | null> {
   const { data } = await supabase.from('censo_sync_log').select('*').order('run_at', { ascending: false }).limit(1).maybeSingle()
   return (data ?? null) as CensoSyncLog | null
 }
+// Inconsistencias que se corrigen en la configuración (homologación, ubicaciones, catálogo de
+// aislamientos). «sin_cama» queda fuera: es una situación clínica real, no un error a corregir.
+export const TIPOS_ERROR_HOMOLOGACION: Record<string, string> = {
+  ubicacion_no_homologada: 'Ubicación sin homologar',
+  unidad_desconocida: 'Unidad sin piso asignado',
+  ubicacion_inactiva: 'Paciente en ubicación inactiva',
+  piso_incoherente: 'Homologada a otro piso',
+  cama_duplicada: 'Dos pacientes en una ubicación',
+  aislamiento_desconocido: 'Aislamiento no contemplado',
+}
+export async function erroresHomologacion(): Promise<CensoInconsistencia[]> {
+  const { data } = await supabase.from('censo_inconsistencias').select('*')
+    .in('tipo', Object.keys(TIPOS_ERROR_HOMOLOGACION)).order('censo_unidad').order('censo_cama')
+  return (data ?? []) as CensoInconsistencia[]
+}
 // Antigüedad en minutos de la última sincronización exitosa (null si nunca ha corrido).
 export async function ultimoSyncExitoso(): Promise<string | null> {
   const { data } = await supabase.from('censo_sync_log').select('run_at').eq('ok', true).order('run_at', { ascending: false }).limit(1).maybeSingle()

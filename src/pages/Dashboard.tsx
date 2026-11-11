@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { FilterBar, selectCls, Modal, Badge } from '../components/ui'
 import EstadoSyncCenso from '../components/EstadoSyncCenso'
+import ErroresHomologacion from '../components/ErroresHomologacion'
 import { HeroInicio, KpiCard, Panel, ListaMovimientos, TendenciaVisitas, DonaTarjetas, ListaPisos, Icono, ICONOS, COLOR_INGRESOS } from '../components/InicioWidgets'
 import { useAuth } from '../auth/AuthProvider'
 import {
@@ -88,6 +89,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-5">
       <EstadoSyncCenso soloSiDesactualizado />
+      <ErroresHomologacion esAdmin={perfil?.rol === 'admin'} />
 
       {/* Accesos rápidos arriba: es lo primero que busca quien entra a trabajar */}
       {accesos.length > 0 && (
