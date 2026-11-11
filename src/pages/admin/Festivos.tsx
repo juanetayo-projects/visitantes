@@ -5,11 +5,15 @@ import { supabase } from '../../lib/supabase'
 import { festivosColombia } from '../../lib/festivosColombia'
 
 export default function Festivos() {
-  const [anio, setAnio] = useState(new Date().getFullYear())
+  // undefined mientras el campo está vacío o incompleto: Number('') daría 0 y se generarían
+  // festivos del «año 0» en la base de datos.
+  const [anio, setAnio] = useState<number | undefined>(new Date().getFullYear())
   const [key, setKey] = useState(0)
   const [msg, setMsg] = useState('')
+  const anioValido = anio != null && Number.isInteger(anio) && anio >= 2000 && anio <= 2100
 
   async function generar() {
+    if (anio == null || !anioValido) { setMsg('Escribe un año válido (2000 a 2100).'); return }
     const lista = festivosColombia(anio)
     const { error } = await supabase.from('festivos').upsert(lista, { onConflict: 'fecha' })
     setMsg(error ? 'Error: ' + error.message : `Generados ${lista.length} festivos de ${anio}.`)
@@ -22,8 +26,9 @@ export default function Festivos() {
       <Card className="p-4 mb-5">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm text-gray-600">Generar festivos del año</span>
-          <input type="number" className={`${inputCls} w-28`} value={anio} onChange={(e) => setAnio(Number(e.target.value))} />
-          <Btn onClick={generar}>Generar automáticamente</Btn>
+          <input type="number" min={2000} max={2100} aria-label="Año" className={`${inputCls} w-28`} value={anio ?? ''}
+            onChange={(e) => { const n = e.currentTarget.valueAsNumber; setAnio(Number.isFinite(n) ? n : undefined) }} />
+          <Btn onClick={generar} disabled={!anioValido}>Generar automáticamente</Btn>
           {msg && <span className="text-sm text-emerald-600">{msg}</span>}
         </div>
       </Card>

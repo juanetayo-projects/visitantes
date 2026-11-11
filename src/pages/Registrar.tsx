@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { PageHeader, Card, Btn, selectCls, inputCls, textareaCls, Badge, Modal } from '../components/ui'
 import MapaHabitaciones from '../components/MapaHabitaciones'
@@ -91,13 +91,21 @@ export default function Registrar() {
   const verifId = useRef(0)
   // Desde "Pacientes sin ubicación": /registrar?doc=… entra como Familiar con el paciente ya buscado y seleccionado.
   const [params, setParams] = useSearchParams()
+  // El efecto debe correr solo cuando cambia la URL, pero usar la versión más reciente de estas
+  // funciones (que se recrean en cada render). Se guardan en una ref que se actualiza tras cada
+  // render: el efecto llama siempre a la última sin tener que re-ejecutarse cuando cambian.
+  const abrirDesdeDocumento = (doc: string) => {
+    reset(); setTipo('familiar'); setDocPaciente(doc)
+    buscarPorIdentificacion(doc)
+  }
+  const abrirDesdeDocumentoRef = useRef(abrirDesdeDocumento)
+  useLayoutEffect(() => { abrirDesdeDocumentoRef.current = abrirDesdeDocumento })
   useEffect(() => {
     const doc = params.get('doc')
     if (!doc) return
-    reset(); setTipo('familiar'); setDocPaciente(doc)
-    buscarPorIdentificacion(doc)
+    abrirDesdeDocumentoRef.current(doc)
     setParams({}, { replace: true })
-  }, [params])
+  }, [params, setParams])
 
   // Alto real de la franja fija (una o dos líneas según el ancho): el formulario se fija justo debajo.
   const franjaRef = useRef<HTMLDivElement>(null)
@@ -135,16 +143,23 @@ export default function Registrar() {
   }
 
   // Busca el paciente por número de identificación y lo selecciona aunque no tenga cama.
+  // Solo la búsqueda más reciente selecciona paciente: si llegan dos (p.ej. desde
+  // «Pacientes sin ubicación» y luego a mano), una respuesta lenta no reemplaza a la última.
+  // Se usa un contador y no la limpieza del efecto porque ese efecto se re-ejecuta a sí mismo
+  // (setParams({}) cambia `params`), y cancelar ahí descartaría siempre la búsqueda.
+  const busquedaId = useRef(0)
   async function buscarPorIdentificacion(valor: string = docPaciente) {
     setDocMsg(null)
     if (!valor.trim()) return
+    const id = ++busquedaId.current
     setBuscandoDoc(true)
     try {
       // Si no está en la copia local puede haber ingresado después de la última sincronización.
       const o = await buscarPacientePorDocumento(valor) ?? await buscarPacienteEnCenso(valor)
+      if (id !== busquedaId.current) return
       if (!o) { setDocMsg('No se encontró un paciente con esa identificación.'); return }
       seleccionar(o)
-    } finally { setBuscandoDoc(false) }
+    } finally { if (id === busquedaId.current) setBuscandoDoc(false) }
   }
 
   // visitante
@@ -162,7 +177,17 @@ export default function Registrar() {
 
   // Si el orientador ya identificó su sede de trabajo al iniciar sesión, se usa como
   // punto de partida (sigue siendo editable acá).
-  useEffect(() => { listSedes().then((s) => { setSedes(s); const preferida = sedeTrabajo && s.find((x) => x.id === sedeTrabajo.id); setSedeId((preferida ?? s[0])?.id ?? '') }) }, [])
+  const sedeTrabajoId = sedeTrabajo?.id ?? null
+  useEffect(() => {
+    let vigente = true
+    listSedes().then((s) => {
+      if (!vigente) return
+      setSedes(s)
+      const preferida = sedeTrabajoId ? s.find((x) => x.id === sedeTrabajoId) : undefined
+      setSedeId((preferida ?? s[0])?.id ?? '')
+    })
+    return () => { vigente = false }
+  }, [sedeTrabajoId])
   useEffect(() => {
     if (!sedeId) return
     listPisos(sedeId).then((p) => { setPisos(p); setPisoId(p[0]?.id ?? '') })
@@ -170,7 +195,7 @@ export default function Registrar() {
     tarjetasDisponibles(sedeId).then(setTarjetas)
   }, [sedeId])
   // "Sin tarjeta" deja de aplicar si se cambia a una sede distinta de Urgencias.
-  useEffect(() => { if (tipo === 'sin_tarjeta' && !esUrgencias) reset() }, [esUrgencias])
+  useEffect(() => { if (tipo === 'sin_tarjeta' && !esUrgencias) reset() }, [tipo, esUrgencias])
   // Si la puerta seleccionada deja de requerir tarjeta (o cambia), se limpia la selección previa.
   useEffect(() => { if (!requiereTarjeta) setTarjetaId('') }, [requiereTarjeta])
   useEffect(() => { listResponsables().then(setResponsables); listServicios().then(setServicios) }, [])

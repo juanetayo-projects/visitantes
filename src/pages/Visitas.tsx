@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { PageHeader, useDebounced, AvisoLimite, ContadorCircular, ConLateral, PanelIndicadores, ICONOS_IND, Card, FilterBar, selectCls, Btn, Badge, Modal } from '../components/ui'
 import { useAuth } from '../auth/AuthProvider'
 import { LIMITE_VISITAS, listVisitas, listSedes, listPisos, listUbicaciones, finalizarVisita, describirFiltros, type VisitaListado, type FiltrosVisita } from '../lib/data'
@@ -38,7 +38,25 @@ export default function Visitas() {
   const textoBusqueda = useDebounced((f.texto ?? '').trim().length >= 3 ? f.texto : '')
   const [confirmar, setConfirmar] = useState<VisitaListado | null>(null)
 
-  async function cargar() { setLoading(true); setRows(await listVisitas(f, { buscarEnServidor: true })); setLoading(false) }
+  // Solo la búsqueda más reciente escribe estado: al teclear o cambiar filtros rápido, una
+  // respuesta vieja no reemplaza la lista nueva. El indicador de carga se apaga en finally.
+  const pedido = useRef(0)
+  // Lo que se envía al servidor: los filtros y el texto CON retardo (no el que se está tecleando,
+  // que se filtra en pantalla). Solo cambia cuando cambia alguno de estos campos.
+  const consulta = useMemo<FiltrosVisita>(() => ({
+    estado: f.estado, tipo: f.tipo, sedeId: f.sedeId, pisoId: f.pisoId, ubicacionId: f.ubicacionId,
+    desde: f.desde, hasta: f.hasta, texto: textoBusqueda,
+  }), [f.estado, f.tipo, f.sedeId, f.pisoId, f.ubicacionId, f.desde, f.hasta, textoBusqueda])
+  const cargar = useCallback(async () => {
+    const id = ++pedido.current
+    setLoading(true)
+    try {
+      const r = await listVisitas(consulta, { buscarEnServidor: true })
+      if (id === pedido.current) setRows(r)
+    } finally {
+      if (id === pedido.current) setLoading(false)
+    }
+  }, [consulta])
   useEffect(() => { listSedes().then(setSedes) }, [])
   useEffect(() => {
     if (f.sedeId) listPisos(f.sedeId).then(setPisos); else setPisos([])
@@ -46,7 +64,7 @@ export default function Visitas() {
   useEffect(() => {
     if (f.pisoId) listUbicaciones(f.pisoId).then(setUbicaciones); else setUbicaciones([])
   }, [f.pisoId])
-  useEffect(() => { cargar() }, [f.estado, f.tipo, f.sedeId, f.pisoId, f.ubicacionId, f.desde, f.hasta, textoBusqueda])
+  useEffect(() => { cargar() }, [cargar])
 
   async function salida() {
     if (!confirmar) return

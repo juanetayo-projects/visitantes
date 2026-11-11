@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import ExcelJS from 'exceljs'
 import { saveAs } from 'file-saver'
 import { Card, Btn } from './ui'
+import { conClaves } from '../lib/claves'
 import { supabase } from '../lib/supabase'
 import { importarEstructura, type FilaPiso, type FilaUbic, type ResultadoImport } from '../lib/data'
 
@@ -116,7 +117,7 @@ export default function ImportarEstructura({ onDone }: { onDone?: () => void }) 
           {res.errores.length > 0 && (
             <div className="mt-1 text-amber-700">
               <div className="font-medium">Avisos ({res.errores.length}):</div>
-              <ul className="list-disc pl-5">{res.errores.slice(0, 8).map((x, i) => <li key={i}>{x}</li>)}</ul>
+              <ul className="list-disc pl-5">{conClaves(res.errores.slice(0, 8)).map((e) => <li key={e.clave}>{e.texto}</li>)}</ul>
               {res.errores.length > 8 && <div>… y {res.errores.length - 8} más.</div>}
             </div>
           )}

@@ -193,8 +193,8 @@ export function ListaMovimientos({ items }: { items: FeedItem[] }) {
   if (!items.length) return <p className="flex flex-1 items-center justify-center py-8 text-center text-sm text-gray-400">Todavía no hay movimientos registrados.</p>
   return (
     <ul className="-mx-2 flex-1 divide-y divide-gray-100">
-      {items.map((e, i) => (
-        <li key={`${e.hora}-${i}`} className="flex items-center gap-3 px-2 py-2">
+      {items.map((e) => (
+        <li key={e.id} className="flex items-center gap-3 px-2 py-2">
           <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${e.tipo === 'ingreso' ? TONO.azul : TONO.teal}`}><Icono d={e.tipo === 'ingreso' ? ICONOS.entrada : ICONOS.salida} className="h-4 w-4" /></span>
           <span className="min-w-0 flex-1">
             <span className="block truncate text-sm font-medium text-gray-800">{e.visitante}</span>

@@ -38,10 +38,19 @@ export default function Historico() {
   useEffect(() => { listSedes().then(setSedes) }, [])
   useEffect(() => { if (f.sedeId) listPisos(f.sedeId).then(setPisos); else setPisos([]) }, [f.sedeId])
   useEffect(() => { if (f.pisoId) listUbicaciones(f.pisoId).then(setUbicaciones); else setUbicaciones([]) }, [f.pisoId])
+  // Lo que se envía al servidor: filtros + texto con retardo (el que se teclea se filtra en pantalla).
+  const consulta = useMemo<FiltrosVisita>(() => ({
+    estado: f.estado, tipo: f.tipo, sedeId: f.sedeId, pisoId: f.pisoId, ubicacionId: f.ubicacionId,
+    desde: f.desde, hasta: f.hasta, texto: textoBusqueda,
+  }), [f.estado, f.tipo, f.sedeId, f.pisoId, f.ubicacionId, f.desde, f.hasta, textoBusqueda])
   useEffect(() => {
+    let vigente = true // descarta la respuesta si otra consulta la reemplazó
     setLoading(true)
-    listVisitas(f, { excluirSinTarjeta: true, buscarEnServidor: true }).then((r) => { setRows(r); setLoading(false) })
-  }, [f.estado, f.tipo, f.sedeId, f.pisoId, f.ubicacionId, f.desde, f.hasta, textoBusqueda])
+    listVisitas(consulta, { excluirSinTarjeta: true, buscarEnServidor: true })
+      .then((r) => { if (vigente) setRows(r) })
+      .finally(() => { if (vigente) setLoading(false) })
+    return () => { vigente = false }
+  }, [consulta])
 
   const filtrados = useMemo(() => {
     if (!f.texto) return rows

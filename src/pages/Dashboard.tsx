@@ -63,7 +63,16 @@ export default function Dashboard() {
 
   useEffect(() => { listSedes().then(setSedes) }, [])
   useEffect(() => { if (f.sedeId) listPisos(f.sedeId).then(setPisos); else setPisos([]) }, [f.sedeId])
-  useEffect(() => { listVisitas(f).then(setRows) }, [f.estado, f.tipo, f.sedeId, f.pisoId, f.desde, f.hasta])
+  // Sin el texto: se filtra en pantalla (ver `m`). Antes se pasaba `f` completo, y el texto que
+  // hubiera al momento de consultar se quedaba "pegado" en la lista aunque luego se borrara.
+  const consulta = useMemo<FiltrosVisita>(() => ({
+    estado: f.estado, tipo: f.tipo, sedeId: f.sedeId, pisoId: f.pisoId, desde: f.desde, hasta: f.hasta,
+  }), [f.estado, f.tipo, f.sedeId, f.pisoId, f.desde, f.hasta])
+  useEffect(() => {
+    let vigente = true
+    listVisitas(consulta).then((r) => { if (vigente) setRows(r) })
+    return () => { vigente = false }
+  }, [consulta])
 
   const m = useMemo(() => {
     const filtr = f.texto

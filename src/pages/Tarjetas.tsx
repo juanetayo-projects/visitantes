@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { PageHeader, ContadorCircular, ConLateral, PanelIndicadores, ICONOS_IND, Card, Badge, Btn, FilterBar, selectCls, Modal } from '../components/ui'
 import { useAuth } from '../auth/AuthProvider'
 import { inventarioTarjetas, listTarjetasDetalle, listSedes, listPisos, listUbicaciones, finalizarVisita, describirFiltros, type InventarioTarjetas, type TarjetaDetalle, type FiltrosTarjeta } from '../lib/data'
@@ -37,16 +37,26 @@ export default function Tarjetas() {
   const [pisos, setPisos] = useState<Piso[]>([])
   const [ubicaciones, setUbicaciones] = useState<Ubicacion[]>([])
 
-  async function cargar() {
-    setLoading(true)
-    const [i, u] = await Promise.all([inventarioTarjetas(), listTarjetasDetalle(f)])
-    setInv(i); setRows(u); setLoading(false)
-  }
-  useEffect(() => { cargar() }, [])
+  // Una sola carga (inventario + lista) que se repite al cambiar cualquier filtro. Antes eran dos
+  // efectos que pedían la misma lista y podían responder en desorden. Solo la petición más
+  // reciente escribe estado, y el indicador de carga se apaga en finally aunque falle.
+  const pedido = useRef(0)
+  const cargar = useCallback(async () => {
+    const id = ++pedido.current
+    // «Cargando…» solo en la primera carga (loading arranca en true): al filtrar o escribir en la
+    // búsqueda la tabla se actualiza en su lugar, sin parpadear.
+    try {
+      const [i, u] = await Promise.all([inventarioTarjetas(), listTarjetasDetalle(f)])
+      if (id !== pedido.current) return
+      setInv(i); setRows(u)
+    } finally {
+      if (id === pedido.current) setLoading(false)
+    }
+  }, [f])
+  useEffect(() => { cargar() }, [cargar])
   useEffect(() => { listSedes().then(setSedes) }, [])
   useEffect(() => { if (f.sedeId) listPisos(f.sedeId).then(setPisos); else setPisos([]) }, [f.sedeId])
   useEffect(() => { if (f.pisoId) listUbicaciones(f.pisoId).then(setUbicaciones); else setUbicaciones([]) }, [f.pisoId])
-  useEffect(() => { listTarjetasDetalle(f).then(setRows) }, [f.estado, f.sedeId, f.pisoId, f.ubicacionId, f.tipo, f.desde, f.hasta, f.texto])
 
   async function devolver() {
     if (!confirmar?.visita_id) { setConfirmar(null); return }

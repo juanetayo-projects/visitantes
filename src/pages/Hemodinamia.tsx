@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { PageHeader, ContadorCircular, Card, PanelIndicadores, ICONOS_IND, ConLateral, FilterBar, selectCls, inputCls, textareaCls, Btn, Badge, Modal, ComentariosBadge } from '../components/ui'
 import { useAuth } from '../auth/AuthProvider'
 import {
@@ -39,12 +39,22 @@ export default function Hemodinamia() {
   const [nuevoComentario, setNuevoComentario] = useState('')
   const [comentariosPorSolicitud, setComentariosPorSolicitud] = useState<Map<string, (ComentarioHemodinamia & { autor_nombre: string | null })[]>>(new Map())
 
-  async function cargar() {
+  // Solo la consulta más reciente escribe estado (al cambiar filtros rápido, una respuesta
+  // vieja no pisa la nueva); el indicador de carga se apaga en finally aunque la consulta falle.
+  const pedido = useRef(0)
+  const cargar = useCallback(async () => {
+    const id = ++pedido.current
     setLoading(true)
-    const [r, cm] = await Promise.all([listSolicitudesHemodinamia(f), listComentariosHemodinamiaPorSolicitud()])
-    setRows(r); setComentariosPorSolicitud(cm); setLoading(false)
-  }
-  useEffect(() => { cargar() }, [f.estado, f.desde, f.hasta, f.texto])
+    try {
+      const [r, cm] = await Promise.all([listSolicitudesHemodinamia(f), listComentariosHemodinamiaPorSolicitud()])
+      if (id !== pedido.current) return
+      setRows(r); setComentariosPorSolicitud(cm)
+    } finally {
+      if (id === pedido.current) setLoading(false)
+    }
+  }, [f])
+  // Depende de `cargar` (y este de `f`): se recarga cuando cambia cualquier filtro, sin listas a mano.
+  useEffect(() => { cargar() }, [cargar])
 
   async function guardarNueva() {
     if (!form.cedula_paciente.trim() || !form.nombre_paciente.trim() || !form.procedimiento.trim()) { setMsg('Cédula, nombre y procedimiento son obligatorios.'); return }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { supabase } from '../lib/supabase'
 import { Card, Btn, inputCls, textareaCls, selectCls, Badge, Modal, SearchableSelect, ConLateral } from './ui'
 
@@ -40,14 +40,16 @@ interface Props {
   filtrosIniciales?: Record<string, string>
   // Lleva título, búsqueda, botón y filtros a una barra lateral derecha, debajo de este contenido.
   lateral?: ReactNode
-  // Informa cuántos registros se ven (tras filtros) y el total, p. ej. para un contador en el encabezado.
-  onConteo?: (visibles: number, total: number, cargando: boolean) => void
+  // Encabezado de la página dibujado por la propia tabla, con cuántos registros se ven (tras filtros)
+  // y el total. Los conteos se le entregan al dibujar: antes se "empujaban" al padre desde un
+  // efecto (onConteo), lo que obligaba a dibujar dos veces y duplicaba el estado.
+  cabecera?: (conteo: { visibles: number; total: number; cargando: boolean }) => ReactNode
   // Se invoca antes de insertar/actualizar; puede completar/validar el formulario.
   // Si retorna { error }, se muestra el mensaje y no se guarda.
   onBeforeSave?: (form: Record<string, any>, editing: boolean) => Promise<Record<string, any> | { error: string }>
 }
 
-export default function CrudTable({ tabla, titulo, columnas, campos, orderBy = 'created_at', subtitulo, filtros, filtrosIniciales, lateral, onConteo, onBeforeSave }: Props) {
+export default function CrudTable({ tabla, titulo, columnas, campos, orderBy = 'created_at', subtitulo, filtros, filtrosIniciales, lateral, cabecera, onBeforeSave }: Props) {
   const [filtroVals, setFiltroVals] = useState<Record<string, string>>(filtrosIniciales ?? {})
   const [rows, setRows] = useState<any[]>([])
   const [lookups, setLookups] = useState<Lookups>({})
@@ -59,16 +61,32 @@ export default function CrudTable({ tabla, titulo, columnas, campos, orderBy = '
   const [error, setError] = useState<string | null>(null)
   const [busca, setBusca] = useState('')
 
-  async function cargar() {
-    setLoading(true)
-    const { data } = await supabase.from(tabla).select('*').order(orderBy)
-    setRows(data ?? [])
-    setLoading(false)
-  }
+  // Solo la petición más reciente escribe estado: si se cambia de tabla (o se recarga tras guardar)
+  // mientras otra consulta sigue en vuelo, la respuesta vieja se descarta en vez de pisar la nueva.
+  const pedido = useRef(0)
+  const pedidoOpciones = useRef(0)
 
-  async function cargarOpciones() {
+  const cargar = useCallback(async () => {
+    const id = ++pedido.current
+    setLoading(true)
+    try {
+      const { data } = await supabase.from(tabla).select('*').order(orderBy)
+      if (id === pedido.current) setRows(data ?? [])
+    } finally {
+      // En finally: si la consulta falla, la tabla no se queda en «Cargando…» para siempre.
+      if (id === pedido.current) setLoading(false)
+    }
+  }, [tabla, orderBy])
+
+  // `campos` suele llegar como arreglo nuevo en cada render del padre, así que no sirve como
+  // dependencia (consultaría sin parar). Se usa una "firma" en texto de lo que de verdad define
+  // las opciones: solo se vuelve a consultar si esa configuración cambia.
+  const firmaOpciones = JSON.stringify(campos.map((c) => ({ key: c.key, optionsTable: c.optionsTable, options: c.options })))
+  const cargarOpciones = useCallback(async () => {
+    const id = ++pedidoOpciones.current
+    const specs = JSON.parse(firmaOpciones) as Pick<CrudField, 'key' | 'optionsTable' | 'options'>[]
     const lk: Lookups = {}; const om: Record<string, { value: string; label: string }[]> = {}
-    for (const c of campos) {
+    for (const c of specs) {
       if (c.optionsTable) {
         let q = supabase.from(c.optionsTable.tabla).select('*').order(c.optionsTable.order ?? c.optionsTable.labelKey)
         if (c.optionsTable.filterActive) q = q.eq('activo', true)
@@ -81,10 +99,12 @@ export default function CrudTable({ tabla, titulo, columnas, campos, orderBy = '
         lk[c.key] = new Map(c.options.map((o) => [o.value, o.label]))
       }
     }
+    if (id !== pedidoOpciones.current) return
     setOptionsMap(om); setLookups(lk)
-  }
+  }, [firmaOpciones])
 
-  useEffect(() => { cargar(); cargarOpciones() }, [tabla])
+  useEffect(() => { cargar() }, [cargar])
+  useEffect(() => { cargarOpciones() }, [cargarOpciones])
 
   function abrirNuevo() {
     const f: Record<string, any> = {}
@@ -166,7 +186,7 @@ export default function CrudTable({ tabla, titulo, columnas, campos, orderBy = '
     return r
   }, [rows, busca, columnas, lookups, filtros, filtroVals])
 
-  useEffect(() => { onConteo?.(filtrados.length, rows.length, loading) }, [filtrados.length, rows.length, loading])
+  const cabeceraPagina = cabecera?.({ visibles: filtrados.length, total: rows.length, cargando: loading })
 
   const encabezado = (
     <div>
@@ -179,6 +199,8 @@ export default function CrudTable({ tabla, titulo, columnas, campos, orderBy = '
   if (lateral !== undefined) {
     const hayFiltro = Object.values(filtroVals).some(Boolean) || !!busca
     return (
+      <>
+      {cabeceraPagina}
       <ConLateral lateral={
         <>
           {lateral}
@@ -212,10 +234,11 @@ export default function CrudTable({ tabla, titulo, columnas, campos, orderBy = '
       }>
         {tablaYModal(false)}
       </ConLateral>
+      </>
     )
   }
 
-  return tablaYModal(true)
+  return <>{cabeceraPagina}{tablaYModal(true)}</>
 
   function tablaYModal(conCabecera: boolean) {
   return (

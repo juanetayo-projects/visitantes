@@ -24,6 +24,9 @@ async function loadLogoDataUrl(): Promise<string | null> {
   try {
     const url = `${import.meta.env.BASE_URL}images/logo_cacsb2.png`
     const res = await fetch(url)
+    // fetch no falla con un 404/500: sin esta revisión se incrustaba la página de error como si
+    // fuera la imagen (logo roto en el PDF/Excel). Con el error, se exporta sin logo.
+    if (!res.ok) throw new Error(`Logo HTTP ${res.status}`)
     const blob = await res.blob()
     _logoCache = await new Promise<string>((resolve, reject) => {
       const fr = new FileReader()

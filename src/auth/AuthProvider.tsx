@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import type { Perfil } from '../lib/types'
@@ -33,14 +33,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [sedeTrabajo, setSedeTrabajoState] = useState<SedeTrabajo | null>(() => {
     try { const raw = sessionStorage.getItem(SEDE_TRABAJO_KEY); return raw ? JSON.parse(raw) : null } catch { return null }
   })
-  const setSedeTrabajo = (s: SedeTrabajo) => {
+  // Funciones estables (useCallback): forman parte del valor del contexto y, si cambiaran en
+  // cada render, toda la app que usa useAuth() se volvería a dibujar sin necesidad.
+  const setSedeTrabajo = useCallback((s: SedeTrabajo) => {
     setSedeTrabajoState(s)
     sessionStorage.setItem(SEDE_TRABAJO_KEY, JSON.stringify(s))
-  }
-  const limpiarSedeTrabajo = () => {
+  }, [])
+  const limpiarSedeTrabajo = useCallback(() => {
     setSedeTrabajoState(null)
     sessionStorage.removeItem(SEDE_TRABAJO_KEY)
-  }
+  }, [])
 
   async function cargarPerfil(uid: string) {
     if (uidCargado.current === uid) return // evita recargas redundantes (token refresh, etc.)
@@ -71,12 +73,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => sub.subscription.unsubscribe()
   }, [])
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     await supabase.auth.signOut()
     limpiarSedeTrabajo()
-  }
+  }, [limpiarSedeTrabajo])
 
-  return <Ctx.Provider value={{ session, perfil, loading, signOut, sedeTrabajo, setSedeTrabajo, limpiarSedeTrabajo }}>{children}</Ctx.Provider>
+  // El objeto solo cambia cuando cambia alguno de sus datos reales.
+  const value = useMemo(
+    () => ({ session, perfil, loading, signOut, sedeTrabajo, setSedeTrabajo, limpiarSedeTrabajo }),
+    [session, perfil, loading, signOut, sedeTrabajo, setSedeTrabajo, limpiarSedeTrabajo],
+  )
+
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
 
 export const useAuth = () => useContext(Ctx)

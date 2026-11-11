@@ -52,6 +52,36 @@ const ESTANCIAS: { value: string; label: string; cumple: (d: number) => boolean 
 interface Filtros { tipo: string; unidad: string; area: string; estancia: string; desde: string; hasta: string; texto: string }
 const VACIO: Filtros = { tipo: '', unidad: '', area: '', estancia: '', desde: '', hasta: '', texto: '' }
 
+// Funciones puras (fuera del componente): reciben filas y filtros por parámetro, así los useMemo
+// que las usan dependen solo de [rows, f] y nunca trabajan con datos de un render anterior.
+// Aplica todos los filtros salvo `omitir`: así el total de cada opción de un filtro refleja
+// los demás filtros activos y coincide con lo que mostraría la tabla al elegirla.
+function filtrar(rows: CensoInconsistencia[], f: Filtros, omitir?: keyof Filtros): CensoInconsistencia[] {
+  const t = f.texto.trim().toLowerCase()
+  const estancia = omitir === 'estancia' ? undefined : ESTANCIAS.find((e) => e.value === f.estancia)
+  return rows.filter((r) => {
+    const dia = r.fecha_hora_ingreso?.substring(0, 10) ?? ''
+    const d = diasEstancia(r.fecha_hora_ingreso)
+    return (omitir === 'tipo' || !f.tipo || r.tipo === f.tipo) &&
+      (omitir === 'unidad' || !f.unidad || r.censo_unidad === f.unidad) &&
+      (omitir === 'area' || !f.area || r.censo_area === f.area) &&
+      (!estancia || (d != null && estancia.cumple(d))) &&
+      (!f.desde || (dia !== '' && dia >= f.desde)) &&
+      (!f.hasta || (dia !== '' && dia <= f.hasta)) &&
+      (!t || [r.paciente, r.num_ingreso, r.censo_cama, r.detalle].some((x) => x?.toLowerCase().includes(t)))
+  })
+}
+function contar(vals: (string | null)[]): [string, number][] {
+  const m = new Map<string, number>()
+  vals.forEach((v) => { if (v) m.set(v, (m.get(v) ?? 0) + 1) })
+  return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+}
+// Las opciones salen de todas las filas (para no desaparecer al filtrar); el total, de las filtradas.
+function conTotales(todas: (string | null)[], filtradas: (string | null)[]): [string, number][] {
+  const n = new Map(contar(filtradas))
+  return contar(todas).map(([v]) => [v, n.get(v) ?? 0])
+}
+
 const COLS: Columna<CensoInconsistencia>[] = [
   { header: 'Tipo', get: (r) => TIPO_LABEL[r.tipo]?.label ?? r.tipo },
   { header: 'Paciente', get: (r) => r.paciente ?? '' },
@@ -98,41 +128,14 @@ export default function SincronizacionCenso({ soloConsulta: soloConsultaProp = f
     if (res.ok) cargar()
   }
 
-  // Aplica todos los filtros salvo `omitir`: así el total de cada opción de un filtro refleja
-  // los demás filtros activos y coincide con lo que mostraría la tabla al elegirla.
-  const filtrar = (omitir?: keyof Filtros) => {
-    const t = f.texto.trim().toLowerCase()
-    const estancia = omitir === 'estancia' ? undefined : ESTANCIAS.find((e) => e.value === f.estancia)
-    return rows.filter((r) => {
-      const dia = r.fecha_hora_ingreso?.substring(0, 10) ?? ''
-      const d = diasEstancia(r.fecha_hora_ingreso)
-      return (omitir === 'tipo' || !f.tipo || r.tipo === f.tipo) &&
-        (omitir === 'unidad' || !f.unidad || r.censo_unidad === f.unidad) &&
-        (omitir === 'area' || !f.area || r.censo_area === f.area) &&
-        (!estancia || (d != null && estancia.cumple(d))) &&
-        (!f.desde || (dia !== '' && dia >= f.desde)) &&
-        (!f.hasta || (dia !== '' && dia <= f.hasta)) &&
-        (!t || [r.paciente, r.num_ingreso, r.censo_cama, r.detalle].some((x) => x?.toLowerCase().includes(t)))
-    })
-  }
-  const contar = (vals: (string | null)[]) => {
-    const m = new Map<string, number>()
-    vals.forEach((v) => { if (v) m.set(v, (m.get(v) ?? 0) + 1) })
-    return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0]))
-  }
-  // Las opciones salen de todas las filas (para no desaparecer al filtrar); el total, de las filtradas.
-  const conTotales = (todas: (string | null)[], filtradas: (string | null)[]) => {
-    const n = new Map(contar(filtradas))
-    return contar(todas).map(([v]) => [v, n.get(v) ?? 0] as [string, number])
-  }
-  const tipos = useMemo(() => conTotales(rows.map((r) => r.tipo), filtrar('tipo').map((r) => r.tipo)), [rows, f])
-  const unidades = useMemo(() => conTotales(rows.map((r) => r.censo_unidad), filtrar('unidad').map((r) => r.censo_unidad)), [rows, f])
+  const tipos = useMemo(() => conTotales(rows.map((r) => r.tipo), filtrar(rows, f, 'tipo').map((r) => r.tipo)), [rows, f])
+  const unidades = useMemo(() => conTotales(rows.map((r) => r.censo_unidad), filtrar(rows, f, 'unidad').map((r) => r.censo_unidad)), [rows, f])
   const areas = useMemo(() => {
     const base = rows.filter((r) => !f.unidad || r.censo_unidad === f.unidad)
-    return conTotales(base.map((r) => r.censo_area), filtrar('area').map((r) => r.censo_area))
+    return conTotales(base.map((r) => r.censo_area), filtrar(rows, f, 'area').map((r) => r.censo_area))
   }, [rows, f])
   const estancias = useMemo(() => {
-    const base = filtrar('estancia').map((r) => diasEstancia(r.fecha_hora_ingreso))
+    const base = filtrar(rows, f, 'estancia').map((r) => diasEstancia(r.fecha_hora_ingreso))
     return ESTANCIAS.map((e) => ({ ...e, n: base.filter((d) => d != null && e.cumple(d)).length }))
   }, [rows, f])
   const porTipo = useMemo(() => {
@@ -155,7 +158,7 @@ export default function SincronizacionCenso({ soloConsulta: soloConsultaProp = f
     }))
   }, [rows])
 
-  const filtrados = useMemo(() => filtrar(), [rows, f])
+  const filtrados = useMemo(() => filtrar(rows, f), [rows, f])
   const hayFiltros = Object.values(f).some((v) => v.trim() !== '')
 
   return (

@@ -43,8 +43,8 @@ export default function Usuarios() {
     setMsg(null)
     if (!form.email.trim() || form.password.length < 6) { setMsg({ ok: false, t: 'Correo y contraseña (mín. 6) obligatorios.' }); return }
     setBusy(true)
-    const r = await invoke({ action: 'create', ...form })
-    setBusy(false)
+    let r: Awaited<ReturnType<typeof invoke>>
+    try { r = await invoke({ action: 'create', ...form }) } finally { setBusy(false) }
     if (r.error) { setMsg({ ok: false, t: r.error }); return }
     setMsg({ ok: true, t: `Usuario ${form.email} creado.` }); setForm({ ...vacio }); setOpen(false); cargar()
   }
@@ -69,12 +69,15 @@ export default function Usuarios() {
     setEditBusy(true)
     // El correo también vive en Auth, por eso va por la Edge Function; lo demás basta con el perfil.
     let error: string | null | undefined
-    if (email !== (edit.email ?? '').toLowerCase()) {
-      error = (await invoke({ action: 'update', id: edit.id, nombre, email, rol: editForm.rol, activo: editForm.activo })).error
-    } else {
-      error = (await supabase.from('perfiles').update({ nombre, rol: editForm.rol, activo: editForm.activo }).eq('id', edit.id)).error?.message
+    try {
+      if (email !== (edit.email ?? '').toLowerCase()) {
+        error = (await invoke({ action: 'update', id: edit.id, nombre, email, rol: editForm.rol, activo: editForm.activo })).error
+      } else {
+        error = (await supabase.from('perfiles').update({ nombre, rol: editForm.rol, activo: editForm.activo }).eq('id', edit.id)).error?.message
+      }
+    } finally {
+      setEditBusy(false)
     }
-    setEditBusy(false)
     if (error) { setEditMsg(error); return }
     setMsg({ ok: true, t: `Usuario ${email} actualizado.` }); setEdit(null); cargar()
   }
@@ -86,8 +89,8 @@ export default function Usuarios() {
     if (pass1.length < 6) { setPassMsg('La contraseña debe tener mínimo 6 caracteres.'); return }
     if (pass1 !== pass2) { setPassMsg('Las contraseñas no coinciden.'); return }
     setPassBusy(true)
-    const r = await invoke({ action: 'password', id: passModal.id, password: pass1 })
-    setPassBusy(false)
+    let r: Awaited<ReturnType<typeof invoke>>
+    try { r = await invoke({ action: 'password', id: passModal.id, password: pass1 }) } finally { setPassBusy(false) }
     if (r.error) { setPassMsg(r.error); return }
     setMsg({ ok: true, t: `Contraseña actualizada para ${passModal.email}.` })
     setPassModal(null)

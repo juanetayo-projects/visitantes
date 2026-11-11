@@ -28,7 +28,7 @@ export default function SedeGate() {
           <div className="grid gap-3 sm:grid-cols-2">
             {sedes.map((s) => (
               <button key={s.id} onClick={() => setSedeTrabajo({ id: s.id, nombre: s.nombre })}
-                className="flex flex-col items-center gap-2 rounded-xl bg-white p-5 text-center shadow-neu-sm transition-all duration-150 hover:shadow-neu active:shadow-neu-inset-sm">
+                className="flex flex-col items-center gap-2 rounded-xl bg-white p-5 text-center shadow-neu-sm transition-shadow duration-150 hover:shadow-neu active:shadow-neu-inset-sm">
                 <span className="grid h-12 w-12 place-items-center rounded-xl bg-brand-50 text-brand">
                   <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6" /></svg>
                 </span>

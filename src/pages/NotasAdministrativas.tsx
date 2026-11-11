@@ -28,10 +28,15 @@ export default function NotasAdministrativas() {
 
   useEffect(() => { supabase.from('perfiles').select('id, nombre').order('nombre').then(({ data }) => setUsuarios(data ?? [])) }, [])
   useEffect(() => { metricasNotasPorUsuario().then(setActividad) }, [])
+  // `f` solo cambia por setF, y todos sus campos se usan en la consulta: basta con depender de él.
   useEffect(() => {
+    let vigente = true // descarta la respuesta si otra consulta la reemplazó
     setLoading(true)
-    listNotasAdministrativas(f).then((r) => { setRows(r); setLoading(false) })
-  }, [f.desde, f.hasta, f.usuarioId, f.texto])
+    listNotasAdministrativas(f)
+      .then((r) => { if (vigente) setRows(r) })
+      .finally(() => { if (vigente) setLoading(false) })
+    return () => { vigente = false }
+  }, [f])
 
   const hoyCO = new Date(Date.now() - 5 * 3_600_000).toISOString().substring(0, 10)
   const notasHoy = rows.filter((r) => r.created_at.startsWith(hoyCO)).length

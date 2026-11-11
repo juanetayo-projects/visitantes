@@ -298,8 +298,7 @@ export function Badge({ children, color = 'gray' }: { children: ReactNode; color
   return <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium shadow-neu-xs ${c}`}>{children}</span>
 }
 
-export interface ComentarioResumen { autor_nombre: string | null; comentario: string; created_at: string }
-
+export interface ComentarioResumen { id: string; autor_nombre: string | null; comentario: string; created_at: string }
 // Fecha/hora corta en Colombia (GMT-5) para el tooltip de comentarios: "16/07 03:49 p.m."
 function fechaCortaCO(iso: string): string {
   const co = new Date(new Date(iso).getTime() - 5 * 3_600_000)
@@ -340,8 +339,8 @@ export function ComentariosBadge({ items }: { items: ComentarioResumen[] }) {
         <div style={{ position: 'fixed', left: pos.left, top: pos.top, transform: pos.arriba ? 'translateY(-100%)' : undefined, zIndex: 60 }}
           className="pointer-events-none w-72 rounded-xl bg-white p-2 shadow-neu ring-1 ring-brand/20">
           <div className="max-h-56 space-y-1.5 overflow-y-auto pr-0.5 text-left">
-            {items.map((c, i) => (
-              <div key={i} className="rounded-lg border-l-4 border-brand-light bg-brand-50/60 px-2 py-1.5">
+            {items.map((c) => (
+              <div key={c.id} className="rounded-lg border-l-4 border-brand-light bg-brand-50/60 px-2 py-1.5">
                 <div className="flex items-center justify-between gap-2 text-[10px] text-gray-500">
                   <span className="font-medium text-gray-700">{c.autor_nombre ?? 'Usuario'}</span>
                   <span className="whitespace-nowrap">{fechaCortaCO(c.created_at)}</span>

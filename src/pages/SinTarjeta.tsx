@@ -28,10 +28,18 @@ export default function SinTarjeta() {
   const textoBusqueda = useDebounced((f.texto ?? '').trim().length >= 3 ? f.texto : '')
 
   useEffect(() => { listSedes().then(setSedes) }, [])
+  // Lo que se envía al servidor: filtros + texto con retardo (el que se teclea se filtra en pantalla).
+  const consulta = useMemo<FiltrosVisita>(() => ({
+    estado: f.estado, sedeId: f.sedeId, desde: f.desde, hasta: f.hasta, tipo: 'sin_tarjeta', texto: textoBusqueda,
+  }), [f.estado, f.sedeId, f.desde, f.hasta, textoBusqueda])
   useEffect(() => {
+    let vigente = true // descarta la respuesta si otra consulta la reemplazó
     setLoading(true)
-    listVisitas({ ...f, tipo: 'sin_tarjeta' }, { buscarEnServidor: true }).then((r) => { setRows(r); setLoading(false) })
-  }, [f.estado, f.sedeId, f.desde, f.hasta, textoBusqueda])
+    listVisitas(consulta, { buscarEnServidor: true })
+      .then((r) => { if (vigente) setRows(r) })
+      .finally(() => { if (vigente) setLoading(false) })
+    return () => { vigente = false }
+  }, [consulta])
 
   const filtrados = useMemo(() => {
     if (!f.texto) return rows

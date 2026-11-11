@@ -139,7 +139,8 @@ export async function importarResponsables(rows: FilaResponsable[]): Promise<Res
   const servId = new Map((serv ?? []).map((s: any) => [norm(s.nombre), s.id]))
   const cargId = new Map((carg ?? []).map((c: any) => [norm(c.nombre), c.id]))
   const existById = new Map((existentes ?? []).map((r: any) => [String(r.numero_documento).trim(), r.id]))
-  let creados = 0, actualizados = 0
+  // 1) Validación (sin red), en el orden del archivo.
+  const tareas: { payload: any; id: string | undefined }[] = []
   for (const r of rows) {
     if (!r.nombre_completo?.trim() || !String(r.numero_documento ?? '').trim()) { errores.push(`Fila ignorada: falta nombre o documento.`); continue }
     const servicio_id = r.servicio ? servId.get(norm(r.servicio)) ?? null : null
@@ -147,10 +148,23 @@ export async function importarResponsables(rows: FilaResponsable[]): Promise<Res
     if (r.servicio && !servicio_id) errores.push(`Servicio no encontrado: «${r.servicio}» (${r.nombre_completo}).`)
     if (r.cargo && !cargo_id) errores.push(`Cargo no encontrado: «${r.cargo}» (${r.nombre_completo}).`)
     const payload = { nombre_completo: r.nombre_completo.trim(), numero_documento: String(r.numero_documento).trim(), servicio_id, cargo_id, telefono: r.telefono || null, email: r.email || null, activo: r.activo }
-    const id = existById.get(payload.numero_documento)
-    const res = id ? await supabase.from('responsables').update(payload).eq('id', id) : await supabase.from('responsables').insert(payload)
-    if (res.error) errores.push(`${payload.numero_documento}: ${res.error.message}`)
-    else if (id) actualizados++; else creados++
+    tareas.push({ payload, id: existById.get(payload.numero_documento) })
+  }
+  // 2) Guardado: cada fila es independiente, así que van de a LOTE en paralelo (antes, una por una:
+  //    300 filas ≈ 30 s). El lote acota la carga sobre la base; los resultados conservan el orden.
+  const LOTE = 8
+  const resultados: { id: string | undefined; doc: string; error: string | null }[] = []
+  for (let i = 0; i < tareas.length; i += LOTE) {
+    const lote = await Promise.all(tareas.slice(i, i + LOTE).map(async ({ payload, id }) => {
+      const res = id ? await supabase.from('responsables').update(payload).eq('id', id) : await supabase.from('responsables').insert(payload)
+      return { id, doc: payload.numero_documento as string, error: res.error?.message ?? null }
+    }))
+    resultados.push(...lote)
+  }
+  let creados = 0, actualizados = 0
+  for (const r of resultados) {
+    if (r.error) errores.push(`${r.doc}: ${r.error}`)
+    else if (r.id) actualizados++; else creados++
   }
   return { creados, actualizados, errores }
 }
@@ -658,6 +672,7 @@ export async function monitoreoResumen(hoy: string): Promise<ResumenMonitoreo> {
 
 
 export interface FeedItem {
+  id: string
   hora: string
   tipo: 'ingreso' | 'salida'
   visitante: string
@@ -667,9 +682,10 @@ export interface FeedItem {
 }
 export async function feedReciente(limit = 14): Promise<FeedItem[]> {
   const { data } = await supabase.from('visita_eventos')
-    .select('tipo, hora, visita:visitas(tipo_visitante, tipo_acompanante, ubicacion_etiqueta, visitante:visitantes(nombres_completos))')
+    .select('id, tipo, hora, visita:visitas(tipo_visitante, tipo_acompanante, ubicacion_etiqueta, visitante:visitantes(nombres_completos))')
     .order('hora', { ascending: false }).limit(limit)
   return (data ?? []).map((e: any) => ({
+    id: String(e.id),
     hora: e.hora,
     tipo: e.tipo,
     visitante: e.visita?.visitante?.nombres_completos ?? '—',

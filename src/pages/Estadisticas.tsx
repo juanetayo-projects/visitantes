@@ -38,10 +38,17 @@ export default function Estadisticas() {
 
   useEffect(() => { listSedes().then(setSedes) }, [])
   useEffect(() => { if (f.sedeId) listPisos(f.sedeId).then(setPisos); else setPisos([]) }, [f.sedeId])
+  const consulta = useMemo<FiltrosVisita>(() => ({
+    estado: f.estado || '', tipo: f.tipo, sedeId: f.sedeId, pisoId: f.pisoId, desde: f.desde, hasta: f.hasta,
+  }), [f.estado, f.tipo, f.sedeId, f.pisoId, f.desde, f.hasta])
   useEffect(() => {
+    let vigente = true // descarta la respuesta si otra consulta la reemplazó
     setLoading(true)
-    listVisitas({ ...f, estado: f.estado || '' }).then((r) => { setRows(r); setLoading(false) })
-  }, [f.estado, f.tipo, f.sedeId, f.pisoId, f.desde, f.hasta])
+    listVisitas(consulta)
+      .then((r) => { if (vigente) setRows(r) })
+      .finally(() => { if (vigente) setLoading(false) })
+    return () => { vigente = false }
+  }, [consulta])
 
   const { matriz, total, festivosCount, max } = useMemo(() => {
     const m: number[][] = Array.from({ length: 7 }, () => Array(24).fill(0))

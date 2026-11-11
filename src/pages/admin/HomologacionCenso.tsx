@@ -20,7 +20,6 @@ export default function HomologacionCenso() {
   const [sinUbicar, setSinUbicar] = useState<number | null>(null)
   const [soloPendientes, setSoloPendientes] = useState(false)
   const [version, setVersion] = useState(0)
-  const [conteo, setConteo] = useState({ visibles: 0, total: 0, cargando: true })
   const sync = useSyncCenso()
 
   useEffect(() => {
@@ -37,12 +36,16 @@ export default function HomologacionCenso() {
 
   return (
     <div>
-      <PageHeader title="Homologación CENSO" subtitle="Mapea cada ubicación que llega del CENSO a la ubicación real de la app. La sincronización aplica esta tabla automáticamente."
-        contador={<ContadorCircular valor={conteo.cargando ? '…' : conteo.visibles} etiqueta={conteo.visibles === 1 ? 'ubicación' : 'ubicaciones'} de={!conteo.cargando && conteo.visibles !== conteo.total ? conteo.total : undefined} />}
-        action={<Btn onClick={sincronizar} disabled={sync.corriendo}>{sync.corriendo ? 'Sincronizando…' : '↻ Sincronizar ahora'}</Btn>} />
-      {sync.vista}
-
       <CrudTable
+        // La tabla dibuja el encabezado y le entrega sus conteos (visibles tras filtros / total).
+        cabecera={(conteo) => (
+          <>
+            <PageHeader title="Homologación CENSO" subtitle="Mapea cada ubicación que llega del CENSO a la ubicación real de la app. La sincronización aplica esta tabla automáticamente."
+              contador={<ContadorCircular valor={conteo.cargando ? '…' : conteo.visibles} etiqueta={conteo.visibles === 1 ? 'ubicación' : 'ubicaciones'} de={!conteo.cargando && conteo.visibles !== conteo.total ? conteo.total : undefined} />}
+              action={<Btn onClick={sincronizar} disabled={sync.corriendo}>{sync.corriendo ? 'Sincronizando…' : '↻ Sincronizar ahora'}</Btn>} />
+            {sync.vista}
+          </>
+        )}
         key={`${version}-${soloPendientes}`}
         tabla="homologacion_ubicaciones" titulo="Homologación de ubicaciones" orderBy="censo_unidad"
         subtitulo="CENSO (unidad · área · cama) → ubicación de la app. La sincronización agrega sola las camas nuevas; las que no puede resolver quedan pendientes aquí. Los nombres de unidad que el censo ya no usa quedan como Activo = No."
@@ -56,7 +59,6 @@ export default function HomologacionCenso() {
             ]} />
           </>
         }
-        onConteo={(visibles, total, cargando) => setConteo({ visibles, total, cargando })}
         filtrosIniciales={soloPendientes ? { ubicacion_id: '__null', activo: 'true' } : { activo: 'true' }}
         filtros={[
           { key: 'ubicacion_id', label: 'Estado', opciones: [{ value: '__notnull', label: 'Homologadas' }, { value: '__null', label: 'Sin homologar' }] },

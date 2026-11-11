@@ -299,9 +299,12 @@ Deno.serve(async (req) => {
 
     // Homologación: las nuevas quedan guardadas (con ubicación si hubo coincidencia, o pendientes para el admin).
     if (nuevasHomol.size) await admin.from('homologacion_ubicaciones').upsert([...nuevasHomol.values()], { onConflict: 'censo_unidad,censo_area,censo_cama', ignoreDuplicates: true })
-    for (const [id, ubicacion_id] of completarHomol) await admin.from('homologacion_ubicaciones').update({ ubicacion_id, origen: 'auto' }).eq('id', id)
+    // Actualizaciones independientes entre sí (cada una toca filas distintas): van en paralelo.
+    await Promise.all([...completarHomol].map(([id, ubicacion_id]) =>
+      admin.from('homologacion_ubicaciones').update({ ubicacion_id, origen: 'auto' }).eq('id', id)))
     if (homolVistas.size) await admin.from('homologacion_ubicaciones').update({ ultimo_visto: now }).in('id', [...homolVistas])
-    for (const [id, nombre] of unidadesVistas) await admin.from('homologacion_ubicaciones').update({ censo_unidad_id: id }).eq('censo_unidad', nombre).is('censo_unidad_id', null)
+    await Promise.all([...unidadesVistas].map(([id, nombre]) =>
+      admin.from('homologacion_ubicaciones').update({ censo_unidad_id: id }).eq('censo_unidad', nombre).is('censo_unidad_id', null)))
 
     if (pacientes.length) { const { error } = await admin.from('pacientes_ubicacion').upsert(pacientes, { onConflict: 'num_ingreso' }); if (error) throw new Error('upsert pacientes: ' + error.message) }
     if (egresos.length) await admin.from('pacientes_ubicacion').delete().in('num_ingreso', egresos as string[])

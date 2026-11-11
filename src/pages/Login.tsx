@@ -28,11 +28,17 @@ export default function Login() {
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setError(null); setInfo(null); setLoading(true)
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    setLoading(false)
-    if (error) setError('Credenciales inválidas. Verifica correo y contraseña.')
-    // Aterriza siempre en el Inicio, sin importar qué ruta quedó cargada de una sesión anterior.
-    else navigate('/', { replace: true })
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) setError('Credenciales inválidas. Verifica correo y contraseña.')
+      // Aterriza siempre en el Inicio, sin importar qué ruta quedó cargada de una sesión anterior.
+      else navigate('/', { replace: true })
+    } catch {
+      // Sin red o servidor caído: antes el botón quedaba en «Ingresando…» y no se podía reintentar.
+      setError('No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function olvido() {
@@ -79,7 +85,7 @@ export default function Login() {
             {info && <p className="text-sm text-green-600">{info}</p>}
 
             <button type="submit" disabled={loading}
-              className="w-full rounded-xl bg-brand py-2.5 font-semibold text-white shadow-neu-sm transition-all duration-150 hover:shadow-neu hover:brightness-110 active:scale-[0.98] disabled:opacity-60">
+              className="w-full rounded-xl bg-brand py-2.5 font-semibold text-white shadow-neu-sm transition-[box-shadow,filter,transform] duration-150 hover:shadow-neu hover:brightness-110 active:scale-[0.98] disabled:opacity-60">
               {loading ? 'Ingresando…' : 'Ingresar'}
             </button>
           </form>
