@@ -3,6 +3,8 @@ import { ultimoSyncExitoso } from '../lib/data'
 
 // A partir de este umbral los datos del censo se consideran desactualizados.
 const LIMITE_MIN = 120
+// Cada cuánto se vuelve a consultar la última sincronización (el sync corre cada 15 min).
+const REFRESCO_MS = 2 * 60_000
 
 function antiguedad(min: number): string {
   if (min < 60) return `${min} min`
@@ -13,10 +15,29 @@ function antiguedad(min: number): string {
 // Aviso de qué tan recientes son los datos del censo que se están mostrando.
 export default function EstadoSyncCenso({ soloSiDesactualizado = false }: { soloSiDesactualizado?: boolean }) {
   const [runAt, setRunAt] = useState<string | null | undefined>(undefined)
-  useEffect(() => { ultimoSyncExitoso().then(setRunAt) }, [])
+  const [ahora, setAhora] = useState(() => Date.now())
+  // Se re-consulta periódicamente y al volver a la pestaña: antes solo se leía al montar, y una
+  // pestaña abierta desde la víspera mostraba «desactualizado hace 14 h» aunque el sync corriera bien.
+  useEffect(() => {
+    let vivo = true
+    // `ahora` fuerza a recalcular la antigüedad aunque la última sincronización no haya cambiado
+    // (si el sync se detuviera, el aviso debe aparecer igual).
+    const cargar = () => { ultimoSyncExitoso().then((r) => { if (vivo) { setRunAt(r); setAhora(Date.now()) } }).catch(() => {}) }
+    const alVolver = () => { if (document.visibilityState === 'visible') cargar() }
+    cargar()
+    const id = window.setInterval(cargar, REFRESCO_MS)
+    document.addEventListener('visibilitychange', alVolver)
+    window.addEventListener('focus', cargar)
+    return () => {
+      vivo = false
+      window.clearInterval(id)
+      document.removeEventListener('visibilitychange', alVolver)
+      window.removeEventListener('focus', cargar)
+    }
+  }, [])
   if (runAt === undefined) return null
 
-  const min = runAt ? Math.max(0, Math.round((Date.now() - new Date(runAt).getTime()) / 60_000)) : null
+  const min = runAt ? Math.max(0, Math.round((ahora - new Date(runAt).getTime()) / 60_000)) : null
   const desactualizado = min == null || min > LIMITE_MIN
   if (soloSiDesactualizado && !desactualizado) return null
 
