@@ -62,20 +62,20 @@ export default function Login() {
           <h2 className="mb-6 text-center text-2xl font-bold text-brand">Iniciar Sesión</h2>
           <form onSubmit={submit} className="space-y-4">
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Correo electrónico</label>
+              <label htmlFor="login-email" className="mb-1 block text-sm font-medium text-gray-700">Correo electrónico</label>
               <div className="flex items-center gap-2 rounded-xl bg-neu-inset px-3 shadow-neu-inset-sm transition-shadow focus-within:shadow-neu-inset">
                 <IconMail />
-                <input type="email" required value={email} onChange={e => setEmail(e.target.value)}
+                <input id="login-email" type="email" autoComplete="username" required value={email} onChange={e => setEmail(e.target.value)}
                   className="w-full bg-transparent py-2.5 text-sm outline-none" placeholder="correo@cacsantabarbara.co" />
               </div>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Contraseña</label>
+              <label htmlFor="login-password" className="mb-1 block text-sm font-medium text-gray-700">Contraseña</label>
               <div className="flex items-center gap-2 rounded-xl bg-neu-inset px-3 shadow-neu-inset-sm transition-shadow focus-within:shadow-neu-inset">
                 <IconLock />
-                <input type={verPass ? 'text' : 'password'} required value={password} onChange={e => setPassword(e.target.value)}
+                <input id="login-password" type={verPass ? 'text' : 'password'} autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)}
                   className="w-full bg-transparent py-2.5 text-sm outline-none" placeholder="••••••••" />
-                <button type="button" onClick={() => setVerPass(v => !v)} className="text-gray-400 hover:text-gray-600" aria-label="Mostrar/ocultar">
+                <button type="button" onClick={() => setVerPass(v => !v)} className="text-gray-400 hover:text-gray-600" aria-label={verPass ? 'Ocultar contraseña' : 'Mostrar contraseña'}>
                   <IconEye off={verPass} />
                 </button>
               </div>

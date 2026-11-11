@@ -107,7 +107,7 @@ export default function Tarjetas() {
         </select>
         <input type="date" className={selectCls} value={f.desde ?? ''} onChange={(e) => setF({ ...f, desde: e.target.value })} />
         <input type="date" className={selectCls} value={f.hasta ?? ''} onChange={(e) => setF({ ...f, hasta: e.target.value })} />
-        <input className={selectCls} placeholder="Buscar tarjeta, titular, cédula, teléfono…" value={f.texto ?? ''} onChange={(e) => setF({ ...f, texto: e.target.value })} />
+        <input aria-label="Buscar por tarjeta, titular, cédula, teléfono" className={selectCls} placeholder="Buscar tarjeta, titular, cédula, teléfono…" value={f.texto ?? ''} onChange={(e) => setF({ ...f, texto: e.target.value })} />
       </FilterBar>
       {esStaff && <p className="px-1 text-xs text-gray-500">Para una salida, busca la tarjeta en uso y pulsa «Registrar salida y devolver».</p>}
       </>}>

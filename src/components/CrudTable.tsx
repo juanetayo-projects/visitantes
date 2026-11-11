@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
 import { supabase } from '../lib/supabase'
 import { Card, Btn, inputCls, textareaCls, selectCls, Badge, Modal, SearchableSelect, ConLateral } from './ui'
 
@@ -60,6 +60,8 @@ export default function CrudTable({ tabla, titulo, columnas, campos, orderBy = '
   const [form, setForm] = useState<Record<string, any>>({})
   const [error, setError] = useState<string | null>(null)
   const [busca, setBusca] = useState('')
+  // Prefijo único por tabla (una página puede tener varias): une cada <label> con su campo.
+  const uid = useId()
 
   // Solo la petición más reciente escribe estado: si se cambia de tabla (o se recarga tras guardar)
   // mientras otra consulta sigue en vuelo, la respuesta vieja se descarta en vez de pisar la nueva.
@@ -246,7 +248,7 @@ export default function CrudTable({ tabla, titulo, columnas, campos, orderBy = '
       {conCabecera && <div className="flex flex-wrap items-center justify-between gap-2 p-4 border-b border-black/5">
         {encabezado}
         <div className="flex gap-2">
-          <input className={inputCls} style={{ width: 200 }} placeholder="Buscar…" value={busca} onChange={(e) => setBusca(e.target.value)} />
+          <input aria-label={`Buscar en ${titulo}`} className={inputCls} style={{ width: 200 }} placeholder="Buscar…" value={busca} onChange={(e) => setBusca(e.target.value)} />
           <Btn onClick={abrirNuevo}>+ Agregar</Btn>
         </div>
       </div>}
@@ -259,8 +261,8 @@ export default function CrudTable({ tabla, titulo, columnas, campos, orderBy = '
           </div>
           {filtros.map((f) => (
             <div key={f.key}>
-              <label className="block text-[11px] font-medium text-gray-500 mb-1">{f.label}</label>
-              <select className={selectCls} value={filtroVals[f.key] ?? ''} onChange={(e) => setFiltroVals({ ...filtroVals, [f.key]: e.target.value })}>
+              <label htmlFor={`${uid}-filtro-${f.key}`} className="block text-[11px] font-medium text-gray-500 mb-1">{f.label}</label>
+              <select id={`${uid}-filtro-${f.key}`} className={selectCls} value={filtroVals[f.key] ?? ''} onChange={(e) => setFiltroVals({ ...filtroVals, [f.key]: e.target.value })}>
                 <option value="">Todos</option>
                 {(filtroOpciones[f.key] ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
@@ -310,12 +312,12 @@ export default function CrudTable({ tabla, titulo, columnas, campos, orderBy = '
                         <input type="checkbox" checked={!!form[c.key]} onChange={(e) => setForm({ ...form, [c.key]: e.target.checked })} /> {c.label}
                       </label>
                     : <>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">{c.label}{c.required && ' *'}</label>
+                        <label htmlFor={`${uid}-campo-${c.key}`} className="block text-xs font-medium text-gray-500 mb-1">{c.label}{c.required && ' *'}</label>
                         {c.type === 'select'
-                          ? <SearchableSelect value={form[c.key] ?? ''} onChange={(v) => setForm({ ...form, [c.key]: v })} options={optionsMap[c.key] ?? []} />
+                          ? <SearchableSelect id={`${uid}-campo-${c.key}`} value={form[c.key] ?? ''} onChange={(v) => setForm({ ...form, [c.key]: v })} options={optionsMap[c.key] ?? []} />
                           : c.type === 'textarea'
-                          ? <textarea className={textareaCls} rows={3} value={form[c.key] ?? ''} onChange={(e) => setForm({ ...form, [c.key]: e.target.value })} />
-                          : <input className={inputCls} type={c.type === 'number' ? 'number' : c.type === 'email' ? 'email' : c.type === 'date' ? 'date' : c.type === 'time' ? 'time' : 'text'} step={c.step}
+                          ? <textarea id={`${uid}-campo-${c.key}`} className={textareaCls} rows={3} value={form[c.key] ?? ''} onChange={(e) => setForm({ ...form, [c.key]: e.target.value })} />
+                          : <input id={`${uid}-campo-${c.key}`} className={inputCls} type={c.type === 'number' ? 'number' : c.type === 'email' ? 'email' : c.type === 'date' ? 'date' : c.type === 'time' ? 'time' : 'text'} step={c.step}
                               value={form[c.key] ?? ''} onChange={(e) => setForm({ ...form, [c.key]: e.target.value })} />}
                       </>}
                 </div>

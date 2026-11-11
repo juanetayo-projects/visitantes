@@ -117,7 +117,7 @@ export default function Cirugia() {
             </select>
             <input type="date" className={selectCls} value={f.desde ?? ''} onChange={(e) => setF({ ...f, desde: e.target.value })} />
             <input type="date" className={selectCls} value={f.hasta ?? ''} onChange={(e) => setF({ ...f, hasta: e.target.value })} />
-            <input className={selectCls} placeholder="Paciente, documento, procedimiento…" value={f.texto ?? ''} onChange={(e) => setF({ ...f, texto: e.target.value })} />
+            <input aria-label="Buscar por paciente, documento, procedimiento" className={selectCls} placeholder="Paciente, documento, procedimiento…" value={f.texto ?? ''} onChange={(e) => setF({ ...f, texto: e.target.value })} />
           </FilterBar>
         </>
       }>
@@ -150,7 +150,7 @@ export default function Cirugia() {
                     <td className="px-3 py-2 text-gray-600">{r.atendido_por_nombre ?? '—'}</td>
                     <td className="px-3 py-2">
                       {esCirugia
-                        ? <select className={`${selectCls} min-w-0`} value={r.estado} onChange={(e) => setEstado(r, e.target.value as EstadoHemodinamia)}>
+                        ? <select aria-label={`Estado de la solicitud de ${r.nombre_paciente}`} className={`${selectCls} min-w-0`} value={r.estado} onChange={(e) => setEstado(r, e.target.value as EstadoHemodinamia)}>
                             {(Object.keys(ESTADO_HEMODINAMIA_LABEL) as EstadoHemodinamia[]).map((e) => <option key={e} value={e}>{ESTADO_HEMODINAMIA_LABEL[e]}</option>)}
                           </select>
                         : <Badge color={ESTADO_COLOR[r.estado]}>{ESTADO_HEMODINAMIA_LABEL[r.estado]}</Badge>}
@@ -171,24 +171,24 @@ export default function Cirugia() {
       {/* Nueva solicitud (staff) */}
       <Modal open={abrirNueva} onClose={() => setAbrirNueva(false)} title="Nueva solicitud de información — Cirugía">
         <div className="space-y-3">
-          <div><label className="block text-xs font-medium text-gray-500 mb-1">Fecha *</label>
-            <input type="date" className={inputCls} value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })} /></div>
-          <div><label className="block text-xs font-medium text-gray-500 mb-1">Nombre del paciente *</label>
-            <input className={inputCls} value={form.nombre_paciente} onChange={(e) => setForm({ ...form, nombre_paciente: e.target.value })} /></div>
-          <div><label className="block text-xs font-medium text-gray-500 mb-1">Documento del paciente *</label>
-            <input className={inputCls} value={form.documento_paciente} onChange={(e) => setForm({ ...form, documento_paciente: e.target.value })} inputMode="numeric" /></div>
+          <div><label htmlFor="cirugia-fecha" className="block text-xs font-medium text-gray-500 mb-1">Fecha *</label>
+            <input id="cirugia-fecha" type="date" className={inputCls} value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })} /></div>
+          <div><label htmlFor="cirugia-nombre-del-paciente" className="block text-xs font-medium text-gray-500 mb-1">Nombre del paciente *</label>
+            <input id="cirugia-nombre-del-paciente" className={inputCls} value={form.nombre_paciente} onChange={(e) => setForm({ ...form, nombre_paciente: e.target.value })} /></div>
+          <div><label htmlFor="cirugia-documento-del-paciente" className="block text-xs font-medium text-gray-500 mb-1">Documento del paciente *</label>
+            <input id="cirugia-documento-del-paciente" className={inputCls} value={form.documento_paciente} onChange={(e) => setForm({ ...form, documento_paciente: e.target.value })} inputMode="numeric" /></div>
           <div className="grid grid-cols-2 gap-2">
-            <div><label className="block text-xs font-medium text-gray-500 mb-1">EPS</label>
-              <input className={inputCls} value={form.eps} onChange={(e) => setForm({ ...form, eps: e.target.value })} /></div>
-            <div><label className="block text-xs font-medium text-gray-500 mb-1">Celular</label>
-              <input className={inputCls} value={form.celular} onChange={(e) => setForm({ ...form, celular: e.target.value })} /></div>
+            <div><label htmlFor="cirugia-eps" className="block text-xs font-medium text-gray-500 mb-1">EPS</label>
+              <input id="cirugia-eps" className={inputCls} value={form.eps} onChange={(e) => setForm({ ...form, eps: e.target.value })} /></div>
+            <div><label htmlFor="cirugia-celular" className="block text-xs font-medium text-gray-500 mb-1">Celular</label>
+              <input id="cirugia-celular" className={inputCls} value={form.celular} onChange={(e) => setForm({ ...form, celular: e.target.value })} /></div>
           </div>
-          <div><label className="block text-xs font-medium text-gray-500 mb-1">Persona que solicita la información</label>
-            <input className={inputCls} value={form.persona_solicita} onChange={(e) => setForm({ ...form, persona_solicita: e.target.value })} /></div>
-          <div><label className="block text-xs font-medium text-gray-500 mb-1">Procedimiento</label>
-            <input className={inputCls} value={form.procedimiento} onChange={(e) => setForm({ ...form, procedimiento: e.target.value })} /></div>
-          <div><label className="block text-xs font-medium text-gray-500 mb-1">Observaciones</label>
-            <textarea className={textareaCls} rows={3} value={form.observaciones} onChange={(e) => setForm({ ...form, observaciones: e.target.value })} /></div>
+          <div><label htmlFor="cirugia-persona-que-solicita-la-informacion" className="block text-xs font-medium text-gray-500 mb-1">Persona que solicita la información</label>
+            <input id="cirugia-persona-que-solicita-la-informacion" className={inputCls} value={form.persona_solicita} onChange={(e) => setForm({ ...form, persona_solicita: e.target.value })} /></div>
+          <div><label htmlFor="cirugia-procedimiento" className="block text-xs font-medium text-gray-500 mb-1">Procedimiento</label>
+            <input id="cirugia-procedimiento" className={inputCls} value={form.procedimiento} onChange={(e) => setForm({ ...form, procedimiento: e.target.value })} /></div>
+          <div><label htmlFor="cirugia-observaciones" className="block text-xs font-medium text-gray-500 mb-1">Observaciones</label>
+            <textarea id="cirugia-observaciones" className={textareaCls} rows={3} value={form.observaciones} onChange={(e) => setForm({ ...form, observaciones: e.target.value })} /></div>
           {msg && <p className="text-sm text-rose-600">{msg}</p>}
           <div className="flex gap-2 pt-1">
             <Btn onClick={guardarNueva} className="flex-1">Registrar solicitud</Btn>
@@ -222,7 +222,8 @@ export default function Cirugia() {
                 ))}
             </div>
             <div className="mt-3">
-              <textarea className={textareaCls} rows={3} value={nuevoComentario} onChange={(e) => setNuevoComentario(e.target.value)} placeholder="Agregar comentario…" />
+              <label htmlFor="nuevo-comentario" className="block text-xs font-medium text-gray-500 mb-1">Nuevo comentario</label>
+              <textarea id="nuevo-comentario" className={textareaCls} rows={3} value={nuevoComentario} onChange={(e) => setNuevoComentario(e.target.value)} placeholder="Escribe aquí el seguimiento…" />
             </div>
             <div className="mt-3 flex gap-2">
               <Btn onClick={enviarComentario} disabled={!nuevoComentario.trim()} className="flex-1">Comentar</Btn>

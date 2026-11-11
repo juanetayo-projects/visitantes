@@ -226,7 +226,7 @@ export default function SincronizacionCenso({ soloConsulta: soloConsultaProp = f
         </select>
         <input type="date" aria-label="Ingreso desde" title="Ingreso desde" className={selectCls} value={f.desde} max={f.hasta || undefined} onChange={(e) => setF({ ...f, desde: e.target.value })} />
         <input type="date" aria-label="Ingreso hasta" title="Ingreso hasta" className={selectCls} value={f.hasta} min={f.desde || undefined} onChange={(e) => setF({ ...f, hasta: e.target.value })} />
-        <input className={inputCls} placeholder="Paciente, # ingreso, cama, detalle…" value={f.texto} onChange={(e) => setF({ ...f, texto: e.target.value })} />
+        <input aria-label="Buscar por paciente, # ingreso, cama, detalle" className={inputCls} placeholder="Paciente, # ingreso, cama, detalle…" value={f.texto} onChange={(e) => setF({ ...f, texto: e.target.value })} />
       </FilterBar>
       <p className="-mt-3 mb-3 px-1 text-xs text-gray-500">
         {loading ? 'Cargando…' : hayFiltros

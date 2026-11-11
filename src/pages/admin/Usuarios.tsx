@@ -114,7 +114,7 @@ export default function Usuarios() {
                 <td className="px-3 py-2 font-medium text-gray-800">{p.nombre || '—'}</td>
                 <td className="px-3 py-2 text-gray-600">{p.email}</td>
                 <td className="px-3 py-2">
-                  <select className={selectCls} style={{ minWidth: 150 }} value={p.rol} onChange={(e) => setRol(p, e.target.value as Rol)}>
+                  <select aria-label={`Rol de ${p.nombre ?? p.email ?? "usuario"}`} className={selectCls} style={{ minWidth: 150 }} value={p.rol} onChange={(e) => setRol(p, e.target.value as Rol)}>
                     {(Object.keys(ROL_LABEL) as Rol[]).map((r) => <option key={r} value={r}>{ROL_LABEL[r]}</option>)}
                   </select>
                 </td>
@@ -132,12 +132,17 @@ export default function Usuarios() {
 
       <Modal open={open} onClose={() => setOpen(false)} title="Nuevo usuario">
         <div className="space-y-3">
-          <input className={inputCls} placeholder="Nombre completo" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} />
-          <input className={inputCls} type="email" placeholder="Correo electrónico" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-          <input className={inputCls} type="text" placeholder="Contraseña (mín. 6)" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
-          <select className={inputCls} value={form.rol} onChange={(e) => setForm({ ...form, rol: e.target.value as Rol })}>
-            {(Object.keys(ROL_LABEL) as Rol[]).map((r) => <option key={r} value={r}>{ROL_LABEL[r]}</option>)}
-          </select>
+          {/* Etiquetas visibles: antes solo había texto de ejemplo, que desaparece al escribir. */}
+          <div><label htmlFor="nuevo-usuario-nombre" className="block text-xs font-medium text-gray-500 mb-1">Nombre completo</label>
+            <input id="nuevo-usuario-nombre" className={inputCls} value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} /></div>
+          <div><label htmlFor="nuevo-usuario-email" className="block text-xs font-medium text-gray-500 mb-1">Correo electrónico *</label>
+            <input id="nuevo-usuario-email" className={inputCls} type="email" placeholder="nombre@cacsantabarbara.co" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
+          <div><label htmlFor="nuevo-usuario-password" className="block text-xs font-medium text-gray-500 mb-1">Contraseña * (mín. 6)</label>
+            <input id="nuevo-usuario-password" className={inputCls} type="text" autoComplete="new-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} /></div>
+          <div><label htmlFor="nuevo-usuario-rol" className="block text-xs font-medium text-gray-500 mb-1">Rol</label>
+            <select id="nuevo-usuario-rol" className={inputCls} value={form.rol} onChange={(e) => setForm({ ...form, rol: e.target.value as Rol })}>
+              {(Object.keys(ROL_LABEL) as Rol[]).map((r) => <option key={r} value={r}>{ROL_LABEL[r]}</option>)}
+            </select></div>
           {msg && !msg.ok && <p className="text-sm text-rose-600">{msg.t}</p>}
         </div>
         <div className="mt-4 flex gap-2">
@@ -149,13 +154,13 @@ export default function Usuarios() {
       <Modal open={!!edit} onClose={() => setEdit(null)} title="Editar usuario">
         {edit && (
           <div className="space-y-3">
-            <div><label className="block text-xs font-medium text-gray-500 mb-1">Nombre completo *</label>
-              <input className={inputCls} value={editForm.nombre} onChange={(e) => setEditForm({ ...editForm, nombre: e.target.value })} /></div>
-            <div><label className="block text-xs font-medium text-gray-500 mb-1">Correo electrónico *</label>
-              <input className={inputCls} type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} />
+            <div><label htmlFor="usuarios-nombre-completo" className="block text-xs font-medium text-gray-500 mb-1">Nombre completo *</label>
+              <input id="usuarios-nombre-completo" className={inputCls} value={editForm.nombre} onChange={(e) => setEditForm({ ...editForm, nombre: e.target.value })} /></div>
+            <div><label htmlFor="usuarios-correo-electronico" className="block text-xs font-medium text-gray-500 mb-1">Correo electrónico *</label>
+              <input id="usuarios-correo-electronico" className={inputCls} type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} />
               <p className="mt-1 text-xs text-gray-400">Es el correo con el que inicia sesión.</p></div>
-            <div><label className="block text-xs font-medium text-gray-500 mb-1">Rol</label>
-              <select className={inputCls} value={editForm.rol} disabled={edit.id === yoId} onChange={(e) => setEditForm({ ...editForm, rol: e.target.value as Rol })}>
+            <div><label htmlFor="usuarios-rol" className="block text-xs font-medium text-gray-500 mb-1">Rol</label>
+              <select id="usuarios-rol" className={inputCls} value={editForm.rol} disabled={edit.id === yoId} onChange={(e) => setEditForm({ ...editForm, rol: e.target.value as Rol })}>
                 {(Object.keys(ROL_LABEL) as Rol[]).map((r) => <option key={r} value={r}>{ROL_LABEL[r]}</option>)}
               </select></div>
             <label className="flex items-center gap-2 text-sm text-gray-700">
@@ -175,10 +180,10 @@ export default function Usuarios() {
         {passModal && (
           <div className="space-y-3">
             <p className="text-sm text-gray-500">Usuario: <span className="font-medium text-gray-700">{passModal.email}</span></p>
-            <div><label className="block text-xs font-medium text-gray-500 mb-1">Nueva contraseña (mín. 6)</label>
-              <input className={inputCls} type="password" value={pass1} onChange={(e) => setPass1(e.target.value)} /></div>
-            <div><label className="block text-xs font-medium text-gray-500 mb-1">Confirmar contraseña</label>
-              <input className={inputCls} type="password" value={pass2} onChange={(e) => setPass2(e.target.value)} /></div>
+            <div><label htmlFor="usuarios-nueva-contrasena-min-6" className="block text-xs font-medium text-gray-500 mb-1">Nueva contraseña (mín. 6)</label>
+              <input id="usuarios-nueva-contrasena-min-6" className={inputCls} type="password" value={pass1} onChange={(e) => setPass1(e.target.value)} /></div>
+            <div><label htmlFor="usuarios-confirmar-contrasena" className="block text-xs font-medium text-gray-500 mb-1">Confirmar contraseña</label>
+              <input id="usuarios-confirmar-contrasena" className={inputCls} type="password" value={pass2} onChange={(e) => setPass2(e.target.value)} /></div>
             {passMsg && <p className="text-sm text-rose-600">{passMsg}</p>}
             <div className="flex gap-2 pt-1">
               <Btn onClick={confirmarResetPass} disabled={passBusy} className="flex-1">{passBusy ? 'Guardando…' : 'Actualizar contraseña'}</Btn>

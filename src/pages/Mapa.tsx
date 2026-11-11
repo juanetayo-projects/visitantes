@@ -173,8 +173,8 @@ export default function Mapa() {
               <div><span className="text-gray-400 text-xs">Registrado por</span><div className="font-medium text-gray-700">{perfil?.nombre ?? perfil?.email}</div></div>
             </div>
             <div className="mt-3">
-              <label className="block text-xs font-medium text-gray-500 mb-1">Comentario *</label>
-              <textarea className={textareaCls} rows={4} value={comentario} onChange={(e) => setComentario(e.target.value)} placeholder="Describe la novedad administrativa…" />
+              <label htmlFor="mapa-comentario" className="block text-xs font-medium text-gray-500 mb-1">Comentario *</label>
+              <textarea id="mapa-comentario" className={textareaCls} rows={4} value={comentario} onChange={(e) => setComentario(e.target.value)} placeholder="Describe la novedad administrativa…" />
             </div>
 
             {historial.length > 0 && (

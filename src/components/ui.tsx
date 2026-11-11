@@ -107,8 +107,9 @@ export const textareaCls = inputCls + ' resize-none'
 
 // Combobox con buscador. Escribes para filtrar; teclado ↑↓/Enter/Esc. El panel
 // se renderiza en portal con posición fija para que el modal no lo recorte.
-export function SearchableSelect({ value, onChange, options, placeholder = '— Selecciona —' }: {
-  value: string; onChange: (v: string) => void; options: { value: string; label: string }[]; placeholder?: string
+// `id` va al campo de texto interno, para que un <label htmlFor> le dé nombre al control.
+export function SearchableSelect({ id, value, onChange, options, placeholder = '— Selecciona —' }: {
+  id?: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[]; placeholder?: string
 }) {
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState('')
@@ -147,7 +148,7 @@ export function SearchableSelect({ value, onChange, options, placeholder = '— 
 
   return (
     <div ref={boxRef} className="relative">
-      <input className={`${inputCls} pr-8`} value={open ? q : (sel?.label ?? '')} placeholder={sel?.label ?? placeholder}
+      <input id={id} className={`${inputCls} pr-8`} value={open ? q : (sel?.label ?? '')} placeholder={sel?.label ?? placeholder}
         onFocus={abrir} onChange={(e) => { setQ(e.target.value); setHi(0); if (!open) abrir() }} onKeyDown={onKey} />
       <span className="pointer-events-none absolute inset-y-0 right-2 grid place-items-center text-gray-400">
         <svg className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" /></svg>

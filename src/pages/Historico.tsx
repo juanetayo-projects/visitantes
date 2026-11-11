@@ -95,7 +95,7 @@ export default function Historico() {
         </select>
         <input type="date" className={selectCls} value={f.desde ?? ''} onChange={(e) => setF({ ...f, desde: e.target.value })} />
         <input type="date" className={selectCls} value={f.hasta ?? ''} onChange={(e) => setF({ ...f, hasta: e.target.value })} />
-        <input className={selectCls} placeholder="Paciente, cédula, # ingreso, habitación…" value={f.texto ?? ''} onChange={(e) => setF({ ...f, texto: e.target.value })} />
+        <input aria-label="Buscar por paciente, cédula, # ingreso, habitación" className={selectCls} placeholder="Paciente, cédula, # ingreso, habitación…" value={f.texto ?? ''} onChange={(e) => setF({ ...f, texto: e.target.value })} />
       </FilterBar>
       </>}>
 

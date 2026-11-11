@@ -354,8 +354,8 @@ export default function Registrar() {
       <Card className="p-4">
         <div className="flex items-end gap-3">
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Sede</label>
-            <select className={selectCls} value={sedeId} onChange={(e) => setSedeId(e.target.value)}>
+            <label htmlFor="registrar-sede" className="block text-xs font-medium text-gray-500 mb-1">Sede</label>
+            <select id="registrar-sede" className={selectCls} value={sedeId} onChange={(e) => setSedeId(e.target.value)}>
               {sedes.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
             </select>
           </div>
@@ -454,8 +454,8 @@ export default function Registrar() {
               {tipo === 'familiar' && <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">Datos del visitante</div>}
               <div className="grid grid-cols-3 gap-2">
                 <div className="col-span-2">
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Cédula *</label>
-                  <input className={inputCls} value={cedula} onChange={(e) => setCedula(e.target.value)} onBlur={lookupCedula}
+                  <label htmlFor="registrar-cedula" className="block text-xs font-medium text-gray-500 mb-1">Cédula *</label>
+                  <input id="registrar-cedula" className={inputCls} value={cedula} onChange={(e) => setCedula(e.target.value)} onBlur={lookupCedula}
                     placeholder="N° documento" name="doc_visitante" autoComplete="off" autoCorrect="off" spellCheck={false}
                     inputMode="numeric" pattern="[0-9]*" />
                 </div>
@@ -469,17 +469,17 @@ export default function Registrar() {
                 </div>
               )}
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Nombres completos *</label>
-                <input className={inputCls} value={nombres} onChange={(e) => setNombres(e.target.value)} />
+                <label htmlFor="registrar-nombres-completos" className="block text-xs font-medium text-gray-500 mb-1">Nombres completos *</label>
+                <input id="registrar-nombres-completos" className={inputCls} value={nombres} onChange={(e) => setNombres(e.target.value)} />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Celular</label>
-                  <input className={inputCls} value={celular} onChange={(e) => setCelular(e.target.value)} />
+                  <label htmlFor="registrar-celular" className="block text-xs font-medium text-gray-500 mb-1">Celular</label>
+                  <input id="registrar-celular" className={inputCls} value={celular} onChange={(e) => setCelular(e.target.value)} />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Email (opcional)</label>
-                  <input className={inputCls} value={email} onChange={(e) => setEmail(e.target.value)} />
+                  <label htmlFor="registrar-email-opcional" className="block text-xs font-medium text-gray-500 mb-1">Email (opcional)</label>
+                  <input id="registrar-email-opcional" className={inputCls} value={email} onChange={(e) => setEmail(e.target.value)} />
                 </div>
               </div>
 
@@ -487,23 +487,28 @@ export default function Registrar() {
               {(tipo === 'familiar' || tipo === 'sin_tarjeta') && (
                 <>
                   <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Tipo de acompañante</label>
-                    <div className="flex gap-2">
+                    {/* No es un campo sino dos botones excluyentes: título de grupo + aria-pressed,
+                        así el lector de pantalla anuncia «Tipo de acompañante» y cuál está elegido. */}
+                    <span id="registrar-tipo-acompanante" className="block text-xs font-medium text-gray-500 mb-1">Tipo de acompañante</span>
+                    <div className="flex gap-2" role="group" aria-labelledby="registrar-tipo-acompanante">
                       {(['permanente', 'visita'] as const).map((t) => (
-                        <button key={t} onClick={() => setTipoAcomp(t)}
+                        <button key={t} type="button" aria-pressed={tipoAcomp === t} onClick={() => setTipoAcomp(t)}
                           className={`flex-1 rounded-lg px-3 py-2 text-sm capitalize transition-all duration-150 ${tipoAcomp === t ? 'bg-brand-50 text-brand font-medium shadow-neu-inset-sm' : 'bg-white text-gray-600 shadow-neu-xs hover:shadow-neu-sm'}`}>{t}</button>
                       ))}
                     </div>
                   </div>
-                  <textarea className={textareaCls} rows={3} value={permisoOtros} onChange={(e) => setPermisoOtros(e.target.value)} placeholder="Elementos / permisos autorizados (opcional)" />
+                  <div>
+                    <label htmlFor="registrar-permisos" className="block text-xs font-medium text-gray-500 mb-1">Elementos / permisos autorizados (opcional)</label>
+                    <textarea id="registrar-permisos" className={textareaCls} rows={3} value={permisoOtros} onChange={(e) => setPermisoOtros(e.target.value)} placeholder="Ej.: termo, cobija, revistas" />
+                  </div>
                 </>
               )}
 
               {/* Proveedor */}
               {tipo === 'proveedor' && (
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Acompañante autorizado (responsable) *</label>
-                  <select className={inputCls} value={responsableId} onChange={(e) => setResponsableId(e.target.value)}>
+                  <label htmlFor="registrar-acompanante-autorizado-responsable" className="block text-xs font-medium text-gray-500 mb-1">Acompañante autorizado (responsable) *</label>
+                  <select id="registrar-acompanante-autorizado-responsable" className={inputCls} value={responsableId} onChange={(e) => setResponsableId(e.target.value)}>
                     <option value="">— Selecciona —</option>
                     {responsables.map((r) => <option key={r.id} value={r.id}>{r.nombre_completo} — {r.numero_documento}</option>)}
                   </select>
@@ -514,8 +519,8 @@ export default function Registrar() {
               {/* Colaborador */}
               {tipo === 'colaborador' && (
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Servicio / motivo</label>
-                  <select className={inputCls} value={servicioVisita} onChange={(e) => setServicioVisita(e.target.value)}>
+                  <label htmlFor="registrar-servicio-motivo" className="block text-xs font-medium text-gray-500 mb-1">Servicio / motivo</label>
+                  <select id="registrar-servicio-motivo" className={inputCls} value={servicioVisita} onChange={(e) => setServicioVisita(e.target.value)}>
                     <option value="">— Servicio que visita —</option>
                     {servicios.map((s) => <option key={s.id} value={s.nombre}>{s.nombre}</option>)}
                   </select>
@@ -525,15 +530,15 @@ export default function Registrar() {
               {/* Acceso */}
               <div className={`grid gap-2 pt-1 ${requiereTarjeta ? 'grid-cols-2' : ''}`}>
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Puerta de ingreso</label>
-                  <select className={inputCls} value={puertaId} onChange={(e) => setPuertaId(e.target.value)}>
+                  <label htmlFor="registrar-puerta-de-ingreso" className="block text-xs font-medium text-gray-500 mb-1">Puerta de ingreso</label>
+                  <select id="registrar-puerta-de-ingreso" className={inputCls} value={puertaId} onChange={(e) => setPuertaId(e.target.value)}>
                     {puertas.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
                   </select>
                 </div>
                 {requiereTarjeta && (
                   <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Tarjeta de acceso *</label>
-                    <select className={`${inputCls} ${!tarjetaId ? 'border-rose-300' : ''}`} value={tarjetaId} onChange={(e) => setTarjetaId(e.target.value)}>
+                    <label htmlFor="registrar-tarjeta-de-acceso" className="block text-xs font-medium text-gray-500 mb-1">Tarjeta de acceso *</label>
+                    <select id="registrar-tarjeta-de-acceso" className={`${inputCls} ${!tarjetaId ? 'border-rose-300' : ''}`} value={tarjetaId} onChange={(e) => setTarjetaId(e.target.value)}>
                       <option value="">— Selecciona tarjeta —</option>
                       {tarjetas.map((t) => <option key={t.id} value={t.id}>{t.codigo}</option>)}
                     </select>
@@ -633,13 +638,14 @@ export default function Registrar() {
             </div>
 
             <div className="mt-4">
-              <label className="block text-xs font-medium text-gray-500 mb-1">Autoriza el ingreso (responsable) *</label>
-              <select className={`${inputCls} ${!autorizadoPorId ? 'border-amber-300' : ''}`} value={autorizadoPorId} onChange={(e) => setAutorizadoPorId(e.target.value)}>
+              <label htmlFor="registrar-autoriza-el-ingreso-responsable" className="block text-xs font-medium text-gray-500 mb-1">Autoriza el ingreso (responsable) *</label>
+              <select id="registrar-autoriza-el-ingreso-responsable" className={`${inputCls} ${!autorizadoPorId ? 'border-amber-300' : ''}`} value={autorizadoPorId} onChange={(e) => setAutorizadoPorId(e.target.value)}>
                 <option value="">— Selecciona quién autoriza —</option>
                 {responsables.map((r) => <option key={r.id} value={r.id}>{r.nombre_completo} — {r.numero_documento}</option>)}
               </select>
               {responsables.length === 0 && <p className="text-xs text-amber-600 mt-1">No hay responsables. Créalos en Administración → Responsables.</p>}
-              <input className={`${inputCls} mt-2`} value={autorizacionObs} onChange={(e) => setAutorizacionObs(e.target.value)} placeholder="Observación / motivo de la autorización (opcional)" />
+              <label htmlFor="registrar-autorizacion-obs" className="mt-2 block text-xs font-medium text-gray-500 mb-1">Observación / motivo de la autorización (opcional)</label>
+              <input id="registrar-autorizacion-obs" className={inputCls} value={autorizacionObs} onChange={(e) => setAutorizacionObs(e.target.value)} placeholder="Ej.: paciente en fase terminal, autoriza jefe de piso" />
             </div>
 
             {aviso.o.visitas.length > 0 && (

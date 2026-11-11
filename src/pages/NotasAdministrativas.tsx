@@ -76,7 +76,7 @@ export default function NotasAdministrativas() {
         </select>
         <input type="date" className={selectCls} value={f.desde ?? ''} onChange={(e) => setF({ ...f, desde: e.target.value })} />
         <input type="date" className={selectCls} value={f.hasta ?? ''} onChange={(e) => setF({ ...f, hasta: e.target.value })} />
-        <input className={selectCls} placeholder="Buscar en comentario, paciente…" value={f.texto ?? ''} onChange={(e) => setF({ ...f, texto: e.target.value })} />
+        <input aria-label="Buscar por comentario, paciente" className={selectCls} placeholder="Buscar en comentario, paciente…" value={f.texto ?? ''} onChange={(e) => setF({ ...f, texto: e.target.value })} />
       </FilterBar>
         {/* Actividad administrativa vs. gestión operativa, por usuario; clic para ver solo sus notas */}
         <PanelIndicadores titulo="Actividad por usuario" accion={<span className="text-[11px] text-gray-500">notas</span>} items={actividad.map((a) => ({

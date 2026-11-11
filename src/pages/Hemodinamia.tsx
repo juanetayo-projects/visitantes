@@ -102,7 +102,7 @@ export default function Hemodinamia() {
             </select>
             <input type="date" className={selectCls} value={f.desde ?? ''} onChange={(e) => setF({ ...f, desde: e.target.value })} />
             <input type="date" className={selectCls} value={f.hasta ?? ''} onChange={(e) => setF({ ...f, hasta: e.target.value })} />
-            <input className={selectCls} placeholder="Paciente, cédula, procedimiento…" value={f.texto ?? ''} onChange={(e) => setF({ ...f, texto: e.target.value })} />
+            <input aria-label="Buscar por paciente, cédula, procedimiento" className={selectCls} placeholder="Paciente, cédula, procedimiento…" value={f.texto ?? ''} onChange={(e) => setF({ ...f, texto: e.target.value })} />
           </FilterBar>
         </>
       }>
@@ -129,7 +129,7 @@ export default function Hemodinamia() {
                     <td className="px-3 py-2 text-gray-600 max-w-xs truncate" title={r.documentos ?? ''}>{r.documentos ?? '—'}</td>
                     <td className="px-3 py-2">
                       {esHemodinamia
-                        ? <select className={`${selectCls} min-w-0`} value={r.estado} onChange={(e) => setEstado(r, e.target.value as EstadoHemodinamia)}>
+                        ? <select aria-label={`Estado de la solicitud de ${r.nombre_paciente}`} className={`${selectCls} min-w-0`} value={r.estado} onChange={(e) => setEstado(r, e.target.value as EstadoHemodinamia)}>
                             {(Object.keys(ESTADO_HEMODINAMIA_LABEL) as EstadoHemodinamia[]).map((e) => <option key={e} value={e}>{ESTADO_HEMODINAMIA_LABEL[e]}</option>)}
                           </select>
                         : <Badge color={ESTADO_COLOR[r.estado]}>{ESTADO_HEMODINAMIA_LABEL[r.estado]}</Badge>}
@@ -150,14 +150,14 @@ export default function Hemodinamia() {
       {/* Nueva solicitud (staff) */}
       <Modal open={abrirNueva} onClose={() => setAbrirNueva(false)} title="Nueva solicitud — Hemodinamia">
         <div className="space-y-3">
-          <div><label className="block text-xs font-medium text-gray-500 mb-1">Cédula del paciente *</label>
-            <input className={inputCls} value={form.cedula_paciente} onChange={(e) => setForm({ ...form, cedula_paciente: e.target.value })} inputMode="numeric" /></div>
-          <div><label className="block text-xs font-medium text-gray-500 mb-1">Nombres del paciente *</label>
-            <input className={inputCls} value={form.nombre_paciente} onChange={(e) => setForm({ ...form, nombre_paciente: e.target.value })} /></div>
-          <div><label className="block text-xs font-medium text-gray-500 mb-1">Nombre del procedimiento *</label>
-            <input className={inputCls} value={form.procedimiento} onChange={(e) => setForm({ ...form, procedimiento: e.target.value })} /></div>
-          <div><label className="block text-xs font-medium text-gray-500 mb-1">Documentos que trae</label>
-            <textarea className={textareaCls} rows={3} value={form.documentos} onChange={(e) => setForm({ ...form, documentos: e.target.value })} /></div>
+          <div><label htmlFor="hemodinamia-cedula-del-paciente" className="block text-xs font-medium text-gray-500 mb-1">Cédula del paciente *</label>
+            <input id="hemodinamia-cedula-del-paciente" className={inputCls} value={form.cedula_paciente} onChange={(e) => setForm({ ...form, cedula_paciente: e.target.value })} inputMode="numeric" /></div>
+          <div><label htmlFor="hemodinamia-nombres-del-paciente" className="block text-xs font-medium text-gray-500 mb-1">Nombres del paciente *</label>
+            <input id="hemodinamia-nombres-del-paciente" className={inputCls} value={form.nombre_paciente} onChange={(e) => setForm({ ...form, nombre_paciente: e.target.value })} /></div>
+          <div><label htmlFor="hemodinamia-nombre-del-procedimiento" className="block text-xs font-medium text-gray-500 mb-1">Nombre del procedimiento *</label>
+            <input id="hemodinamia-nombre-del-procedimiento" className={inputCls} value={form.procedimiento} onChange={(e) => setForm({ ...form, procedimiento: e.target.value })} /></div>
+          <div><label htmlFor="hemodinamia-documentos-que-trae" className="block text-xs font-medium text-gray-500 mb-1">Documentos que trae</label>
+            <textarea id="hemodinamia-documentos-que-trae" className={textareaCls} rows={3} value={form.documentos} onChange={(e) => setForm({ ...form, documentos: e.target.value })} /></div>
           {msg && <p className="text-sm text-rose-600">{msg}</p>}
           <div className="flex gap-2 pt-1">
             <Btn onClick={guardarNueva} className="flex-1">Registrar solicitud</Btn>
@@ -191,7 +191,8 @@ export default function Hemodinamia() {
                 ))}
             </div>
             <div className="mt-3">
-              <textarea className={textareaCls} rows={3} value={nuevoComentario} onChange={(e) => setNuevoComentario(e.target.value)} placeholder="Agregar comentario…" />
+              <label htmlFor="nuevo-comentario" className="block text-xs font-medium text-gray-500 mb-1">Nuevo comentario</label>
+              <textarea id="nuevo-comentario" className={textareaCls} rows={3} value={nuevoComentario} onChange={(e) => setNuevoComentario(e.target.value)} placeholder="Escribe aquí el seguimiento…" />
             </div>
             <div className="mt-3 flex gap-2">
               <Btn onClick={enviarComentario} disabled={!nuevoComentario.trim()} className="flex-1">Comentar</Btn>

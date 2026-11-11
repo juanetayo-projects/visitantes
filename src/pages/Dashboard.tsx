@@ -150,21 +150,21 @@ export default function Dashboard() {
       <section aria-label="Consulta de visitas">
         <h2 className="mb-2 text-base font-semibold text-gray-900">Consulta de visitas</h2>
         <FilterBar onClear={() => setF({ estado: '' })}>
-          <select className={selectCls} value={f.estado ?? ''} onChange={(e) => setF({ ...f, estado: e.target.value as any })}>
+          <select aria-label="Estado de la visita" className={selectCls} value={f.estado ?? ''} onChange={(e) => setF({ ...f, estado: e.target.value as any })}>
             <option value="">Todos los estados</option><option value="activa">Activas (dentro)</option><option value="finalizada">Finalizadas</option>
           </select>
-          <select className={selectCls} value={f.tipo ?? ''} onChange={(e) => setF({ ...f, tipo: e.target.value })}>
+          <select aria-label="Tipo de visitante" className={selectCls} value={f.tipo ?? ''} onChange={(e) => setF({ ...f, tipo: e.target.value })}>
             <option value="">Todos los tipos</option><option value="familiar">Familiar</option><option value="proveedor">Proveedor</option><option value="colaborador">Colaborador</option>
           </select>
-          <select className={selectCls} value={f.sedeId ?? ''} onChange={(e) => setF({ ...f, sedeId: e.target.value, pisoId: '' })}>
+          <select aria-label="Sede" className={selectCls} value={f.sedeId ?? ''} onChange={(e) => setF({ ...f, sedeId: e.target.value, pisoId: '' })}>
             <option value="">Todas las sedes</option>{sedes.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
           </select>
-          <select className={selectCls} value={f.pisoId ?? ''} disabled={!f.sedeId} onChange={(e) => setF({ ...f, pisoId: e.target.value })}>
+          <select aria-label="Piso" className={selectCls} value={f.pisoId ?? ''} disabled={!f.sedeId} onChange={(e) => setF({ ...f, pisoId: e.target.value })}>
             <option value="">{f.sedeId ? 'Todos los pisos' : 'Elige sede'}</option>{pisos.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
           </select>
           <input type="date" aria-label="Desde" className={selectCls} value={f.desde ?? ''} onChange={(e) => setF({ ...f, desde: e.target.value })} />
           <input type="date" aria-label="Hasta" className={selectCls} value={f.hasta ?? ''} onChange={(e) => setF({ ...f, hasta: e.target.value })} />
-          <input className={selectCls} placeholder="Buscar nombre, cédula, paciente…" value={f.texto ?? ''} onChange={(e) => setF({ ...f, texto: e.target.value })} />
+          <input aria-label="Buscar por nombre, cédula, paciente" className={selectCls} placeholder="Buscar nombre, cédula, paciente…" value={f.texto ?? ''} onChange={(e) => setF({ ...f, texto: e.target.value })} />
         </FilterBar>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
           {[['Visitas', m.total], ['Activas', m.activas], ['Finalizadas', m.finalizadas], ['Familiares', m.familiar], ['Proveedores', m.proveedor], ['Colaboradores', m.colaborador]].map(([k, v]) => (
@@ -221,7 +221,7 @@ export default function Dashboard() {
                   {k} · {n}
                 </button>
               ))}
-            <input className={`${selectCls} ml-auto w-60`} placeholder="Buscar paciente, cédula, ubicación…" value={buscaAislado} onChange={(e) => setBuscaAislado(e.target.value)} />
+            <input aria-label="Buscar por paciente, cédula, ubicación" className={`${selectCls} ml-auto w-60`} placeholder="Buscar paciente, cédula, ubicación…" value={buscaAislado} onChange={(e) => setBuscaAislado(e.target.value)} />
           </div>
         )}
         <div className="max-h-[60vh] overflow-auto rounded-lg ring-1 ring-gray-100">
