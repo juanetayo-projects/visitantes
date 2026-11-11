@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { PageHeader, ContadorCircular, ConLateral, PanelIndicadores, Card, FilterBar, selectCls, Btn } from '../components/ui'
-import { listNotasAdministrativas, metricasNotasPorUsuario, type FiltrosNota, type ActividadUsuario } from '../lib/data'
+import { Link } from 'react-router-dom'
+import { PageHeader, ContadorCircular, ConLateral, PanelIndicadores, Card, FilterBar, selectCls, inputCls, Btn, Modal } from '../components/ui'
+import ModalNotaAdministrativa from '../components/ModalNotaAdministrativa'
+import { listNotasAdministrativas, metricasNotasPorUsuario, buscarPacientePorDocumento, buscarPacienteEnCenso, type FiltrosNota, type ActividadUsuario } from '../lib/data'
 import { exportarExcel, exportarPDF, type Columna } from '../lib/exportar'
 import { supabase } from '../lib/supabase'
-import type { NotaAdministrativa } from '../lib/types'
+import type { NotaAdministrativa, OcupacionUbicacion } from '../lib/types'
 import { ICONOS_IND } from '../lib/iconos'
 
 type Fila = NotaAdministrativa & { usuario_nombre: string | null; ubicacion_etiqueta: string | null }
@@ -20,16 +22,58 @@ const COLS: Columna<Fila>[] = [
   { header: 'Comentario', get: (r) => r.comentario },
 ]
 
+// Paso previo a una nota nueva: buscar al paciente por su identificación (en la copia local del
+// censo y, si no aparece, en el censo en vivo). La nota también se puede crear desde el Mapa.
+function ModalBuscarPaciente({ onElegir, onCerrar }: { onElegir: (o: OcupacionUbicacion) => void; onCerrar: () => void }) {
+  const [documento, setDocumento] = useState('')
+  const [buscando, setBuscando] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function buscar() {
+    const valor = documento.trim()
+    if (!valor) return
+    setBuscando(true); setError(null)
+    try {
+      const o = await buscarPacientePorDocumento(valor) ?? await buscarPacienteEnCenso(valor)
+      if (o) onElegir(o)
+      else setError('No se encontró un paciente con esa identificación.')
+    } catch {
+      setError('No se pudo consultar el censo. Intenta de nuevo.')
+    } finally { setBuscando(false) }
+  }
+
+  return (
+    <Modal open onClose={onCerrar} title="Nueva nota administrativa">
+      <form onSubmit={(e) => { e.preventDefault(); buscar() }}>
+        <label htmlFor="nota-doc-paciente" className="mb-1 block text-xs font-medium text-gray-500">Identificación del paciente *</label>
+        <div className="flex gap-2">
+          <input id="nota-doc-paciente" className={inputCls} inputMode="numeric" value={documento} onChange={(e) => setDocumento(e.target.value)} placeholder="Cédula o documento…" />
+          <Btn type="submit" disabled={buscando || !documento.trim()}>{buscando ? 'Buscando…' : 'Buscar'}</Btn>
+        </div>
+        {error && <p role="alert" className="mt-2 text-sm text-rose-600">{error}</p>}
+        <p className="mt-3 text-xs text-gray-500">
+          También puedes crearla desde el <Link to="/mapa" className="font-medium text-brand underline">Mapa de habitaciones</Link>, haciendo clic en la habitación.
+        </p>
+      </form>
+    </Modal>
+  )
+}
+
 export default function NotasAdministrativas() {
   const [rows, setRows] = useState<Fila[]>([])
   const [actividad, setActividad] = useState<ActividadUsuario[]>([])
   const [usuarios, setUsuarios] = useState<{ id: string; nombre: string }[]>([])
   const [loading, setLoading] = useState(false)
   const [f, setF] = useState<FiltrosNota>({})
+  // Nueva nota: primero se busca al paciente y luego se abre el formulario con ese contexto.
+  const [buscandoPaciente, setBuscandoPaciente] = useState(false)
+  const [contexto, setContexto] = useState<OcupacionUbicacion | null>(null)
+  const [recarga, setRecarga] = useState(0)
 
   useEffect(() => { supabase.from('perfiles').select('id, nombre').order('nombre').then(({ data }) => setUsuarios(data ?? [])) }, [])
-  useEffect(() => { metricasNotasPorUsuario().then(setActividad) }, [])
-  // `f` solo cambia por setF, y todos sus campos se usan en la consulta: basta con depender de él.
+  useEffect(() => { metricasNotasPorUsuario().then(setActividad) }, [recarga])
+  // `f` solo cambia por setF, y todos sus campos se usan en la consulta: basta con depender de él
+  // (y de `recarga`, que sube al guardar una nota nueva).
   useEffect(() => {
     let vigente = true // descarta la respuesta si otra consulta la reemplazó
     setLoading(true)
@@ -37,7 +81,7 @@ export default function NotasAdministrativas() {
       .then((r) => { if (vigente) setRows(r) })
       .finally(() => { if (vigente) setLoading(false) })
     return () => { vigente = false }
-  }, [f])
+  }, [f, recarga])
 
   const hoyCO = new Date(Date.now() - 5 * 3_600_000).toISOString().substring(0, 10)
   const notasHoy = rows.filter((r) => r.created_at.startsWith(hoyCO)).length
@@ -60,7 +104,8 @@ export default function NotasAdministrativas() {
     <div>
       <PageHeader title="Notas administrativas" subtitle="Novedades registradas sobre habitaciones/pacientes, independientes del registro de visitas"
         contador={<ContadorCircular valor={loading ? '…' : rows.length} etiqueta={rows.length === 1 ? 'nota' : 'notas'} />}
-        action={<div className="flex gap-2">
+        action={<div className="flex flex-wrap gap-2">
+          <Btn onClick={() => setBuscandoPaciente(true)}>+ Nueva nota</Btn>
           <Btn variant="light" onClick={() => exportarExcel('Notas administrativas', COLS, rows)}>Excel</Btn>
           <Btn variant="light" onClick={() => exportarPDF('Notas administrativas', COLS, rows)}>PDF</Btn>
         </div>} />
@@ -127,6 +172,12 @@ export default function NotasAdministrativas() {
         </Card>
       )}
       </ConLateral>
+
+      {buscandoPaciente && (
+        <ModalBuscarPaciente onCerrar={() => setBuscandoPaciente(false)} onElegir={(o) => { setBuscandoPaciente(false); setContexto(o) }} />
+      )}
+      <ModalNotaAdministrativa contexto={contexto} onCerrar={() => setContexto(null)}
+        onGuardada={() => { setContexto(null); setRecarga((n) => n + 1) }} />
     </div>
   )
 }

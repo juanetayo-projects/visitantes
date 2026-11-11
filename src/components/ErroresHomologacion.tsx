@@ -1,10 +1,28 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Icono } from './InicioWidgets'
-import { erroresHomologacion, TIPOS_ERROR_HOMOLOGACION, type CensoInconsistencia } from '../lib/data'
+import { erroresHomologacion, ultimoSyncExitoso, TIPOS_ERROR_HOMOLOGACION, type CensoInconsistencia } from '../lib/data'
 import { ICONOS } from '../lib/iconos'
 
 const VISIBLES = 4
+
+// «11/11/2026 9:25 a.m.» en hora Colombia (GMT-5).
+function fechaHoraCO(iso: string): string {
+  const co = new Date(new Date(iso).getTime() - 5 * 3_600_000)
+  const dd = String(co.getUTCDate()).padStart(2, '0'), mm = String(co.getUTCMonth() + 1).padStart(2, '0')
+  let h = co.getUTCHours(); const min = String(co.getUTCMinutes()).padStart(2, '0')
+  const ap = h < 12 ? 'a.m.' : 'p.m.'; h = h % 12 === 0 ? 12 : h % 12
+  return `${dd}/${mm}/${co.getUTCFullYear()} ${h}:${min} ${ap}`
+}
+
+// Fecha y hora de la última sincronización exitosa, para saber de cuándo es la foto del censo.
+function UltimaSync({ iso }: { iso: string | null }) {
+  return (
+    <span className="whitespace-nowrap text-xs text-gray-500">
+      Última sincronización: <b className="font-medium text-gray-700">{iso ? fechaHoraCO(iso) : 'sin registro'}</b>
+    </span>
+  )
+}
 
 // Card del inicio: avisa si la última sincronización del censo dejó errores de homologación
 // (pacientes que no se pueden ubicar bien en el mapa). El administrador va directo a corregirlos;
@@ -12,10 +30,14 @@ const VISIBLES = 4
 export default function ErroresHomologacion({ esAdmin }: { esAdmin: boolean }) {
   const [rows, setRows] = useState<CensoInconsistencia[] | null>(null)
   const [copiado, setCopiado] = useState(false)
+  const [ultimaSync, setUltimaSync] = useState<string | null>(null)
 
   useEffect(() => {
     let vivo = true
-    const cargar = () => { erroresHomologacion().then((r) => { if (vivo) setRows(r) }).catch(() => {}) }
+    const cargar = () => {
+      erroresHomologacion().then((r) => { if (vivo) setRows(r) }).catch(() => {})
+      ultimoSyncExitoso().then((t) => { if (vivo) setUltimaSync(t) }).catch(() => {})
+    }
     cargar()
     const t = window.setInterval(cargar, 60_000)
     return () => { vivo = false; window.clearInterval(t) }
@@ -31,9 +53,10 @@ export default function ErroresHomologacion({ esAdmin }: { esAdmin: boolean }) {
 
   if (rows.length === 0) {
     return (
-      <section aria-label="Homologación del censo" className="flex items-center gap-3 rounded-2xl bg-white px-4 py-3 shadow-neu-sm">
+      <section aria-label="Homologación del censo" className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl bg-white px-4 py-3 shadow-neu-sm">
         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-emerald-50 text-emerald-600"><Icono d={ICONOS.check} className="h-4 w-4" /></span>
-        <p className="text-sm text-gray-700"><b className="text-emerald-700">Homologación del censo al día.</b> Todos los pacientes con cama quedaron ubicados en el mapa.</p>
+        <p className="min-w-0 flex-1 text-sm text-gray-700"><b className="text-emerald-700">Homologación del censo al día.</b> Todos los pacientes con cama quedaron ubicados en el mapa.</p>
+        <UltimaSync iso={ultimaSync} />
       </section>
     )
   }
@@ -65,6 +88,7 @@ export default function ErroresHomologacion({ esAdmin }: { esAdmin: boolean }) {
               ? 'Estos pacientes no se ubican correctamente en el mapa. Corrígelos en Homologación CENSO o en Sedes y ubicaciones.'
               : 'Estos pacientes no se ubican correctamente en el mapa. Reporta al administrador para que los corrija.'}
           </p>
+          <div className="mt-1"><UltimaSync iso={ultimaSync} /></div>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {porTipo.map(([t, n]) => (
               <span key={t} className="rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-medium text-rose-700">{TIPOS_ERROR_HOMOLOGACION[t] ?? t} · {n}</span>

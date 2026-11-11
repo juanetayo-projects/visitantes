@@ -61,14 +61,25 @@ export default function Registrar() {
     reset(); setTipo('familiar'); setDocPaciente(doc)
     buscarPorIdentificacion(doc)
   }
+  const abrirSinTarjeta = (sedeUrgenciasId: string) => { reset(); setSedeId(sedeUrgenciasId); setTipo('sin_tarjeta') }
   const abrirDesdeDocumentoRef = useRef(abrirDesdeDocumento)
-  useLayoutEffect(() => { abrirDesdeDocumentoRef.current = abrirDesdeDocumento })
+  const abrirSinTarjetaRef = useRef(abrirSinTarjeta)
+  useLayoutEffect(() => { abrirDesdeDocumentoRef.current = abrirDesdeDocumento; abrirSinTarjetaRef.current = abrirSinTarjeta })
   useEffect(() => {
     const doc = params.get('doc')
     if (!doc) return
     abrirDesdeDocumentoRef.current(doc)
     setParams({}, { replace: true })
   }, [params, setParams])
+
+  // Desde «Ingresos sin tarjeta»: /registrar?tipo=sin_tarjeta entra con ese tipo, en la sede
+  // Urgencias (la única donde aplica). Espera a que carguen las sedes para poder elegirla.
+  useEffect(() => {
+    if (params.get('tipo') !== 'sin_tarjeta' || sedes.length === 0) return
+    const urgencias = sedes.find((s) => s.nombre === 'Urgencias')
+    if (urgencias) abrirSinTarjetaRef.current(urgencias.id)
+    setParams({}, { replace: true })
+  }, [params, setParams, sedes])
 
   // Alto real de la franja fija (una o dos líneas según el ancho): el formulario se fija justo debajo.
   const franjaRef = useRef<HTMLDivElement>(null)

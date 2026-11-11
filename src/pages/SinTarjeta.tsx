@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../auth/AuthProvider'
 import { PageHeader, useDebounced, AvisoLimite, ContadorCircular, ConLateral, PanelIndicadores, Card, FilterBar, selectCls, Btn, Badge, FilasEstado } from '../components/ui'
 import { LIMITE_VISITAS, listVisitas, listSedes, describirFiltros, type VisitaListado, type FiltrosVisita } from '../lib/data'
 import { exportarExcel, exportarPDF, type Columna } from '../lib/exportar'
@@ -21,6 +23,12 @@ const COLS: Columna<VisitaListado>[] = [
 // Registros de ingreso sin tarjeta/ubicación asignada (paciente aún no ubicado). Ver también Histórico
 // (que solo muestra ingresos vinculados a paciente+tarjeta).
 export default function SinTarjeta() {
+  const navigate = useNavigate()
+  const { perfil, sedeTrabajo } = useAuth()
+  // Registrar es de admin y orientador; «sin tarjeta» solo aplica en Urgencias, así que el
+  // orientador de otra sede ve el botón deshabilitado con la explicación.
+  const puedeRegistrar = perfil?.rol === 'admin' || perfil?.rol === 'orientador'
+  const fueraDeUrgencias = perfil?.rol === 'orientador' && sedeTrabajo?.nombre !== 'Urgencias'
   const [rows, setRows] = useState<VisitaListado[]>([])
   const [sedes, setSedes] = useState<Sede[]>([])
   const [loading, setLoading] = useState(false)
@@ -52,7 +60,12 @@ export default function SinTarjeta() {
     <div>
       <PageHeader title="Ingresos sin tarjeta" subtitle="Visitantes registrados sin ubicación/tarjeta asignada (paciente aún no ubicado)"
         contador={<ContadorCircular valor={loading ? '…' : filtrados.length} etiqueta={filtrados.length === 1 ? 'ingreso' : 'ingresos'} />}
-        action={<div className="flex gap-2">
+        action={<div className="flex flex-wrap items-center gap-2">
+          {puedeRegistrar && (
+            <span title={fueraDeUrgencias ? 'Solo disponible en la sede Urgencias' : undefined}>
+              <Btn disabled={fueraDeUrgencias} onClick={() => navigate('/registrar?tipo=sin_tarjeta')}>+ Registrar ingreso sin tarjeta</Btn>
+            </span>
+          )}
           <Btn variant="light" onClick={() => exportarExcel('Ingresos sin tarjeta', COLS, filtrados, describirFiltros({ ...f, tipo: 'sin_tarjeta' }, { sedes }))}>Excel</Btn>
           <Btn variant="light" onClick={() => exportarPDF('Ingresos sin tarjeta', COLS, filtrados, describirFiltros({ ...f, tipo: 'sin_tarjeta' }, { sedes }))}>PDF</Btn>
         </div>} />
