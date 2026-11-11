@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { PageHeader, useDebounced, AvisoLimite, ContadorCircular, ConLateral, PanelIndicadores, ICONOS_IND, Card, FilterBar, selectCls, Btn, Badge, Modal } from '../components/ui'
+import { PageHeader, useDebounced, AvisoLimite, ContadorCircular, ConLateral, PanelIndicadores, Card, FilterBar, selectCls, Btn, Badge, FilasEstado } from '../components/ui'
+import ModalSalida, { type DatosSalida } from '../components/ModalSalida'
+import { SelectsUbicacion, useUbicacionesFiltro } from '../components/SelectsUbicacion'
 import { useAuth } from '../auth/AuthProvider'
-import { LIMITE_VISITAS, listVisitas, listSedes, listPisos, listUbicaciones, finalizarVisita, describirFiltros, type VisitaListado, type FiltrosVisita } from '../lib/data'
+import { LIMITE_VISITAS, listVisitas, finalizarVisita, describirFiltros, type VisitaListado, type FiltrosVisita } from '../lib/data'
 import { exportarExcel, exportarPDF, type Columna } from '../lib/exportar'
-import type { Sede, Piso, Ubicacion } from '../lib/types'
+import { ICONOS_IND } from '../lib/iconos'
 
 function horaCO(iso: string) {
   return new Date(new Date(iso).getTime() - 5 * 3_600_000).toISOString().replace('T', ' ').substring(0, 16)
@@ -25,15 +27,24 @@ const COLS: Columna<VisitaListado>[] = [
   { header: 'Estado', get: (r) => r.estado },
 ]
 
+// Datos de la confirmación de salida a partir de una visita.
+function datosSalida(v: VisitaListado): DatosSalida {
+  const paciente = v.paciente_nombre ? `${v.paciente_nombre} · ${v.ubicacion_etiqueta ?? ''}`
+    : v.responsable?.nombre_completo ? `Resp.: ${v.responsable.nombre_completo}` : 'Sin paciente asociado'
+  return {
+    visitante: v.visitante?.nombres_completos ?? null, cedula: v.visitante?.cedula ?? null, celular: v.visitante?.celular ?? null,
+    tarjeta: v.tarjeta?.codigo ?? '— sin tarjeta —', tipo: TIPO_LABEL[v.tipo_visitante] ?? v.tipo_visitante,
+    paciente, ingreso: horaCO(v.created_at),
+  }
+}
+
 export default function Visitas() {
   const { perfil } = useAuth()
   const esStaff = perfil?.rol === 'admin' || perfil?.rol === 'orientador'
   const [rows, setRows] = useState<VisitaListado[]>([])
-  const [sedes, setSedes] = useState<Sede[]>([])
-  const [pisos, setPisos] = useState<Piso[]>([])
-  const [ubicaciones, setUbicaciones] = useState<Ubicacion[]>([])
   const [loading, setLoading] = useState(true)
   const [f, setF] = useState<FiltrosVisita>({ estado: 'activa' })
+  const { sedes, pisos, ubicaciones } = useUbicacionesFiltro(f.sedeId, f.pisoId)
   // La búsqueda va al servidor (todas las visitas, no solo las 500 recientes), con un leve retardo al escribir.
   const textoBusqueda = useDebounced((f.texto ?? '').trim().length >= 3 ? f.texto : '')
   const [confirmar, setConfirmar] = useState<VisitaListado | null>(null)
@@ -57,13 +68,6 @@ export default function Visitas() {
       if (id === pedido.current) setLoading(false)
     }
   }, [consulta])
-  useEffect(() => { listSedes().then(setSedes) }, [])
-  useEffect(() => {
-    if (f.sedeId) listPisos(f.sedeId).then(setPisos); else setPisos([])
-  }, [f.sedeId])
-  useEffect(() => {
-    if (f.pisoId) listUbicaciones(f.pisoId).then(setUbicaciones); else setUbicaciones([])
-  }, [f.pisoId])
   useEffect(() => { cargar() }, [cargar])
 
   async function salida() {
@@ -108,18 +112,7 @@ export default function Visitas() {
           <option value="proveedor">Proveedor</option>
           <option value="colaborador">Colaborador</option>
         </select>
-        <select className={selectCls} value={f.sedeId ?? ''} onChange={(e) => setF({ ...f, sedeId: e.target.value, pisoId: '', ubicacionId: '' })}>
-          <option value="">Todas las sedes</option>
-          {sedes.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
-        </select>
-        <select className={selectCls} value={f.pisoId ?? ''} disabled={!f.sedeId} onChange={(e) => setF({ ...f, pisoId: e.target.value, ubicacionId: '' })}>
-          <option value="">{f.sedeId ? 'Todos los pisos' : 'Elige sede'}</option>
-          {pisos.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-        </select>
-        <select className={selectCls} value={f.ubicacionId ?? ''} disabled={!f.pisoId} onChange={(e) => setF({ ...f, ubicacionId: e.target.value })}>
-          <option value="">{f.pisoId ? 'Todas las ubicaciones' : 'Elige piso'}</option>
-          {ubicaciones.map((u) => <option key={u.id} value={u.id}>{u.etiqueta}{u.area ? ` (${u.area})` : ''}</option>)}
-        </select>
+        <SelectsUbicacion valor={f} onCambio={(c) => setF({ ...f, ...c })} sedes={sedes} pisos={pisos} ubicaciones={ubicaciones} />
         <input type="date" className={selectCls} value={f.desde ?? ''} onChange={(e) => setF({ ...f, desde: e.target.value })} />
         <input type="date" className={selectCls} value={f.hasta ?? ''} onChange={(e) => setF({ ...f, hasta: e.target.value })} />
         <input aria-label="Buscar por nombre, cédula, paciente" className={selectCls} placeholder="Buscar nombre, cédula, paciente…" value={f.texto ?? ''} onChange={(e) => setF({ ...f, texto: e.target.value })} />
@@ -138,9 +131,8 @@ export default function Visitas() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {loading ? <tr><td colSpan={8} className="py-10 text-center text-gray-400">Cargando…</td></tr>
-                : filtrados.length === 0 ? <tr><td colSpan={8} className="py-10 text-center text-gray-400">Sin registros</td></tr>
-                : filtrados.map((r) => (
+              <FilasEstado cargando={loading} vacio={filtrados.length === 0} columnas={8} textoVacio="Sin registros">
+                {filtrados.map((r) => (
                   <tr key={r.id} className="hover:bg-brand-50/40">
                     <td className="px-3 py-2 whitespace-nowrap text-gray-600">{horaCO(r.created_at)}</td>
                     <td className="px-3 py-2">
@@ -171,6 +163,7 @@ export default function Visitas() {
                     </td>
                   </tr>
                 ))}
+              </FilasEstado>
             </tbody>
           </table>
         </div>
@@ -178,35 +171,8 @@ export default function Visitas() {
       </ConLateral>
 
       {/* Modal de confirmación de salida */}
-      <Modal open={!!confirmar} onClose={() => setConfirmar(null)} title="Registrar salida y devolver tarjeta">
-        {confirmar && (
-          <>
-            <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
-              <div className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Visitante</div>
-              <div className="text-base font-semibold text-gray-800">{confirmar.visitante?.nombres_completos}</div>
-              <div className="text-sm text-gray-500">Cédula {confirmar.visitante?.cedula ?? '—'}{confirmar.visitante?.celular ? ` · ☎ ${confirmar.visitante.celular}` : ''}</div>
-              <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
-                <div><span className="text-gray-400 text-xs">Tarjeta</span><div className="font-medium text-brand">{confirmar.tarjeta?.codigo ?? '— sin tarjeta —'}</div></div>
-                <div><span className="text-gray-400 text-xs">Tipo</span><div>{TIPO_LABEL[confirmar.tipo_visitante] ?? confirmar.tipo_visitante}</div></div>
-                <div className="col-span-2"><span className="text-gray-400 text-xs">Paciente / ubicación</span>
-                  <div>{confirmar.paciente_nombre ? `${confirmar.paciente_nombre} · ${confirmar.ubicacion_etiqueta ?? ''}` : (confirmar.responsable?.nombre_completo ? `Resp.: ${confirmar.responsable.nombre_completo}` : 'Sin paciente asociado')}</div></div>
-                <div className="col-span-2"><span className="text-gray-400 text-xs">Ingreso</span><div>{horaCO(confirmar.created_at)}</div></div>
-              </div>
-            </div>
-            <p className="mt-3 text-sm text-gray-600">Al confirmar, se registra la salida, la tarjeta queda <b>disponible</b> y se libera el cupo de la habitación.</p>
-            <div className="mt-4 flex gap-2">
-              <button onClick={salida} className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                Confirmar salida
-              </button>
-              <button onClick={() => setConfirmar(null)} className="inline-flex items-center justify-center gap-2 rounded-lg bg-gray-100 px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-200">
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" /></svg>
-                Cancelar
-              </button>
-            </div>
-          </>
-        )}
-      </Modal>
+      <ModalSalida datos={confirmar ? datosSalida(confirmar) : null} onConfirmar={salida} onCerrar={() => setConfirmar(null)}
+        aviso={<>Al confirmar, se registra la salida, la tarjeta queda <b>disponible</b> y se libera el cupo de la habitación.</>} />
     </div>
   )
 }

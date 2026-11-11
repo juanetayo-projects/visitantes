@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { PageHeader, ContadorCircular, Btn, PanelIndicadores, ICONOS_IND } from '../../components/ui'
+import { PageHeader, ContadorCircular, Btn, PanelIndicadores } from '../../components/ui'
 import CrudTable from '../../components/CrudTable'
 import EstadoSyncCenso from '../../components/EstadoSyncCenso'
 import { useSyncCenso } from '../../components/ProgresoSync'
 import { supabase } from '../../lib/supabase'
+import { ICONOS_IND } from '../../lib/iconos'
 
 const ORIGEN = [{ value: 'auto', label: 'Auto' }, { value: 'regla', label: 'Regla' }, { value: 'manual', label: 'Manual' }]
 

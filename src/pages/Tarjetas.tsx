@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { PageHeader, ContadorCircular, ConLateral, PanelIndicadores, ICONOS_IND, Card, Badge, Btn, FilterBar, selectCls, Modal } from '../components/ui'
+import { PageHeader, ContadorCircular, ConLateral, PanelIndicadores, Card, Badge, Btn, FilterBar, selectCls, FilasEstado, type CardColor } from '../components/ui'
+import ModalSalida, { type DatosSalida } from '../components/ModalSalida'
+import { SelectsUbicacion, useUbicacionesFiltro } from '../components/SelectsUbicacion'
 import { useAuth } from '../auth/AuthProvider'
-import { inventarioTarjetas, listTarjetasDetalle, listSedes, listPisos, listUbicaciones, finalizarVisita, describirFiltros, type InventarioTarjetas, type TarjetaDetalle, type FiltrosTarjeta } from '../lib/data'
+import { inventarioTarjetas, listTarjetasDetalle, finalizarVisita, describirFiltros, type InventarioTarjetas, type TarjetaDetalle, type FiltrosTarjeta } from '../lib/data'
 import { exportarExcel, exportarPDF, type Columna } from '../lib/exportar'
-import type { Sede, Piso, Ubicacion } from '../lib/types'
+import { ICONOS_IND } from '../lib/iconos'
 
 const TIPO_LABEL: Record<string, string> = { familiar: 'Familiar', proveedor: 'Proveedor', colaborador: 'Colaborador', sin_tarjeta: 'Sin tarjeta' }
 const ESTADO_LABEL: Record<string, string> = { disponible: 'Disponible', en_uso: 'En uso', inactiva: 'Inactiva' }
@@ -25,6 +27,32 @@ const COLS: Columna<TarjetaDetalle>[] = [
   { header: 'Desde', get: (r) => horaCO(r.hora_ingreso) },
 ]
 
+// Las cuatro cifras del inventario; cada una filtra la tabla por su estado ('' = todas).
+const CIFRAS_INVENTARIO: { estado: string; label: string; campo: 'total' | 'disponible' | 'en_uso' | 'inactiva'; icono: string; color: CardColor; accion: string }[] = [
+  { estado: '', label: 'Total tarjetas', campo: 'total', icono: ICONOS_IND.total, color: 'blue', accion: 'Ver todas' },
+  { estado: 'disponible', label: 'Disponibles', campo: 'disponible', icono: ICONOS_IND.atendido, color: 'green', accion: 'Filtrar' },
+  { estado: 'en_uso', label: 'En uso', campo: 'en_uso', icono: ICONOS_IND.personas, color: 'amber', accion: 'Filtrar' },
+  { estado: 'inactiva', label: 'Inactivas', campo: 'inactiva', icono: ICONOS_IND.alerta, color: 'purple', accion: 'Filtrar' },
+]
+function PanelInventario({ inv, estado, onEstado }: { inv: InventarioTarjetas | null; estado: string; onEstado: (e: string) => void }) {
+  return (
+    <PanelIndicadores titulo="Inventario" items={CIFRAS_INVENTARIO.map((c) => ({
+      label: c.label, value: inv?.[c.campo] ?? '—', hint: estado === c.estado ? 'Filtro activo' : c.accion,
+      icono: c.icono, color: c.color, activo: estado === c.estado, onClick: () => onEstado(c.estado),
+    }))} />
+  )
+}
+
+// Datos de la confirmación de salida a partir de una tarjeta en uso.
+function datosSalida(t: TarjetaDetalle): DatosSalida {
+  return {
+    visitante: t.visitante_nombre ?? null, cedula: t.cedula ?? null, celular: t.celular ?? null,
+    tarjeta: t.codigo, tipo: t.tipo_visitante ? TIPO_LABEL[t.tipo_visitante] : '—',
+    paciente: t.paciente_nombre ? `${t.paciente_nombre} · ${t.ubicacion_etiqueta}` : 'Sin paciente asociado',
+    ingreso: horaCO(t.hora_ingreso),
+  }
+}
+
 export default function Tarjetas() {
   const { perfil } = useAuth()
   const esStaff = perfil?.rol === 'admin' || perfil?.rol === 'orientador'
@@ -33,9 +61,7 @@ export default function Tarjetas() {
   const [loading, setLoading] = useState(true)
   const [confirmar, setConfirmar] = useState<TarjetaDetalle | null>(null)
   const [f, setF] = useState<FiltrosTarjeta>({ estado: 'en_uso' })
-  const [sedes, setSedes] = useState<Sede[]>([])
-  const [pisos, setPisos] = useState<Piso[]>([])
-  const [ubicaciones, setUbicaciones] = useState<Ubicacion[]>([])
+  const { sedes, pisos, ubicaciones } = useUbicacionesFiltro(f.sedeId, f.pisoId)
 
   // Una sola carga (inventario + lista) que se repite al cambiar cualquier filtro. Antes eran dos
   // efectos que pedían la misma lista y podían responder en desorden. Solo la petición más
@@ -54,9 +80,6 @@ export default function Tarjetas() {
     }
   }, [f])
   useEffect(() => { cargar() }, [cargar])
-  useEffect(() => { listSedes().then(setSedes) }, [])
-  useEffect(() => { if (f.sedeId) listPisos(f.sedeId).then(setPisos); else setPisos([]) }, [f.sedeId])
-  useEffect(() => { if (f.pisoId) listUbicaciones(f.pisoId).then(setUbicaciones); else setUbicaciones([]) }, [f.pisoId])
 
   async function devolver() {
     if (!confirmar?.visita_id) { setConfirmar(null); return }
@@ -78,12 +101,7 @@ export default function Tarjetas() {
 
       <ConLateral lateral={<>
       {/* Inventario — clic para filtrar por estado */}
-      <PanelIndicadores titulo="Inventario" items={[
-        { label: 'Total tarjetas', value: inv?.total ?? '—', hint: !f.estado ? 'Filtro activo' : 'Ver todas', icono: ICONOS_IND.total, color: 'blue', activo: !f.estado, onClick: () => setEstado('') },
-        { label: 'Disponibles', value: inv?.disponible ?? '—', hint: f.estado === 'disponible' ? 'Filtro activo' : 'Filtrar', icono: ICONOS_IND.atendido, color: 'green', activo: f.estado === 'disponible', onClick: () => setEstado('disponible') },
-        { label: 'En uso', value: inv?.en_uso ?? '—', hint: f.estado === 'en_uso' ? 'Filtro activo' : 'Filtrar', icono: ICONOS_IND.personas, color: 'amber', activo: f.estado === 'en_uso', onClick: () => setEstado('en_uso') },
-        { label: 'Inactivas', value: inv?.inactiva ?? '—', hint: f.estado === 'inactiva' ? 'Filtro activo' : 'Filtrar', icono: ICONOS_IND.alerta, color: 'purple', activo: f.estado === 'inactiva', onClick: () => setEstado('inactiva') },
-      ]} />
+      <PanelInventario inv={inv} estado={f.estado ?? ''} onEstado={setEstado} />
 
       {/* Filtros completos */}
       <FilterBar vertical onClear={() => setF({})}>
@@ -93,15 +111,7 @@ export default function Tarjetas() {
           <option value="en_uso">En uso</option>
           <option value="inactiva">Inactivas</option>
         </select>
-        <select className={selectCls} value={f.sedeId ?? ''} onChange={(e) => setF({ ...f, sedeId: e.target.value, pisoId: '', ubicacionId: '' })}>
-          <option value="">Todas las sedes</option>{sedes.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
-        </select>
-        <select className={selectCls} value={f.pisoId ?? ''} disabled={!f.sedeId} onChange={(e) => setF({ ...f, pisoId: e.target.value, ubicacionId: '' })}>
-          <option value="">{f.sedeId ? 'Todos los pisos' : 'Elige sede'}</option>{pisos.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-        </select>
-        <select className={selectCls} value={f.ubicacionId ?? ''} disabled={!f.pisoId} onChange={(e) => setF({ ...f, ubicacionId: e.target.value })}>
-          <option value="">{f.pisoId ? 'Todas las ubicaciones' : 'Elige piso'}</option>{ubicaciones.map((u) => <option key={u.id} value={u.id}>{u.etiqueta}{u.area ? ` (${u.area})` : ''}</option>)}
-        </select>
+        <SelectsUbicacion valor={f} onCambio={(c) => setF({ ...f, ...c })} sedes={sedes} pisos={pisos} ubicaciones={ubicaciones} />
         <select className={selectCls} value={f.tipo ?? ''} onChange={(e) => setF({ ...f, tipo: e.target.value })}>
           <option value="">Todos los tipos</option><option value="familiar">Familiar</option><option value="proveedor">Proveedor</option><option value="colaborador">Colaborador</option>
         </select>
@@ -119,9 +129,8 @@ export default function Tarjetas() {
               {['Tarjeta', 'Estado', 'Titular', 'Teléfono', 'Tipo', 'Paciente / ubicación', 'Desde', esStaff ? 'Acción' : ''].map((h) => <th key={h} className="px-3 py-2.5 text-left font-medium whitespace-nowrap">{h}</th>)}
             </tr></thead>
             <tbody className="divide-y divide-gray-100">
-              {loading ? <tr><td colSpan={8} className="py-10 text-center text-gray-400">Cargando…</td></tr>
-                : rows.length === 0 ? <tr><td colSpan={8} className="py-10 text-center text-gray-400">Sin tarjetas para el filtro</td></tr>
-                : rows.map((r) => (
+              <FilasEstado cargando={loading} vacio={rows.length === 0} columnas={8} textoVacio="Sin tarjetas para el filtro">
+                {rows.map((r) => (
                   <tr key={r.id} className="hover:bg-brand-50/40">
                     <td className="px-3 py-2 font-semibold text-gray-800">{r.codigo}</td>
                     <td className="px-3 py-2"><Badge color={ESTADO_COLOR[r.estado]}>{ESTADO_LABEL[r.estado]}</Badge></td>
@@ -152,6 +161,7 @@ export default function Tarjetas() {
                     </td>}
                   </tr>
                 ))}
+              </FilasEstado>
             </tbody>
           </table>
         </div>
@@ -159,35 +169,8 @@ export default function Tarjetas() {
       </ConLateral>
 
       {/* Modal de confirmación de salida con datos del visitante + iconos */}
-      <Modal open={!!confirmar} onClose={() => setConfirmar(null)} title="Registrar salida y devolver tarjeta">
-        {confirmar && (
-          <>
-            <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
-              <div className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Visitante</div>
-              <div className="text-base font-semibold text-gray-800">{confirmar.visitante_nombre}</div>
-              <div className="text-sm text-gray-500">Cédula {confirmar.cedula ?? '—'}{confirmar.celular ? ` · ☎ ${confirmar.celular}` : ''}</div>
-              <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
-                <div><span className="text-gray-400 text-xs">Tarjeta</span><div className="font-medium text-brand">{confirmar.codigo}</div></div>
-                <div><span className="text-gray-400 text-xs">Tipo</span><div>{confirmar.tipo_visitante ? TIPO_LABEL[confirmar.tipo_visitante] : '—'}</div></div>
-                <div className="col-span-2"><span className="text-gray-400 text-xs">Paciente / ubicación</span>
-                  <div>{confirmar.paciente_nombre ? `${confirmar.paciente_nombre} · ${confirmar.ubicacion_etiqueta}` : 'Sin paciente asociado'}</div></div>
-                <div className="col-span-2"><span className="text-gray-400 text-xs">Ingreso</span><div>{horaCO(confirmar.hora_ingreso)}</div></div>
-              </div>
-            </div>
-            <p className="mt-3 text-sm text-gray-600">Al confirmar, la tarjeta <b>{confirmar.codigo}</b> vuelve a estar <b>disponible</b> y la habitación queda libre.</p>
-            <div className="mt-4 flex gap-2">
-              <button onClick={devolver} className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                Confirmar salida
-              </button>
-              <button onClick={() => setConfirmar(null)} className="inline-flex items-center justify-center gap-2 rounded-lg bg-gray-100 px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-200">
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" /></svg>
-                Cancelar
-              </button>
-            </div>
-          </>
-        )}
-      </Modal>
+      <ModalSalida datos={confirmar ? datosSalida(confirmar) : null} onConfirmar={devolver} onCerrar={() => setConfirmar(null)}
+        aviso={<>Al confirmar, la tarjeta <b>{confirmar?.codigo}</b> vuelve a estar <b>disponible</b> y la habitación queda libre.</>} />
     </div>
   )
 }

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { PageHeader, ContadorCircular, ConLateral, PanelIndicadores, ICONOS_IND, Card, FilterBar, selectCls, Btn } from '../components/ui'
+import { PageHeader, ContadorCircular, ConLateral, PanelIndicadores, Card, FilterBar, selectCls, Btn } from '../components/ui'
 import { listNotasAdministrativas, metricasNotasPorUsuario, type FiltrosNota, type ActividadUsuario } from '../lib/data'
 import { exportarExcel, exportarPDF, type Columna } from '../lib/exportar'
 import { supabase } from '../lib/supabase'
 import type { NotaAdministrativa } from '../lib/types'
+import { ICONOS_IND } from '../lib/iconos'
 
 type Fila = NotaAdministrativa & { usuario_nombre: string | null; ubicacion_etiqueta: string | null }
 

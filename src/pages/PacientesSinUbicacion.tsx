@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { PageHeader, ContadorCircular, ConLateral, PanelIndicadores, ICONOS_IND, FilterBar, Card, Badge, Btn, selectCls, inputCls } from '../components/ui'
+import { PageHeader, ContadorCircular, ConLateral, PanelIndicadores, FilterBar, Card, Badge, Btn, selectCls, inputCls, FilasEstado } from '../components/ui'
 import EstadoSyncCenso from '../components/EstadoSyncCenso'
 import { useAuth } from '../auth/AuthProvider'
 import { pacientesSinUbicacion, type PacienteSinUbicacion } from '../lib/data'
 import { exportarExcel, type Columna } from '../lib/exportar'
 import { AISLAMIENTO_LABEL } from '../lib/types'
+import { ICONOS_IND } from '../lib/iconos'
 
 // Por qué la app no puede mostrar al paciente en el mapa.
 const MOTIVO: Record<string, { label: string; hint: string; color: 'amber' | 'red' }> = {
@@ -98,9 +99,8 @@ export default function PacientesSinUbicacion() {
                 {puedeRegistrar && <th className="sticky right-0 bg-brand px-3 py-2.5" />}
               </tr></thead>
               <tbody className="divide-y divide-gray-100">
-                {loading ? <tr><td colSpan={7} className="py-10 text-center text-gray-400">Cargando…</td></tr>
-                  : filtrados.length === 0 ? <tr><td colSpan={7} className="py-10 text-center text-gray-400">{rows.length ? 'Sin resultados — ajusta la búsqueda o los filtros' : '✓ No hay pacientes sin ubicación.'}</td></tr>
-                  : filtrados.map((r) => (
+                <FilasEstado cargando={loading} vacio={filtrados.length === 0} columnas={7} textoVacio={rows.length ? 'Sin resultados — ajusta la búsqueda o los filtros' : '✓ No hay pacientes sin ubicación.'}>
+                {filtrados.map((r) => (
                     <tr key={r.num_ingreso} className="group hover:bg-brand-50/40">
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-1.5 font-medium text-gray-800">
@@ -128,6 +128,7 @@ export default function PacientesSinUbicacion() {
                       )}
                     </tr>
                   ))}
+              </FilasEstado>
               </tbody>
             </table>
           </div>

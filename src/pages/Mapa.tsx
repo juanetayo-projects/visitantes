@@ -1,24 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { PageHeader, Card, Btn, Modal, ConLateral, selectCls, inputCls, textareaCls } from '../components/ui'
+import { PageHeader, Card, Btn, ConLateral, selectCls, inputCls } from '../components/ui'
 import MapaHabitaciones from '../components/MapaHabitaciones'
-import { useAuth } from '../auth/AuthProvider'
-import { listSedes, listPisos, listUbicaciones, ordenarAreas, buscarPacientePorDocumento, crearNotaAdministrativa, listNotasContexto } from '../lib/data'
-import type { Sede, Piso, OcupacionUbicacion, NotaAdministrativa } from '../lib/types'
-
-// Fecha/hora de app en Colombia (GMT-5), para mostrar y guardar en la nota administrativa.
-function fechaHoraCO(): string { return fechaHoraNota(new Date().toISOString()) }
-
-// Formatea una marca de tiempo ISO (created_at de una nota previa) en hora Colombia.
-function fechaHoraNota(iso: string): string {
-  const co = new Date(new Date(iso).getTime() - 5 * 3_600_000)
-  const dd = String(co.getUTCDate()).padStart(2, '0'), mm = String(co.getUTCMonth() + 1).padStart(2, '0')
-  let h = co.getUTCHours(); const min = String(co.getUTCMinutes()).padStart(2, '0')
-  const ap = h < 12 ? 'a.m.' : 'p.m.'; h = h % 12 === 0 ? 12 : h % 12
-  return `${dd}/${mm}/${co.getUTCFullYear()} ${h}:${min} ${ap}`
-}
+import ModalNotaAdministrativa from '../components/ModalNotaAdministrativa'
+import { listSedes, listPisos, listUbicaciones, ordenarAreas, buscarPacientePorDocumento } from '../lib/data'
+import type { Sede, Piso, OcupacionUbicacion } from '../lib/types'
 
 export default function Mapa() {
-  const { perfil } = useAuth()
   const [sedes, setSedes] = useState<Sede[]>([])
   const [pisos, setPisos] = useState<Piso[]>([])
   const [areas, setAreas] = useState<string[]>([])
@@ -28,9 +15,6 @@ export default function Mapa() {
 
   // Nota administrativa: contexto (habitación seleccionada o paciente buscado por cédula)
   const [notaFor, setNotaFor] = useState<OcupacionUbicacion | null>(null)
-  const [comentario, setComentario] = useState('')
-  const [guardando, setGuardando] = useState(false)
-  const [historial, setHistorial] = useState<NotaAdministrativa[]>([])
   const [msg, setMsg] = useState<string | null>(null)
 
   // Búsqueda por cédula: para casos sin cama mapeada (p.ej. Urgencias)
@@ -53,10 +37,7 @@ export default function Mapa() {
 
   const pisoSel = useMemo(() => pisos.find((p) => p.id === pisoId), [pisos, pisoId])
 
-  function abrirNota(o: OcupacionUbicacion) {
-    setNotaFor(o); setComentario(''); setHistorial([])
-    listNotasContexto({ pacienteDocumento: o.paciente_documento ?? null, ubicacionId: o.ubicacion_id || null }).then(setHistorial)
-  }
+  function abrirNota(o: OcupacionUbicacion) { setNotaFor(o) }
 
   async function buscarPorCedula() {
     setDocMsg(null)
@@ -67,24 +48,6 @@ export default function Mapa() {
       if (!o) { setDocMsg('No se encontró un paciente con esa identificación.'); return }
       abrirNota(o)
     } finally { setBuscando(false) }
-  }
-
-  async function guardarNota() {
-    if (!notaFor || !comentario.trim()) return
-    setGuardando(true)
-    try {
-      await crearNotaAdministrativa({
-        ubicacion_id: notaFor.ubicacion_id || null,
-        piso_id: notaFor.piso_id ?? null,
-        num_ingreso: notaFor.num_ingreso,
-        paciente_documento: notaFor.paciente_documento ?? null,
-        paciente_nombre: notaFor.paciente_nombre,
-        comentario: comentario.trim(),
-        registrado_por: perfil?.id ?? null,
-      })
-      setNotaFor(null); setComentario('')
-      setMsg('Nota administrativa guardada.')
-    } finally { setGuardando(false) }
   }
 
   // El aviso de guardado se muestra a nivel de página (el modal ya se cerró) y se autolimpia.
@@ -157,50 +120,8 @@ export default function Mapa() {
       </ConLateral>
 
       {/* Nota administrativa: fecha/hora de la app + comentario libre */}
-      <Modal open={!!notaFor} onClose={() => setNotaFor(null)} title="Nota administrativa">
-        {notaFor && (
-          <>
-            <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
-              <div className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Contexto</div>
-              <div className="text-base font-semibold text-gray-800">{notaFor.paciente_nombre ?? notaFor.etiqueta}</div>
-              <div className="text-sm text-gray-500">
-                {notaFor.num_ingreso ? `# ingreso ${notaFor.num_ingreso} · ` : ''}{notaFor.etiqueta}
-                {notaFor.paciente_documento ? ` · ID ${notaFor.paciente_documento}` : ''}
-              </div>
-            </div>
-            <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-              <div><span className="text-gray-400 text-xs">Fecha y hora</span><div className="font-medium text-gray-700">{fechaHoraCO()}</div></div>
-              <div><span className="text-gray-400 text-xs">Registrado por</span><div className="font-medium text-gray-700">{perfil?.nombre ?? perfil?.email}</div></div>
-            </div>
-            <div className="mt-3">
-              <label htmlFor="mapa-comentario" className="block text-xs font-medium text-gray-500 mb-1">Comentario *</label>
-              <textarea id="mapa-comentario" className={textareaCls} rows={4} value={comentario} onChange={(e) => setComentario(e.target.value)} placeholder="Describe la novedad administrativa…" />
-            </div>
-
-            {historial.length > 0 && (
-              <div className="mt-4">
-                <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-400">Notas anteriores ({historial.length})</div>
-                <div className="max-h-44 overflow-y-auto space-y-1.5 pr-1">
-                  {historial.map((n, i) => (
-                    <div key={n.id} className="rounded-lg border-l-4 border-brand-light bg-brand-50/60 px-3 py-2 text-xs">
-                      <div className="flex items-center justify-between text-gray-500">
-                        <span className="inline-flex items-center rounded-full bg-brand px-2 py-0.5 text-[10px] font-semibold text-white">ID #{historial.length - i}</span>
-                        <span>{fechaHoraNota(n.created_at)}</span>
-                      </div>
-                      <div className="mt-1 text-gray-700">{n.comentario}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="mt-4 flex gap-2">
-              <Btn onClick={guardarNota} disabled={guardando || !comentario.trim()} className="flex-1">{guardando ? 'Guardando…' : 'Guardar nota'}</Btn>
-              <Btn variant="ghost" onClick={() => setNotaFor(null)}>Cerrar</Btn>
-            </div>
-          </>
-        )}
-      </Modal>
+      <ModalNotaAdministrativa contexto={notaFor} onCerrar={() => setNotaFor(null)}
+        onGuardada={() => { setNotaFor(null); setMsg('Nota administrativa guardada.') }} />
     </div>
   )
 }

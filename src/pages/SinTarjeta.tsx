@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { PageHeader, useDebounced, AvisoLimite, ContadorCircular, ConLateral, PanelIndicadores, ICONOS_IND, Card, FilterBar, selectCls, Btn, Badge } from '../components/ui'
+import { PageHeader, useDebounced, AvisoLimite, ContadorCircular, ConLateral, PanelIndicadores, Card, FilterBar, selectCls, Btn, Badge, FilasEstado } from '../components/ui'
 import { LIMITE_VISITAS, listVisitas, listSedes, describirFiltros, type VisitaListado, type FiltrosVisita } from '../lib/data'
 import { exportarExcel, exportarPDF, type Columna } from '../lib/exportar'
 import type { Sede } from '../lib/types'
+import { ICONOS_IND } from '../lib/iconos'
 
 function horaCO(iso: string) { return new Date(new Date(iso).getTime() - 5 * 3_600_000).toISOString().replace('T', ' ').substring(0, 16) }
 
@@ -83,9 +84,8 @@ export default function SinTarjeta() {
               {['Ingreso', 'Salida', 'Visitante', 'Acompañante', 'Sede', 'Estado'].map((h) => <th key={h} className="px-3 py-2.5 text-left font-medium whitespace-nowrap">{h}</th>)}
             </tr></thead>
             <tbody className="divide-y divide-gray-100">
-              {loading ? <tr><td colSpan={6} className="py-10 text-center text-gray-400">Cargando…</td></tr>
-                : filtrados.length === 0 ? <tr><td colSpan={6} className="py-10 text-center text-gray-400">Sin registros — ajusta los filtros</td></tr>
-                : filtrados.map((r) => (
+              <FilasEstado cargando={loading} vacio={filtrados.length === 0} columnas={6} textoVacio="Sin registros — ajusta los filtros">
+                {filtrados.map((r) => (
                   <tr key={r.id} className="hover:bg-brand-50/40">
                     <td className="px-3 py-2 whitespace-nowrap text-gray-600">{horaCO(r.created_at)}</td>
                     <td className="px-3 py-2 whitespace-nowrap text-gray-600">{r.salida_at ? horaCO(r.salida_at) : <span className="text-gray-300">— dentro —</span>}</td>
@@ -98,6 +98,7 @@ export default function SinTarjeta() {
                     <td className="px-3 py-2">{r.estado === 'activa' ? <Badge color="green">Dentro</Badge> : <Badge>Finalizada</Badge>}</td>
                   </tr>
                 ))}
+              </FilasEstado>
             </tbody>
           </table>
         </div>

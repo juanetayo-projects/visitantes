@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { ICONOS_IND } from '../lib/iconos'
 
 // Devuelve el valor solo cuando deja de cambiar por `ms`: evita consultar en cada tecla.
 export function useDebounced<T>(valor: T, ms = 400): T {
@@ -218,20 +219,6 @@ const TONO_IND: Record<CardColor, string> = {
   blue: 'bg-blue-100 text-blue-700', green: 'bg-emerald-100 text-emerald-700', red: 'bg-rose-100 text-rose-700',
   amber: 'bg-amber-100 text-amber-700', purple: 'bg-violet-100 text-violet-700', teal: 'bg-teal-100 text-teal-700',
 }
-export const ICONOS_IND = {
-  total: 'M4 6h16M4 12h16M4 18h16',
-  recibido: 'M20 13V7a2 2 0 00-2-2H6a2 2 0 00-2 2v6m16 0v4a2 2 0 01-2 2H6a2 2 0 01-2-2v-4m16 0h-5l-1 2h-4l-1-2H4',
-  atendido: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
-  pendiente: 'M12 7v5l3 2m6-2a9 9 0 11-18 0 9 9 0 0118 0z',
-  calendario: 'M8 3v4m8-4v4M4 11h16M5 7h14a1 1 0 011 1v11a2 2 0 01-2 2H6a2 2 0 01-2-2V8a1 1 0 011-1z',
-  pico: 'M3 17l5-5 4 4 8-9',
-  alerta: 'M12 9v4m0 4h.01M10.3 3.86l-8 14A2 2 0 004 21h16a2 2 0 001.7-3.14l-8-14a2 2 0 00-3.4 0z',
-  personas: 'M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1a4 4 0 100-8 4 4 0 000 8z',
-  actualizar: 'M4 4v5h5M20 20v-5h-5M4 9a8 8 0 0114-3M20 15a8 8 0 01-14 3',
-  salida: 'M17 16l4-4m0 0l-4-4m4 4H7m6 8H6a2 2 0 01-2-2V6a2 2 0 012-2h7',
-  cama: 'M3 7v10M3 12h15a3 3 0 013 3v2M7 12V9a1 1 0 011-1h6a1 1 0 011 1v3',
-  base: 'M4 7c0 1.7 3.6 3 8 3s8-1.3 8-3-3.6-3-8-3-8 1.3-8 3zm0 0v10c0 1.7 3.6 3 8 3s8-1.3 8-3V7M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3',
-}
 export interface IndicadorItem { label: string; value: ReactNode; hint?: ReactNode; color?: CardColor; icono?: string; onClick?: () => void; activo?: boolean }
 
 // Lista de indicadores para la barra lateral: cada fila cambia de color al pasar el mouse.
@@ -286,6 +273,16 @@ export function Modal({ open, onClose, title, children, maxWidth = 'max-w-md' }:
       </div>
     </div>
   )
+}
+
+// Cuerpo de una tabla con sus dos estados especiales: «Cargando…» y «sin registros». Antes cada
+// página escribía estas dos filas a mano, con dos condiciones encadenadas.
+export function FilasEstado({ cargando, vacio, columnas, textoVacio = 'Sin registros', claseVacio = 'text-gray-400', children }: {
+  cargando: boolean; vacio: boolean; columnas: number; textoVacio?: ReactNode; claseVacio?: string; children: ReactNode
+}) {
+  if (cargando) return <tr><td colSpan={columnas} className="py-10 text-center text-gray-400">Cargando…</td></tr>
+  if (vacio) return <tr><td colSpan={columnas} className={`py-10 text-center ${claseVacio}`}>{textoVacio}</td></tr>
+  return <>{children}</>
 }
 
 export function Badge({ children, color = 'gray' }: { children: ReactNode; color?: 'gray' | 'blue' | 'green' | 'amber' | 'red' }) {

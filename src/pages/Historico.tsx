@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { PageHeader, useDebounced, AvisoLimite, ContadorCircular, ConLateral, PanelIndicadores, ICONOS_IND, Card, FilterBar, selectCls, Btn, Badge } from '../components/ui'
-import { LIMITE_VISITAS, listVisitas, listSedes, listPisos, listUbicaciones, describirFiltros, type VisitaListado, type FiltrosVisita } from '../lib/data'
+import { PageHeader, useDebounced, AvisoLimite, ContadorCircular, ConLateral, PanelIndicadores, Card, FilterBar, selectCls, Btn, Badge, FilasEstado } from '../components/ui'
+import { SelectsUbicacion, useUbicacionesFiltro } from '../components/SelectsUbicacion'
+import { LIMITE_VISITAS, listVisitas, describirFiltros, type VisitaListado, type FiltrosVisita } from '../lib/data'
 import { exportarExcel, exportarPDF, type Columna } from '../lib/exportar'
-import type { Sede, Piso, Ubicacion } from '../lib/types'
+import { ICONOS_IND } from '../lib/iconos'
 
 const TIPO_LABEL: Record<string, string> = { familiar: 'Familiar', proveedor: 'Proveedor', colaborador: 'Colaborador', sin_tarjeta: 'Sin tarjeta' }
 function horaCO(iso: string) { return new Date(new Date(iso).getTime() - 5 * 3_600_000).toISOString().replace('T', ' ').substring(0, 16) }
@@ -27,17 +28,12 @@ const COLS: Columna<VisitaListado>[] = [
 
 export default function Historico() {
   const [rows, setRows] = useState<VisitaListado[]>([])
-  const [sedes, setSedes] = useState<Sede[]>([])
-  const [pisos, setPisos] = useState<Piso[]>([])
-  const [ubicaciones, setUbicaciones] = useState<Ubicacion[]>([])
   const [loading, setLoading] = useState(false)
   const [f, setF] = useState<FiltrosVisita>({ estado: '' })
+  const { sedes, pisos, ubicaciones } = useUbicacionesFiltro(f.sedeId, f.pisoId)
   // La búsqueda va al servidor (todas las visitas, no solo las 500 recientes), con un leve retardo al escribir.
   const textoBusqueda = useDebounced((f.texto ?? '').trim().length >= 3 ? f.texto : '')
 
-  useEffect(() => { listSedes().then(setSedes) }, [])
-  useEffect(() => { if (f.sedeId) listPisos(f.sedeId).then(setPisos); else setPisos([]) }, [f.sedeId])
-  useEffect(() => { if (f.pisoId) listUbicaciones(f.pisoId).then(setUbicaciones); else setUbicaciones([]) }, [f.pisoId])
   // Lo que se envía al servidor: filtros + texto con retardo (el que se teclea se filtra en pantalla).
   const consulta = useMemo<FiltrosVisita>(() => ({
     estado: f.estado, tipo: f.tipo, sedeId: f.sedeId, pisoId: f.pisoId, ubicacionId: f.ubicacionId,
@@ -78,15 +74,7 @@ export default function Historico() {
           { label: 'Colaboradores', value: filtrados.filter((r) => r.tipo_visitante === 'colaborador').length, icono: ICONOS_IND.personas, color: 'purple' },
         ]} />
       <FilterBar vertical onClear={() => setF({ estado: '' })}>
-        <select className={selectCls} value={f.sedeId ?? ''} onChange={(e) => setF({ ...f, sedeId: e.target.value, pisoId: '', ubicacionId: '' })}>
-          <option value="">Todas las sedes</option>{sedes.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
-        </select>
-        <select className={selectCls} value={f.pisoId ?? ''} disabled={!f.sedeId} onChange={(e) => setF({ ...f, pisoId: e.target.value, ubicacionId: '' })}>
-          <option value="">{f.sedeId ? 'Todos los pisos' : 'Elige sede'}</option>{pisos.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-        </select>
-        <select className={selectCls} value={f.ubicacionId ?? ''} disabled={!f.pisoId} onChange={(e) => setF({ ...f, ubicacionId: e.target.value })}>
-          <option value="">{f.pisoId ? 'Todas las ubicaciones' : 'Elige piso'}</option>{ubicaciones.map((u) => <option key={u.id} value={u.id}>{u.etiqueta}{u.area ? ` (${u.area})` : ''}</option>)}
-        </select>
+        <SelectsUbicacion valor={f} onCambio={(c) => setF({ ...f, ...c })} sedes={sedes} pisos={pisos} ubicaciones={ubicaciones} />
         <select className={selectCls} value={f.tipo ?? ''} onChange={(e) => setF({ ...f, tipo: e.target.value })}>
           <option value="">Todos los tipos</option><option value="familiar">Familiar</option><option value="proveedor">Proveedor</option><option value="colaborador">Colaborador</option>
         </select>
@@ -107,9 +95,8 @@ export default function Historico() {
               {['Ingreso', 'Salida / devolución', 'Visitante', 'Tipo', 'Paciente', '# Ingreso', 'Ubicación', 'Sede', 'Tarjeta', 'Estado'].map((h) => <th key={h} className="px-3 py-2.5 text-left font-medium whitespace-nowrap">{h}</th>)}
             </tr></thead>
             <tbody className="divide-y divide-gray-100">
-              {loading ? <tr><td colSpan={10} className="py-10 text-center text-gray-400">Cargando…</td></tr>
-                : filtrados.length === 0 ? <tr><td colSpan={10} className="py-10 text-center text-gray-400">Sin registros — ajusta los filtros</td></tr>
-                : filtrados.map((r) => (
+              <FilasEstado cargando={loading} vacio={filtrados.length === 0} columnas={10} textoVacio="Sin registros — ajusta los filtros">
+                {filtrados.map((r) => (
                   <tr key={r.id} className="hover:bg-brand-50/40">
                     <td className="px-3 py-2 whitespace-nowrap text-gray-600">
                       <div>{fechaSolaCO(r.created_at)}</div>
@@ -147,6 +134,7 @@ export default function Historico() {
                     <td className="px-3 py-2">{r.estado === 'activa' ? <Badge color="green">Dentro</Badge> : <Badge>Finalizada</Badge>}</td>
                   </tr>
                 ))}
+              </FilasEstado>
             </tbody>
           </table>
         </div>

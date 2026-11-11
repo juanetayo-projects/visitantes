@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import ReactECharts from 'echarts-for-react'
-import { PageHeader, ContadorCircular, Card, FilterBar, selectCls, PanelIndicadores, ICONOS_IND, ConLateral, Modal, Badge } from '../components/ui'
+import { PageHeader, ContadorCircular, Card, FilterBar, selectCls, PanelIndicadores, ConLateral, Modal, Badge } from '../components/ui'
 import { listVisitas, listSedes, listPisos, describirFiltros, type VisitaListado, type FiltrosVisita } from '../lib/data'
 import { exportarExcel, exportarPDF, type Columna } from '../lib/exportar'
 import { setFestivos } from '../lib/festivosColombia'
 import type { Sede, Piso } from '../lib/types'
+import { ICONOS_IND } from '../lib/iconos'
 
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 const HORAS = Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2, '0')}h`)

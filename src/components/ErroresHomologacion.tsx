@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Icono, ICONOS } from './InicioWidgets'
+import { Icono } from './InicioWidgets'
 import { erroresHomologacion, TIPOS_ERROR_HOMOLOGACION, type CensoInconsistencia } from '../lib/data'
+import { ICONOS } from '../lib/iconos'
 
 const VISIBLES = 4
 

@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { PageHeader, ContadorCircular, Card, PanelIndicadores, ICONOS_IND, ConLateral, FilterBar, selectCls, inputCls, textareaCls, Btn, Badge, Modal, ComentariosBadge } from '../components/ui'
+import { PageHeader, ContadorCircular, Card, PanelIndicadores, ConLateral, FilterBar, selectCls, inputCls, textareaCls, Btn, Badge, Modal, ComentariosBadge, FilasEstado } from '../components/ui'
 import { useAuth } from '../auth/AuthProvider'
+import ModalComentarios from '../components/ModalComentarios'
 import {
   listSolicitudesCirugia, crearSolicitudCirugia, cambiarEstadoCirugia,
   listComentariosCirugia, comentarCirugia, listComentariosCirugiaPorSolicitud, listAtendidoPorCirugia, type FiltrosCirugia,
 } from '../lib/data'
 import { exportarExcel, exportarPDF, type Columna } from '../lib/exportar'
 import { ESTADO_HEMODINAMIA_LABEL, type SolicitudCirugia, type EstadoHemodinamia, type ComentarioCirugia } from '../lib/types'
+import { ICONOS_IND } from '../lib/iconos'
 
-function fechaCO(iso: string) { return new Date(new Date(iso).getTime() - 5 * 3_600_000).toISOString().replace('T', ' ').substring(0, 16) }
 function hoyCO() { return new Date(Date.now() - 5 * 3_600_000).toISOString().substring(0, 10) }
 
 const ESTADO_COLOR: Record<EstadoHemodinamia, any> = { recibido: 'blue', atendido: 'green', revisado: 'purple', pendiente: 'amber' }
@@ -129,9 +130,8 @@ export default function Cirugia() {
               <th className="sticky right-0 z-10 bg-brand px-3 py-2.5 text-left font-medium whitespace-nowrap shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.25)]"></th>
             </tr></thead>
             <tbody className="divide-y divide-gray-100">
-              {loading ? <tr><td colSpan={8} className="py-10 text-center text-gray-400">Cargando…</td></tr>
-                : rows.length === 0 ? <tr><td colSpan={8} className="py-10 text-center text-gray-400">Sin registros</td></tr>
-                : rows.map((r) => (
+              <FilasEstado cargando={loading} vacio={rows.length === 0} columnas={8} textoVacio="Sin registros">
+                {rows.map((r) => (
                   <tr key={r.id} className="group hover:bg-brand-50/40">
                     <td className="px-3 py-2 whitespace-nowrap text-gray-600">{r.fecha}</td>
                     <td className="px-3 py-2">
@@ -162,6 +162,7 @@ export default function Cirugia() {
                     </td>
                   </tr>
                 ))}
+              </FilasEstado>
             </tbody>
           </table>
         </div>
@@ -197,41 +198,10 @@ export default function Cirugia() {
         </div>
       </Modal>
 
-      {/* Comentarios (hilo, visible para todos los roles del módulo, incl. orientador) */}
-      <Modal open={!!comentar} onClose={() => setComentar(null)} title="Comentarios">
-        {comentar && (
-          <>
-            <div className="rounded-xl border border-gray-100 bg-gray-50 p-3 text-sm mb-3">
-              <div className="font-semibold text-gray-800">{comentar.nombre_paciente} · {comentar.documento_paciente}</div>
-              <div className="text-gray-500">{comentar.procedimiento ?? 'Sin procedimiento indicado'}</div>
-            </div>
-            <div className="max-h-56 overflow-y-auto space-y-2">
-              {comentarios.length === 0
-                ? <p className="text-sm text-gray-400">Sin comentarios todavía.</p>
-                : comentarios.map((c, i) => (
-                  <div key={c.id} className="rounded-lg border-l-4 border-brand-light bg-brand-50/60 px-3 py-2">
-                    <div className="flex items-center justify-between text-xs text-gray-500">
-                      <span className="inline-flex items-center gap-1.5">
-                        <span className="rounded-full bg-brand px-2 py-0.5 text-[10px] font-semibold text-white">ID #{i + 1}</span>
-                        <span className="font-medium text-gray-700">{c.autor_nombre ?? 'Usuario'}</span>
-                      </span>
-                      <span>{fechaCO(c.created_at)}</span>
-                    </div>
-                    <div className="mt-1 text-sm text-gray-700">{c.comentario}</div>
-                  </div>
-                ))}
-            </div>
-            <div className="mt-3">
-              <label htmlFor="nuevo-comentario" className="block text-xs font-medium text-gray-500 mb-1">Nuevo comentario</label>
-              <textarea id="nuevo-comentario" className={textareaCls} rows={3} value={nuevoComentario} onChange={(e) => setNuevoComentario(e.target.value)} placeholder="Escribe aquí el seguimiento…" />
-            </div>
-            <div className="mt-3 flex gap-2">
-              <Btn onClick={enviarComentario} disabled={!nuevoComentario.trim()} className="flex-1">Comentar</Btn>
-              <Btn variant="ghost" onClick={() => setComentar(null)}>Cerrar</Btn>
-            </div>
-          </>
-        )}
-      </Modal>
+      {/* Comentarios (hilo, visible para todos los roles del módulo) */}
+      <ModalComentarios encabezado={comentar ? { titulo: `${comentar.nombre_paciente} · ${comentar.documento_paciente}`, detalle: comentar.procedimiento ?? 'Sin procedimiento indicado' } : null}
+        comentarios={comentarios} valor={nuevoComentario} onCambio={setNuevoComentario}
+        onEnviar={enviarComentario} onCerrar={() => setComentar(null)} />
     </div>
   )
 }

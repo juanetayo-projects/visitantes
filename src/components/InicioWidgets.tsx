@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import ReactECharts from 'echarts-for-react'
 import type { FeedItem, PuntoEventos } from '../lib/data'
+import { ICONOS } from '../lib/iconos'
 
 // Colores de identidad: validados con la herramienta de paleta (contraste y daltonismo).
 export const COLOR_INGRESOS = '#2E6FD1'
@@ -12,19 +13,6 @@ export function Icono({ d, className = 'h-5 w-5' }: { d: string; className?: str
   return <svg className={className} aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d={d} /></svg>
 }
 
-export const ICONOS = {
-  personas: 'M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1a4 4 0 100-8 4 4 0 000 8z',
-  entrada: 'M11 16l4-4m0 0l-4-4m4 4H3m8-8h6a2 2 0 012 2v12a2 2 0 01-2 2h-6',
-  salida: 'M17 16l4-4m0 0l-4-4m4 4H7m6 8H6a2 2 0 01-2-2V6a2 2 0 012-2h7',
-  tarjeta: 'M3 10h18M3 7a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2z',
-  check: 'M9 12l2 2 4-4m5 2a9 9 0 11-18 0 9 9 0 0118 0z',
-  alerta: 'M12 9v4m0 4h.01M10.3 3.86l-8 14A2 2 0 004 21h16a2 2 0 001.7-3.14l-8-14a2 2 0 00-3.4 0z',
-  cama: 'M3 7v10M3 12h15a3 3 0 013 3v2M7 12V9a1 1 0 011-1h6a1 1 0 011 1v3',
-  tendencia: 'M3 3v18h18M7 14l3-3 3 3 5-5',
-  mapa: 'M9 20l-5-2V6l5 2m0 12l6-2m-6 2V8m6 10l5-2V4l-5 2m0 12V6',
-  mas: 'M12 5v14M5 12h14',
-  edificio: 'M4 21V5a2 2 0 012-2h8a2 2 0 012 2v16M16 9h2a2 2 0 012 2v10M3 21h18M8 7h4M8 11h4M8 15h4',
-}
 
 // ── Línea de tendencia pequeña, con el valor de cada día al pasar el cursor ──
 function Sparkline({ serie, color, etiqueta }: { serie: { fecha: string; n: number }[]; color: string; etiqueta: string }) {

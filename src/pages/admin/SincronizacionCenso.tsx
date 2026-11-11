@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { PageHeader, ContadorCircular, Card, Badge, Btn, FilterBar, selectCls, inputCls, Modal, ConLateral, PanelIndicadores, ICONOS_IND } from '../../components/ui'
+import { PageHeader, ContadorCircular, Card, Badge, Btn, FilterBar, selectCls, inputCls, Modal, ConLateral, PanelIndicadores, FilasEstado } from '../../components/ui'
 import { listInconsistencias, ultimoSync, type CensoInconsistencia, type CensoSyncLog } from '../../lib/data'
 import { exportarExcel, type Columna } from '../../lib/exportar'
 import EstadoSyncCenso from '../../components/EstadoSyncCenso'
 import { useSyncCenso } from '../../components/ProgresoSync'
 import { useAuth } from '../../auth/AuthProvider'
+import { ICONOS_IND } from '../../lib/iconos'
 
 const TIPO_LABEL: Record<string, { label: string; color: 'red' | 'amber' | 'gray' }> = {
   ubicacion_no_homologada: { label: 'Ubicación sin homologar', color: 'red' },
@@ -103,6 +104,118 @@ function describirFiltros(f: Filtros): string {
   return p.join(' · ')
 }
 
+// ── Piezas de la página ──
+
+function PanelUltimaSync({ log, soloConsulta }: { log: CensoSyncLog | null; soloConsulta: boolean }) {
+  if (!log) {
+    return (
+      <PanelIndicadores titulo="Última sincronización" items={[]}>
+        <p className="text-sm text-gray-500">{soloConsulta ? 'Aún no se ha ejecutado ninguna sincronización.' : 'Aún no se ha ejecutado ninguna sincronización. Usa «Ejecutar ahora» o espera la corrida automática.'}</p>
+      </PanelIndicadores>
+    )
+  }
+  return (
+    <PanelIndicadores titulo="Última sincronización" accion={log.ok ? <Badge color="green">OK</Badge> : <Badge color="red">Con errores</Badge>} items={[
+      { label: 'Pacientes en censo', value: log.total_censo ?? '—', icono: ICONOS_IND.personas, color: 'blue' },
+      { label: 'Actualizados', value: log.pacientes_upsert ?? '—', icono: ICONOS_IND.actualizar, color: 'teal' },
+      { label: 'Egresos', value: log.altas ?? '—', icono: ICONOS_IND.salida, color: 'purple' },
+      { label: 'Aislamientos', value: log.aislamientos ?? '—', icono: ICONOS_IND.alerta, color: 'red' },
+    ]}>
+      <p className="mb-2 text-sm font-medium text-brand">{fechaHoraCO(log.run_at)}</p>
+      {!log.ok && log.mensaje && <p className="mb-2 break-words text-xs text-rose-600">{log.mensaje}</p>}
+    </PanelIndicadores>
+  )
+}
+
+// Desglose por unidad CENSO (de mayor a menor), con el detalle por tipo como subtítulo.
+function desglosePorUnidad(rows: CensoInconsistencia[]) {
+  const m = new Map<string, { n: number; tipos: Map<string, number> }>()
+  rows.forEach((r) => {
+    const u = r.censo_unidad ?? ''
+    const e = m.get(u) ?? { n: 0, tipos: new Map() }
+    e.n++; e.tipos.set(r.tipo, (e.tipos.get(r.tipo) ?? 0) + 1); m.set(u, e)
+  })
+  return [...m.entries()].sort((a, b) => b[1].n - a[1].n || a[0].localeCompare(b[0])).map(([u, e]) => ({
+    unidad: u, n: e.n,
+    detalle: [...e.tipos.entries()].sort((a, b) => b[1] - a[1]).map(([t, n]) => `${n} ${(TIPO_LABEL[t]?.label ?? t).toLowerCase()}`).join(' · '),
+  }))
+}
+
+// Paneles laterales «Inconsistencias» (por tipo) y «Por unidad CENSO»: clic en una fila filtra la tabla.
+function PanelesDesglose({ rows, loading, f, setF }: { rows: CensoInconsistencia[]; loading: boolean; f: Filtros; setF: (f: Filtros) => void }) {
+  const porTipo = useMemo(() => contar(rows.map((r) => r.tipo)).sort((x, y) => y[1] - x[1]), [rows])
+  const porUnidad = useMemo(() => desglosePorUnidad(rows), [rows])
+  return (
+    <>
+      <PanelIndicadores titulo={`Inconsistencias (${rows.length})`} items={porTipo.map(([t, n]) => ({
+        label: TIPO_LABEL[t]?.label ?? t, value: n, icono: t === 'sin_cama' ? ICONOS_IND.cama : ICONOS_IND.alerta,
+        color: TIPO_LABEL[t]?.color === 'red' ? 'red' as const : 'amber' as const,
+        activo: f.tipo === t, onClick: () => setF({ ...f, tipo: f.tipo === t ? '' : t }),
+      }))}>
+        {rows.length === 0 && !loading && <p className="text-sm text-emerald-600">✓ Sin inconsistencias.</p>}
+      </PanelIndicadores>
+      {porUnidad.length > 0 && (
+        <PanelIndicadores titulo={`Por unidad CENSO (${porUnidad.length})`} items={porUnidad.map((u) => ({
+          label: u.unidad || 'Sin unidad', hint: u.detalle, value: u.n, icono: ICONOS_IND.base, color: 'blue' as const,
+          activo: f.unidad === u.unidad && u.unidad !== '',
+          onClick: u.unidad ? () => setF({ ...f, unidad: f.unidad === u.unidad ? '' : u.unidad, area: '' }) : undefined,
+        }))} />
+      )}
+    </>
+  )
+}
+
+// Barra de filtros con el total de cada opción (respetando los demás filtros) y la línea «Mostrando X de Y».
+function BarraFiltros({ rows, filtrados, loading, f, setF }: {
+  rows: CensoInconsistencia[]; filtrados: CensoInconsistencia[]; loading: boolean; f: Filtros; setF: (f: Filtros) => void
+}) {
+  const tipos = useMemo(() => conTotales(rows.map((r) => r.tipo), filtrar(rows, f, 'tipo').map((r) => r.tipo)), [rows, f])
+  const unidades = useMemo(() => conTotales(rows.map((r) => r.censo_unidad), filtrar(rows, f, 'unidad').map((r) => r.censo_unidad)), [rows, f])
+  const areas = useMemo(() => {
+    const base = rows.filter((r) => !f.unidad || r.censo_unidad === f.unidad)
+    return conTotales(base.map((r) => r.censo_area), filtrar(rows, f, 'area').map((r) => r.censo_area))
+  }, [rows, f])
+  const estancias = useMemo(() => {
+    const base = filtrar(rows, f, 'estancia').map((r) => diasEstancia(r.fecha_hora_ingreso))
+    return ESTANCIAS.map((e) => ({ ...e, n: base.filter((d) => d != null && e.cumple(d)).length }))
+  }, [rows, f])
+  return (
+    <>
+      <FilterBar onClear={() => setF(VACIO)}>
+        <select className={selectCls} aria-label="Tipo de inconsistencia" value={f.tipo} onChange={(e) => setF({ ...f, tipo: e.target.value })}>
+          <option value="">Todos los tipos</option>
+          {tipos.map(([t, n]) => <option key={t} value={t}>{TIPO_LABEL[t]?.label ?? t} ({n})</option>)}
+        </select>
+        <select className={selectCls} aria-label="Unidad CENSO" value={f.unidad} onChange={(e) => setF({ ...f, unidad: e.target.value, area: '' })}>
+          <option value="">Todas las unidades CENSO</option>
+          {unidades.map(([u, n]) => <option key={u} value={u}>{u} ({n})</option>)}
+        </select>
+        {areas.length > 0 && (
+          <select className={selectCls} aria-label="Área" value={f.area} onChange={(e) => setF({ ...f, area: e.target.value })}>
+            <option value="">Todas las áreas</option>
+            {areas.map(([a, n]) => <option key={a} value={a}>{a} ({n})</option>)}
+          </select>
+        )}
+        <select className={selectCls} aria-label="Estancia" value={f.estancia} onChange={(e) => setF({ ...f, estancia: e.target.value })}>
+          <option value="">Cualquier estancia</option>
+          {estancias.map((e) => <option key={e.value} value={e.value}>{e.label} ({e.n})</option>)}
+        </select>
+        <input type="date" aria-label="Ingreso desde" title="Ingreso desde" className={selectCls} value={f.desde} max={f.hasta || undefined} onChange={(e) => setF({ ...f, desde: e.target.value })} />
+        <input type="date" aria-label="Ingreso hasta" title="Ingreso hasta" className={selectCls} value={f.hasta} min={f.desde || undefined} onChange={(e) => setF({ ...f, hasta: e.target.value })} />
+        <input aria-label="Buscar por paciente, # ingreso, cama, detalle" className={inputCls} placeholder="Paciente, # ingreso, cama, detalle…" value={f.texto} onChange={(e) => setF({ ...f, texto: e.target.value })} />
+      </FilterBar>
+      <p className="-mt-3 mb-3 px-1 text-xs text-gray-500"><TotalRegistros loading={loading} f={f} total={rows.length} visibles={filtrados.length} /></p>
+    </>
+  )
+}
+
+function TotalRegistros({ loading, f, total, visibles }: { loading: boolean; f: Filtros; total: number; visibles: number }) {
+  if (loading) return <>Cargando…</>
+  if (!Object.values(f).some((v) => v.trim() !== '')) return <>Total: <b className="text-brand">{total}</b> registros</>
+  const desc = describirFiltros(f)
+  return <>Mostrando <b className="text-brand">{visibles}</b> de {total} registros{desc ? ` · ${desc}` : ''}</>
+}
+
 // soloConsulta: vista para orientadores/coordinadores, sin ejecutar la sincronización ni ir a Homologación.
 export default function SincronizacionCenso({ soloConsulta: soloConsultaProp = false }: { soloConsulta?: boolean }) {
   const { perfil } = useAuth()
@@ -128,38 +241,7 @@ export default function SincronizacionCenso({ soloConsulta: soloConsultaProp = f
     if (res.ok) cargar()
   }
 
-  const tipos = useMemo(() => conTotales(rows.map((r) => r.tipo), filtrar(rows, f, 'tipo').map((r) => r.tipo)), [rows, f])
-  const unidades = useMemo(() => conTotales(rows.map((r) => r.censo_unidad), filtrar(rows, f, 'unidad').map((r) => r.censo_unidad)), [rows, f])
-  const areas = useMemo(() => {
-    const base = rows.filter((r) => !f.unidad || r.censo_unidad === f.unidad)
-    return conTotales(base.map((r) => r.censo_area), filtrar(rows, f, 'area').map((r) => r.censo_area))
-  }, [rows, f])
-  const estancias = useMemo(() => {
-    const base = filtrar(rows, f, 'estancia').map((r) => diasEstancia(r.fecha_hora_ingreso))
-    return ESTANCIAS.map((e) => ({ ...e, n: base.filter((d) => d != null && e.cumple(d)).length }))
-  }, [rows, f])
-  const porTipo = useMemo(() => {
-    const m = new Map<string, number>()
-    rows.forEach((r) => m.set(r.tipo, (m.get(r.tipo) ?? 0) + 1))
-    return [...m.entries()].sort((x, y) => y[1] - x[1])
-  }, [rows])
-
-  // Desglose por unidad CENSO (de mayor a menor), con el detalle por tipo como subtítulo.
-  const porUnidad = useMemo(() => {
-    const m = new Map<string, { n: number; tipos: Map<string, number> }>()
-    rows.forEach((r) => {
-      const u = r.censo_unidad ?? ''
-      const e = m.get(u) ?? { n: 0, tipos: new Map() }
-      e.n++; e.tipos.set(r.tipo, (e.tipos.get(r.tipo) ?? 0) + 1); m.set(u, e)
-    })
-    return [...m.entries()].sort((a, b) => b[1].n - a[1].n || a[0].localeCompare(b[0])).map(([u, e]) => ({
-      unidad: u, n: e.n,
-      detalle: [...e.tipos.entries()].sort((a, b) => b[1] - a[1]).map(([t, n]) => `${n} ${(TIPO_LABEL[t]?.label ?? t).toLowerCase()}`).join(' · '),
-    }))
-  }, [rows])
-
   const filtrados = useMemo(() => filtrar(rows, f), [rows, f])
-  const hayFiltros = Object.values(f).some((v) => v.trim() !== '')
 
   return (
     <div>
@@ -176,63 +258,11 @@ export default function SincronizacionCenso({ soloConsulta: soloConsultaProp = f
       <ConLateral lateral={
         <>
           <EstadoSyncCenso key={log?.run_at ?? 'sin'} soloSiDesactualizado />
-          <PanelIndicadores titulo="Última sincronización" accion={log ? (log.ok ? <Badge color="green">OK</Badge> : <Badge color="red">Con errores</Badge>) : undefined} items={log ? [
-            { label: 'Pacientes en censo', value: log.total_censo ?? '—', icono: ICONOS_IND.personas, color: 'blue' },
-            { label: 'Actualizados', value: log.pacientes_upsert ?? '—', icono: ICONOS_IND.actualizar, color: 'teal' },
-            { label: 'Egresos', value: log.altas ?? '—', icono: ICONOS_IND.salida, color: 'purple' },
-            { label: 'Aislamientos', value: log.aislamientos ?? '—', icono: ICONOS_IND.alerta, color: 'red' },
-          ] : []}>
-            {log
-              ? <p className="mb-2 text-sm font-medium text-brand">{fechaHoraCO(log.run_at)}</p>
-              : <p className="text-sm text-gray-500">{soloConsulta ? 'Aún no se ha ejecutado ninguna sincronización.' : 'Aún no se ha ejecutado ninguna sincronización. Usa «Ejecutar ahora» o espera la corrida automática.'}</p>}
-            {log && !log.ok && log.mensaje && <p className="mb-2 break-words text-xs text-rose-600">{log.mensaje}</p>}
-          </PanelIndicadores>
-          {/* Desglose: clic en un tipo para ver solo esas inconsistencias en la tabla */}
-          <PanelIndicadores titulo={`Inconsistencias (${rows.length})`} items={porTipo.map(([t, n]) => ({
-            label: TIPO_LABEL[t]?.label ?? t, value: n, icono: t === 'sin_cama' ? ICONOS_IND.cama : ICONOS_IND.alerta,
-            color: TIPO_LABEL[t]?.color === 'red' ? 'red' as const : 'amber' as const,
-            activo: f.tipo === t, onClick: () => setF({ ...f, tipo: f.tipo === t ? '' : t }),
-          }))}>
-            {rows.length === 0 && !loading && <p className="text-sm text-emerald-600">✓ Sin inconsistencias.</p>}
-          </PanelIndicadores>
-          {/* Desglose por unidad CENSO: clic en una unidad para filtrar la tabla por ella */}
-          {porUnidad.length > 0 && (
-            <PanelIndicadores titulo={`Por unidad CENSO (${porUnidad.length})`} items={porUnidad.map((u) => ({
-              label: u.unidad || 'Sin unidad', hint: u.detalle, value: u.n, icono: ICONOS_IND.base, color: 'blue' as const,
-              activo: f.unidad === u.unidad && u.unidad !== '',
-              onClick: u.unidad ? () => setF({ ...f, unidad: f.unidad === u.unidad ? '' : u.unidad, area: '' }) : undefined,
-            }))} />
-          )}
+          <PanelUltimaSync log={log} soloConsulta={soloConsulta} />
+          <PanelesDesglose rows={rows} loading={loading} f={f} setF={setF} />
         </>
       }>
-      <FilterBar onClear={() => setF(VACIO)}>
-        <select className={selectCls} aria-label="Tipo de inconsistencia" value={f.tipo} onChange={(e) => setF({ ...f, tipo: e.target.value })}>
-          <option value="">Todos los tipos</option>
-          {tipos.map(([t, n]) => <option key={t} value={t}>{TIPO_LABEL[t]?.label ?? t} ({n})</option>)}
-        </select>
-        <select className={selectCls} aria-label="Unidad CENSO" value={f.unidad} onChange={(e) => setF({ ...f, unidad: e.target.value, area: '' })}>
-          <option value="">Todas las unidades CENSO</option>
-          {unidades.map(([u, n]) => <option key={u} value={u}>{u} ({n})</option>)}
-        </select>
-        {areas.length > 0 && (
-          <select className={selectCls} aria-label="Área" value={f.area} onChange={(e) => setF({ ...f, area: e.target.value })}>
-            <option value="">Todas las áreas</option>
-            {areas.map(([a, n]) => <option key={a} value={a}>{a} ({n})</option>)}
-          </select>
-        )}
-        <select className={selectCls} aria-label="Estancia" value={f.estancia} onChange={(e) => setF({ ...f, estancia: e.target.value })}>
-          <option value="">Cualquier estancia</option>
-          {estancias.map((e) => <option key={e.value} value={e.value}>{e.label} ({e.n})</option>)}
-        </select>
-        <input type="date" aria-label="Ingreso desde" title="Ingreso desde" className={selectCls} value={f.desde} max={f.hasta || undefined} onChange={(e) => setF({ ...f, desde: e.target.value })} />
-        <input type="date" aria-label="Ingreso hasta" title="Ingreso hasta" className={selectCls} value={f.hasta} min={f.desde || undefined} onChange={(e) => setF({ ...f, hasta: e.target.value })} />
-        <input aria-label="Buscar por paciente, # ingreso, cama, detalle" className={inputCls} placeholder="Paciente, # ingreso, cama, detalle…" value={f.texto} onChange={(e) => setF({ ...f, texto: e.target.value })} />
-      </FilterBar>
-      <p className="-mt-3 mb-3 px-1 text-xs text-gray-500">
-        {loading ? 'Cargando…' : hayFiltros
-          ? <>Mostrando <b className="text-brand">{filtrados.length}</b> de {rows.length} registros{describirFiltros(f) ? ` · ${describirFiltros(f)}` : ''}</>
-          : <>Total: <b className="text-brand">{rows.length}</b> registros</>}
-      </p>
+      <BarraFiltros rows={rows} filtrados={filtrados} loading={loading} f={f} setF={setF} />
       <Card hover={false} className="overflow-hidden">
         <div className="tabla-scroll">
           <table className="w-full text-sm">
@@ -240,9 +270,8 @@ export default function SincronizacionCenso({ soloConsulta: soloConsultaProp = f
               {['Tipo', 'Paciente / # ingreso', 'Ingreso', 'Unidad CENSO', 'Área', 'Cama', 'Detalle'].map((h) => <th key={h} className="px-3 py-2.5 text-left font-medium whitespace-nowrap">{h}</th>)}
             </tr></thead>
             <tbody className="divide-y divide-gray-100">
-              {loading ? <tr><td colSpan={7} className="py-10 text-center text-gray-400">Cargando…</td></tr>
-                : filtrados.length === 0 ? <tr><td colSpan={7}className="py-10 text-center text-emerald-600">{rows.length === 0 ? '✓ Sin inconsistencias — todos los pacientes del CENSO quedaron homologados.' : 'Sin resultados con estos filtros.'}</td></tr>
-                : filtrados.map((r) => {
+              <FilasEstado cargando={loading} vacio={filtrados.length === 0} columnas={7} textoVacio={rows.length === 0 ? '✓ Sin inconsistencias — todos los pacientes del CENSO quedaron homologados.' : 'Sin resultados con estos filtros.'} claseVacio="text-emerald-600">
+                {filtrados.map((r) => {
                   const t = TIPO_LABEL[r.tipo] ?? { label: r.tipo, color: 'gray' as const }
                   const fi = fechaIngreso(r.fecha_hora_ingreso)
                   return (
@@ -262,6 +291,7 @@ export default function SincronizacionCenso({ soloConsulta: soloConsultaProp = f
                     </tr>
                   )
                 })}
+              </FilasEstado>
             </tbody>
           </table>
         </div>
