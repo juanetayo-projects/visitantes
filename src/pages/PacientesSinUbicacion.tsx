@@ -80,7 +80,7 @@ export default function PacientesSinUbicacion() {
           { label: 'Con acompañante dentro', value: filtrados.length - sinAcomp, icono: ICONOS_IND.atendido, color: 'green' },
         ]} />
         <FilterBar vertical onClear={() => setF({ motivo: '', unidad: '', texto: '' })}>
-          <input aria-label="Buscar por nombre, identificación, # ingreso" className={inputCls} placeholder="Nombre, identificación, # ingreso…" value={f.texto} onChange={(e) => setF({ ...f, texto: e.target.value })} autoFocus />
+          <input aria-label="Buscar por nombre, identificación, # ingreso" className={inputCls} placeholder="Nombre, identificación, # ingreso…" value={f.texto} onChange={(e) => setF({ ...f, texto: e.target.value })} />
           <select className={selectCls} value={f.unidad} onChange={(e) => setF({ ...f, unidad: e.target.value })}>
             <option value="">Todas las unidades</option>
             {unidades.map((u) => <option key={u} value={u}>{u}</option>)}
